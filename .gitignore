@@ -1,0 +1,21 @@
+.env
+.env.*
+*.key
+*.pem
+*secret*
+*token*
+__pycache__/
+*.pyc
+
+# Local archives and temporary backups
+archive/
+script-versions/
+*.archive_*
+*.archive
+*backup*
+*.bak
+*.tmp
+
+# Local runtime locks and transient dumps
+*.lock
+BTC_LRA_DUMP.txt

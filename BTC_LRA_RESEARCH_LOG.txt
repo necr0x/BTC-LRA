@@ -1,0 +1,2776 @@
+[2026-09-27 19:55:42 Panama UTC-5] BTC-LRA | ЗАПУЩЕН И РАБОТАЕТ
+
+- Модуль «Импульс и истощение» следит за сильной агрессией, продолжением и её истощением.
+
+- Модуль «Встречная атака» проверяет, получает ли противоположная сторона реальный результат.
+
+- Модуль «Давление и свип» исследует последовательное давление и финальную попытку продолжения.
+
+- Модуль «Происхождение движения» исследует ранний кандидат по смене соотношения усилия → результата.
+
+########## МОДУЛЬ=КООРДИНАТОР
+[2026-09-27 19:55:44 Panama UTC-5] BTC-LRA | PRESSURE_DETECTED
+ПРОДАВЦЫ ДАВЯТ вниз. Пока это только наблюдение.
+Pressure side=DOWN | pressure_detected_price=84339.8
+pressure_window_start=2026-09-27 19:31:00
+reference_price=84151.6
+attempts=6 | cumulative_delta=-402.1 BTC | total_volume=4188.4 BTC | delta/volume=-9.6%
+OI source=live_monitor:/futures/data/openInterestHist | OI interval=5m | OI change=+345.203 BTC (+0.367%)
+Это наблюдение, НЕ вход.
+episode_id=P0001
+
+########## МОДУЛЬ=КООРДИНАТОР
+[2026-09-27 19:56:49 Panama UTC-5] BTC-LRA | PRESSURE_RETENTION
+episode_id=P0001 | anchor=PRESSURE_DETECTED
+retained_1m=+149.5 USD | extension_1m=+159.8 USD | retained_fraction_1m=+0.936
+Источник: historical 1m OHLC.
+
+########## МОДУЛЬ=КООРДИНАТОР
+[2026-09-27 19:58:46 Panama UTC-5] BTC-LRA | PRESSURE_RETENTION
+episode_id=P0001 | anchor=PRESSURE_DETECTED
+retained_3m=+206.8 USD | extension_3m=+209.8 USD | retained_fraction_3m=+0.986
+Источник: historical 1m OHLC.
+
+########## МОДУЛЬ=КООРДИНАТОР
+[2026-09-27 20:00:45 Panama UTC-5] BTC-LRA | PRESSURE_RETENTION
+episode_id=P0001 | anchor=PRESSURE_DETECTED
+retained_5m=+309.1 USD | extension_5m=+329.8 USD | retained_fraction_5m=+0.937
+Источник: historical 1m OHLC.
+
+########## МОДУЛЬ=КООРДИНАТОР
+[2026-09-27 20:00:46 Panama UTC-5] BTC-LRA | PRESSURE_OUTCOME
+episode_id=P0001 | anchor=PRESSURE_DETECTED | direction=SHORT | horizon=5m
+entry_price=84339.8 | MFE=+329.8 USD | MAE=+0.0 USD
+MFE_pct=+0.391% | MAE_pct=+0.000%
+MFE_ATR=+3.855 | MAE_ATR=+0.000
+Источник результата: historical 1m OHLC; future leakage не используется.
+
+########## МОДУЛЬ=КООРДИНАТОР
+[2026-09-27 20:10:45 Panama UTC-5] BTC-LRA | PRESSURE_OUTCOME
+episode_id=P0001 | anchor=PRESSURE_DETECTED | direction=SHORT | horizon=15m
+entry_price=84339.8 | MFE=+462.8 USD | MAE=+0.0 USD
+MFE_pct=+0.549% | MAE_pct=+0.000%
+MFE_ATR=+5.410 | MAE_ATR=+0.000
+Источник результата: historical 1m OHLC; future leakage не используется.
+
+########## МОДУЛЬ=КООРДИНАТОР
+[2026-09-27 20:17:01 Panama UTC-5] BTC-LRA | PRESSURE_DETECTED
+ПРОДАВЦЫ ДАВЯТ вниз. Пока это только наблюдение.
+Pressure side=DOWN | pressure_detected_price=83909.0
+pressure_window_start=2026-09-27 19:53:00
+reference_price=83850.0
+attempts=3 | cumulative_delta=-552.7 BTC | total_volume=4178.0 BTC | delta/volume=-13.2%
+OI source=live_monitor:/futures/data/openInterestHist | OI interval=5m | OI change=+164.298 BTC (+0.174%)
+Это наблюдение, НЕ вход.
+episode_id=P0002
+
+########## МОДУЛЬ=КООРДИНАТОР
+[2026-09-27 20:18:06 Panama UTC-5] BTC-LRA | PRESSURE_RETENTION
+episode_id=P0002 | anchor=PRESSURE_DETECTED
+retained_1m=+37.1 USD | extension_1m=+43.9 USD | retained_fraction_1m=+0.845
+Источник: historical 1m OHLC.
+
+########## МОДУЛЬ=КООРДИНАТОР
+[2026-09-27 20:18:23 Panama UTC-5] BTC-LRA | PRESSURE_BREAKOUT_WATCH
+ПРОДАВЦЫ НАЧАЛИ РЕАЛИЗОВЫВАТЬ ДАВЛЕНИЕ.
+Цена начала выходить после последовательного давления.
+Проверяем две возможности:
+1. Исходная сторона сохранит результат — возможное продолжение.
+2. Выход провалится и противоположная сторона получит результат — возможный отказ.
+
+episode_id=P0002
+state=PRESSURE_BREAKOUT_WATCH | pressure_side=DOWN | direction=SHORT
+pressure_reference_price=83850.0
+attempt_time=2026-09-27 20:18:23 | attempt_price=83869.4
+pressure_attempts=3 | pressure_cumulative_delta=-552.7 BTC | pressure_volume=4178.0 BTC | pressure_delta/volume=-13.2%
+extension_reward=+13.8 USD | extension_reward_ATR=+0.157
+retained_reward=-19.4 USD | retained_reward_ATR=-0.221 | retained_fraction=-1.406
+pullback_after_extension=+33.2 USD | pullback_ATR=+0.379
+incremental_extension=+0.0 USD | incremental_extension_ATR=+0.000
+elapsed_seconds=0
+same_side_delta=+0.0 BTC | opposite_delta=+0.0 BTC | outside_closes=0 | bars=1
+Это исследовательское состояние, НЕ вход.
+
+########## МОДУЛЬ=КООРДИНАТОР
+[2026-09-27 20:19:04 Panama UTC-5] BTC-LRA | PRESSURE_DETECTED
+ПРОДАВЦЫ ДАВЯТ вниз. Пока это только наблюдение.
+Pressure side=DOWN | pressure_detected_price=83900.1
+pressure_window_start=2026-09-27 19:55:00
+reference_price=83836.2
+attempts=3 | cumulative_delta=-573.2 BTC | total_volume=4288.8 BTC | delta/volume=-13.4%
+OI source=live_monitor:/futures/data/openInterestHist | OI interval=5m | OI change=+164.298 BTC (+0.174%)
+Это наблюдение, НЕ вход.
+episode_id=P0003
+
+########## МОДУЛЬ=КООРДИНАТОР
+[2026-09-27 20:19:29 Panama UTC-5] BTC-LRA | PRESSURE_RETENTION
+episode_id=P0002 | anchor=BREAKOUT_WATCH
+retained_1m=+0.3 USD | extension_1m=+12.2 USD | retained_fraction_1m=+0.025
+Источник: historical 1m OHLC.
+
+########## МОДУЛЬ=КООРДИНАТОР
+[2026-09-27 20:20:05 Panama UTC-5] BTC-LRA | PRESSURE_RETENTION
+episode_id=P0002 | anchor=PRESSURE_DETECTED
+retained_3m=+0.0 USD | extension_3m=+92.1 USD | retained_fraction_3m=+0.000
+Источник: historical 1m OHLC.
+
+########## МОДУЛЬ=КООРДИНАТОР
+[2026-09-27 20:20:05 Panama UTC-5] BTC-LRA | PRESSURE_RETENTION
+episode_id=P0003 | anchor=PRESSURE_DETECTED
+retained_1m=+0.0 USD | extension_1m=+0.0 USD | retained_fraction_1m=+0.000
+Источник: historical 1m OHLC.
+
+########## МОДУЛЬ=КООРДИНАТОР
+[2026-09-27 20:21:28 Panama UTC-5] BTC-LRA | PRESSURE_FAILURE
+episode_id=P0002
+state=PRESSURE_FAILURE | pressure_side=DOWN | direction=SHORT
+pressure_reference_price=83850.0
+attempt_time=2026-09-27 20:18:23 | attempt_price=83869.4
+pressure_attempts=3 | pressure_cumulative_delta=-552.7 BTC | pressure_volume=4178.0 BTC | pressure_delta/volume=-13.2%
+extension_reward=+13.8 USD | extension_reward_ATR=+0.157
+retained_reward=-126.0 USD | retained_reward_ATR=-1.437 | retained_fraction=-9.130
+pullback_after_extension=+139.8 USD | pullback_ATR=+1.595
+incremental_extension=+0.0 USD | incremental_extension_ATR=+0.000
+elapsed_seconds=180
+same_side_delta=+0.0 BTC | opposite_delta=+30.1 BTC | outside_closes=0 | bars=4
+Это исследовательское состояние, НЕ вход.
+resolution_reason=watch_ttl_expired
+
+########## МОДУЛЬ=КООРДИНАТОР
+[2026-09-27 20:21:28 Panama UTC-5] BTC-LRA | PRESSURE_RETENTION
+episode_id=P0002 | anchor=BREAKOUT_WATCH
+retained_3m=+0.0 USD | extension_3m=+52.5 USD | retained_fraction_3m=+0.000
+Источник: historical 1m OHLC.
+
+########## МОДУЛЬ=КООРДИНАТОР
+[2026-09-27 20:22:04 Panama UTC-5] BTC-LRA | PRESSURE_RETENTION
+episode_id=P0002 | anchor=PRESSURE_DETECTED
+retained_5m=+0.0 USD | extension_5m=+92.1 USD | retained_fraction_5m=+0.000
+Источник: historical 1m OHLC.
+
+########## МОДУЛЬ=КООРДИНАТОР
+[2026-09-27 20:22:05 Panama UTC-5] BTC-LRA | PRESSURE_OUTCOME
+episode_id=P0002 | anchor=PRESSURE_DETECTED | direction=SHORT | horizon=5m
+entry_price=83909.0 | MFE=+92.1 USD | MAE=+199.0 USD
+MFE_pct=+0.110% | MAE_pct=+0.237%
+MFE_ATR=+1.050 | MAE_ATR=+2.270
+Источник результата: historical 1m OHLC; future leakage не используется.
+
+########## МОДУЛЬ=КООРДИНАТОР
+[2026-09-27 20:22:11 Panama UTC-5] BTC-LRA | PRESSURE_RETENTION
+episode_id=P0003 | anchor=PRESSURE_DETECTED
+retained_3m=+0.0 USD | extension_3m=+0.0 USD | retained_fraction_3m=+0.000
+Источник: historical 1m OHLC.
+
+########## МОДУЛЬ=КООРДИНАТОР
+[2026-09-27 20:23:27 Panama UTC-5] BTC-LRA | PRESSURE_RETENTION
+episode_id=P0002 | anchor=BREAKOUT_WATCH
+retained_5m=+0.0 USD | extension_5m=+52.5 USD | retained_fraction_5m=+0.000
+Источник: historical 1m OHLC.
+
+########## МОДУЛЬ=КООРДИНАТОР
+[2026-09-27 20:23:28 Panama UTC-5] BTC-LRA | PRESSURE_OUTCOME
+episode_id=P0002 | anchor=BREAKOUT_WATCH | direction=SHORT | horizon=5m
+entry_price=83869.4 | MFE=+52.5 USD | MAE=+238.6 USD
+MFE_pct=+0.063% | MAE_pct=+0.284%
+MFE_ATR=+0.599 | MAE_ATR=+2.721
+Источник результата: historical 1m OHLC; future leakage не используется.
+
+########## МОДУЛЬ=КООРДИНАТОР
+[2026-09-27 20:24:09 Panama UTC-5] BTC-LRA | PRESSURE_RETENTION
+episode_id=P0003 | anchor=PRESSURE_DETECTED
+retained_5m=+0.0 USD | extension_5m=+0.0 USD | retained_fraction_5m=+0.000
+Источник: historical 1m OHLC.
+
+########## МОДУЛЬ=КООРДИНАТОР
+[2026-09-27 20:24:10 Panama UTC-5] BTC-LRA | PRESSURE_OUTCOME
+episode_id=P0003 | anchor=PRESSURE_DETECTED | direction=SHORT | horizon=5m
+entry_price=83900.1 | MFE=+0.0 USD | MAE=+207.9 USD
+MFE_pct=+0.000% | MAE_pct=+0.248%
+MFE_ATR=+0.000 | MAE_ATR=+2.314
+Источник результата: historical 1m OHLC; future leakage не используется.
+
+########## МОДУЛЬ=КООРДИНАТОР
+[2026-09-27 20:25:50 Panama UTC-5] BTC-LRA | PRESSURE_OUTCOME
+episode_id=P0001 | anchor=PRESSURE_DETECTED | direction=SHORT | horizon=30m
+entry_price=84339.8 | MFE=+522.9 USD | MAE=+0.0 USD
+MFE_pct=+0.620% | MAE_pct=+0.000%
+MFE_ATR=+6.112 | MAE_ATR=+0.000
+Источник результата: historical 1m OHLC; future leakage не используется.
+
+########## МОДУЛЬ=КООРДИНАТОР
+[2026-09-27 20:32:02 Panama UTC-5] BTC-LRA | PRESSURE_OUTCOME
+episode_id=P0002 | anchor=PRESSURE_DETECTED | direction=SHORT | horizon=15m
+entry_price=83909.0 | MFE=+92.1 USD | MAE=+214.3 USD
+MFE_pct=+0.110% | MAE_pct=+0.255%
+MFE_ATR=+1.050 | MAE_ATR=+2.444
+Источник результата: historical 1m OHLC; future leakage не используется.
+
+########## МОДУЛЬ=КООРДИНАТОР
+[2026-09-27 20:33:26 Panama UTC-5] BTC-LRA | PRESSURE_OUTCOME
+episode_id=P0002 | anchor=BREAKOUT_WATCH | direction=SHORT | horizon=15m
+entry_price=83869.4 | MFE=+52.5 USD | MAE=+253.9 USD
+MFE_pct=+0.063% | MAE_pct=+0.303%
+MFE_ATR=+0.599 | MAE_ATR=+2.896
+Источник результата: historical 1m OHLC; future leakage не используется.
+
+########## МОДУЛЬ=КООРДИНАТОР
+[2026-09-27 20:34:07 Panama UTC-5] BTC-LRA | PRESSURE_OUTCOME
+episode_id=P0003 | anchor=PRESSURE_DETECTED | direction=SHORT | horizon=15m
+entry_price=83900.1 | MFE=+0.0 USD | MAE=+223.2 USD
+MFE_pct=+0.000% | MAE_pct=+0.266%
+MFE_ATR=+0.000 | MAE_ATR=+2.484
+Источник результата: historical 1m OHLC; future leakage не используется.
+
+[27.09.26 / 20:37:00] ВОЗМОЖНАЯ ТВХ SELL | 83875.3
+SELL повторно получил результат, контроль сохраняется.
+
+########## МОДУЛЬ=КООРДИНАТОР
+[2026-09-27 20:47:02 Panama UTC-5] BTC-LRA | PRESSURE_DETECTED
+ПРОДАВЦЫ ДАВЯТ вниз. Пока это только наблюдение.
+Pressure side=DOWN | pressure_detected_price=83787.6
+pressure_window_start=2026-09-27 20:23:00
+reference_price=83752.7
+attempts=3 | cumulative_delta=-214.6 BTC | total_volume=2411.2 BTC | delta/volume=-8.9%
+OI source=live_monitor:/futures/data/openInterestHist | OI interval=5m | OI change=+263.137 BTC (+0.278%)
+Это наблюдение, НЕ вход.
+episode_id=P0004
+
+########## МОДУЛЬ=КООРДИНАТОР
+[2026-09-27 20:47:03 Panama UTC-5] BTC-LRA | PRESSURE_OUTCOME
+episode_id=P0002 | anchor=PRESSURE_DETECTED | direction=SHORT | horizon=30m
+entry_price=83909.0 | MFE=+156.3 USD | MAE=+214.3 USD
+MFE_pct=+0.186% | MAE_pct=+0.255%
+MFE_ATR=+1.783 | MAE_ATR=+2.444
+Источник результата: historical 1m OHLC; future leakage не используется.
+
+########## МОДУЛЬ=КООРДИНАТОР
+[2026-09-27 20:48:07 Panama UTC-5] BTC-LRA | PRESSURE_RETENTION
+episode_id=P0004 | anchor=PRESSURE_DETECTED
+retained_1m=+0.0 USD | extension_1m=+0.0 USD | retained_fraction_1m=+0.000
+Источник: historical 1m OHLC.
+
+########## МОДУЛЬ=КООРДИНАТОР
+[2026-09-27 20:48:25 Panama UTC-5] BTC-LRA | PRESSURE_OUTCOME
+episode_id=P0002 | anchor=BREAKOUT_WATCH | direction=SHORT | horizon=30m
+entry_price=83869.4 | MFE=+116.7 USD | MAE=+253.9 USD
+MFE_pct=+0.139% | MAE_pct=+0.303%
+MFE_ATR=+1.331 | MAE_ATR=+2.896
+Источник результата: historical 1m OHLC; future leakage не используется.
+
+########## МОДУЛЬ=КООРДИНАТОР
+[2026-09-27 20:49:07 Panama UTC-5] BTC-LRA | PRESSURE_OUTCOME
+episode_id=P0003 | anchor=PRESSURE_DETECTED | direction=SHORT | horizon=30m
+entry_price=83900.1 | MFE=+147.4 USD | MAE=+223.2 USD
+MFE_pct=+0.176% | MAE_pct=+0.266%
+MFE_ATR=+1.640 | MAE_ATR=+2.484
+Источник результата: historical 1m OHLC; future leakage не используется.
+
+########## МОДУЛЬ=КООРДИНАТОР
+[2026-09-27 20:49:19 Panama UTC-5] BTC-LRA | PRESSURE_BREAKOUT_WATCH
+ПРОДАВЦЫ НАЧАЛИ РЕАЛИЗОВЫВАТЬ ДАВЛЕНИЕ.
+Цена начала выходить после последовательного давления.
+Проверяем две возможности:
+1. Исходная сторона сохранит результат — возможное продолжение.
+2. Выход провалится и противоположная сторона получит результат — возможный отказ.
+
+episode_id=P0004
+state=PRESSURE_BREAKOUT_WATCH | pressure_side=DOWN | direction=SHORT
+pressure_reference_price=83752.7
+attempt_time=2026-09-27 20:49:19 | attempt_price=83740.0
+pressure_attempts=3 | pressure_cumulative_delta=-214.6 BTC | pressure_volume=2411.2 BTC | pressure_delta/volume=-8.9%
+extension_reward=+51.7 USD | extension_reward_ATR=+0.705
+retained_reward=+12.7 USD | retained_reward_ATR=+0.173 | retained_fraction=+0.246
+pullback_after_extension=+39.0 USD | pullback_ATR=+0.532
+incremental_extension=+0.0 USD | incremental_extension_ATR=+0.000
+elapsed_seconds=0
+same_side_delta=+0.0 BTC | opposite_delta=+0.0 BTC | outside_closes=0 | bars=1
+Это исследовательское состояние, НЕ вход.
+
+########## МОДУЛЬ=КООРДИНАТОР
+[2026-09-27 20:50:05 Panama UTC-5] BTC-LRA | PRESSURE_CONTINUATION_CANDIDATE
+episode_id=P0004
+state=EARLY_CONTINUATION | pressure_side=DOWN | direction=SHORT
+pressure_reference_price=83752.7
+attempt_time=2026-09-27 20:49:19 | attempt_price=83740.0
+pressure_attempts=3 | pressure_cumulative_delta=-214.6 BTC | pressure_volume=2411.2 BTC | pressure_delta/volume=-8.9%
+extension_reward=+138.3 USD | extension_reward_ATR=+1.885
+retained_reward=+132.4 USD | retained_reward_ATR=+1.804 | retained_fraction=+0.957
+pullback_after_extension=+5.9 USD | pullback_ATR=+0.080
+incremental_extension=+86.6 USD | incremental_extension_ATR=+1.180
+elapsed_seconds=60
+same_side_delta=+7.1 BTC | opposite_delta=+0.0 BTC | outside_closes=1 | bars=2
+Это исследовательское состояние, НЕ вход.
+
+########## МОДУЛЬ=КООРДИНАТОР
+[2026-09-27 20:50:05 Panama UTC-5] BTC-LRA | PRESSURE_RETENTION
+episode_id=P0004 | anchor=PRESSURE_DETECTED
+retained_3m=+175.5 USD | extension_3m=+177.6 USD | retained_fraction_3m=+0.988
+Источник: historical 1m OHLC.
+
+########## МОДУЛЬ=КООРДИНАТОР
+[2026-09-27 20:50:23 Panama UTC-5] BTC-LRA | PRESSURE_RETENTION
+episode_id=P0004 | anchor=BREAKOUT_WATCH
+retained_1m=+156.1 USD | extension_1m=+172.8 USD | retained_fraction_1m=+0.903
+Источник: historical 1m OHLC.
+
+########## МОДУЛЬ=КООРДИНАТОР
+[2026-09-27 20:51:03 Panama UTC-5] BTC-LRA | PRESSURE_RETENTION
+episode_id=P0004 | anchor=EARLY_CONTINUATION
+retained_1m=+0.0 USD | extension_1m=+53.1 USD | retained_fraction_1m=+0.000
+Источник: historical 1m OHLC.
+
+########## МОДУЛЬ=КООРДИНАТОР
+[2026-09-27 20:51:09 Panama UTC-5] BTC-LRA | TEST_ENTRY_CANDIDATE
+[TEST SHORT] setup=PRESSURE_CONTINUATION
+price=83713.4 | event_id=T000001
+quality={"ACTIVE_LEG": "EFFECTIVE", "AGGRESSION": "LOW", "EFFICIENCY_TREND": "MIXED", "OI_STATE": "BUILDING", "PRICE_REWARD": "STRONG", "RETENTION": "WEAK", "SEQUENCE": "REPEATED", "STRUCTURE_CONFIRMATION": "ACCEPTANCE"}
+Research anchor only. No order is sent.
+
+########## МОДУЛЬ=КООРДИНАТОР
+[2026-09-27 20:52:01 Panama UTC-5] BTC-LRA | PRESSURE_RETENTION
+episode_id=P0004 | anchor=ACCEPTANCE
+retained_1m=+0.0 USD | extension_1m=+0.0 USD | retained_fraction_1m=+0.000
+Источник: historical 1m OHLC.
+
+########## МОДУЛЬ=КООРДИНАТОР
+[2026-09-27 20:52:07 Panama UTC-5] BTC-LRA | PRESSURE_RETENTION
+episode_id=P0004 | anchor=PRESSURE_DETECTED
+retained_5m=+26.2 USD | extension_5m=+220.4 USD | retained_fraction_5m=+0.119
+Источник: historical 1m OHLC.
+
+########## МОДУЛЬ=КООРДИНАТОР
+[2026-09-27 20:52:07 Panama UTC-5] BTC-LRA | PRESSURE_OUTCOME
+episode_id=P0004 | anchor=PRESSURE_DETECTED | direction=SHORT | horizon=5m
+entry_price=83787.6 | MFE=+220.4 USD | MAE=+95.0 USD
+MFE_pct=+0.263% | MAE_pct=+0.113%
+MFE_ATR=+3.004 | MAE_ATR=+1.295
+Источник результата: historical 1m OHLC; future leakage не используется.
+
+########## МОДУЛЬ=КООРДИНАТОР
+[2026-09-27 20:52:19 Panama UTC-5] BTC-LRA | PRESSURE_CONTINUATION
+episode_id=P0004
+state=PRESSURE_CONTINUATION | pressure_side=DOWN | direction=SHORT
+pressure_reference_price=83752.7
+attempt_time=2026-09-27 20:49:19 | attempt_price=83740.0
+pressure_attempts=3 | pressure_cumulative_delta=-214.6 BTC | pressure_volume=2411.2 BTC | pressure_delta/volume=-8.9%
+extension_reward=+138.3 USD | extension_reward_ATR=+1.885
+retained_reward=+19.0 USD | retained_reward_ATR=+0.259 | retained_fraction=+0.137
+pullback_after_extension=+119.3 USD | pullback_ATR=+1.626
+incremental_extension=+0.0 USD | incremental_extension_ATR=+0.000
+elapsed_seconds=180
+same_side_delta=+14.2 BTC | opposite_delta=+1.9 BTC | outside_closes=3 | bars=4
+Это исследовательское состояние, НЕ вход.
+resolution_reason=watch_ttl_expired
+
+########## МОДУЛЬ=КООРДИНАТОР
+[2026-09-27 20:52:19 Panama UTC-5] BTC-LRA | PRESSURE_RETENTION
+episode_id=P0004 | anchor=BREAKOUT_WATCH
+retained_3m=+0.0 USD | extension_3m=+172.8 USD | retained_fraction_3m=+0.000
+Источник: historical 1m OHLC.
+
+########## МОДУЛЬ=КООРДИНАТОР
+[2026-09-27 20:53:00 Panama UTC-5] BTC-LRA | PRESSURE_RETENTION
+episode_id=P0004 | anchor=EARLY_CONTINUATION
+retained_3m=+0.0 USD | extension_3m=+53.1 USD | retained_fraction_3m=+0.000
+Источник: historical 1m OHLC.
+
+########## МОДУЛЬ=КООРДИНАТОР
+[2026-09-27 20:54:03 Panama UTC-5] BTC-LRA | PRESSURE_RETENTION
+episode_id=P0004 | anchor=ACCEPTANCE
+retained_3m=+0.0 USD | extension_3m=+21.2 USD | retained_fraction_3m=+0.000
+Источник: historical 1m OHLC.
+
+########## МОДУЛЬ=КООРДИНАТОР
+[2026-09-27 20:54:21 Panama UTC-5] BTC-LRA | PRESSURE_RETENTION
+episode_id=P0004 | anchor=BREAKOUT_WATCH
+retained_5m=+0.0 USD | extension_5m=+172.8 USD | retained_fraction_5m=+0.000
+Источник: historical 1m OHLC.
+
+########## МОДУЛЬ=КООРДИНАТОР
+[2026-09-27 20:54:22 Panama UTC-5] BTC-LRA | PRESSURE_OUTCOME
+episode_id=P0004 | anchor=BREAKOUT_WATCH | direction=SHORT | horizon=5m
+entry_price=83740.0 | MFE=+172.8 USD | MAE=+60.0 USD
+MFE_pct=+0.206% | MAE_pct=+0.072%
+MFE_ATR=+2.355 | MAE_ATR=+0.818
+Источник результата: historical 1m OHLC; future leakage не используется.
+
+########## МОДУЛЬ=КООРДИНАТОР
+[2026-09-27 20:55:03 Panama UTC-5] BTC-LRA | PRESSURE_RETENTION
+episode_id=P0004 | anchor=EARLY_CONTINUATION
+retained_5m=+0.0 USD | extension_5m=+53.1 USD | retained_fraction_5m=+0.000
+Источник: historical 1m OHLC.
+
+########## МОДУЛЬ=КООРДИНАТОР
+[2026-09-27 20:55:03 Panama UTC-5] BTC-LRA | PRESSURE_OUTCOME
+episode_id=P0004 | anchor=EARLY_CONTINUATION | direction=SHORT | horizon=5m
+entry_price=83620.3 | MFE=+53.1 USD | MAE=+179.7 USD
+MFE_pct=+0.064% | MAE_pct=+0.215%
+MFE_ATR=+0.724 | MAE_ATR=+2.449
+Источник результата: historical 1m OHLC; future leakage не используется.
+
+########## МОДУЛЬ=КООРДИНАТОР
+[2026-09-27 20:55:45 Panama UTC-5] BTC-LRA | PRESSURE_OUTCOME
+episode_id=P0001 | anchor=PRESSURE_DETECTED | direction=SHORT | horizon=60m
+entry_price=84339.8 | MFE=+772.6 USD | MAE=+0.0 USD
+MFE_pct=+0.916% | MAE_pct=+0.000%
+MFE_ATR=+9.031 | MAE_ATR=+0.000
+Источник результата: historical 1m OHLC; future leakage не используется.
+
+########## МОДУЛЬ=КООРДИНАТОР
+[2026-09-27 20:56:03 Panama UTC-5] BTC-LRA | PRESSURE_RETENTION
+episode_id=P0004 | anchor=ACCEPTANCE
+retained_5m=+0.0 USD | extension_5m=+21.2 USD | retained_fraction_5m=+0.000
+Источник: historical 1m OHLC.
+
+########## МОДУЛЬ=КООРДИНАТОР
+[2026-09-27 20:56:03 Panama UTC-5] BTC-LRA | PRESSURE_OUTCOME
+episode_id=P0004 | anchor=ACCEPTANCE | direction=SHORT | horizon=5m
+entry_price=83713.4 | MFE=+21.2 USD | MAE=+86.6 USD
+MFE_pct=+0.025% | MAE_pct=+0.103%
+MFE_ATR=+0.289 | MAE_ATR=+1.180
+Источник результата: historical 1m OHLC; future leakage не используется.
+
+########## МОДУЛЬ=КООРДИНАТОР
+[2026-09-27 20:56:09 Panama UTC-5] BTC-LRA | MOMENTUM_DECAY
+[WATCH] SHORT momentum decay
+entry_id=T000001 | progress_atr=0.000 | retained_fraction=0.000
+Same-side aggression is producing less incremental progress.
+
+########## МОДУЛЬ=КООРДИНАТОР
+[2026-09-27 21:02:08 Panama UTC-5] BTC-LRA | PRESSURE_OUTCOME
+episode_id=P0004 | anchor=PRESSURE_DETECTED | direction=SHORT | horizon=15m
+entry_price=83787.6 | MFE=+286.2 USD | MAE=+95.0 USD
+MFE_pct=+0.342% | MAE_pct=+0.113%
+MFE_ATR=+3.901 | MAE_ATR=+1.295
+Источник результата: historical 1m OHLC; future leakage не используется.
+
+########## МОДУЛЬ=КООРДИНАТОР
+[2026-09-27 21:04:21 Panama UTC-5] BTC-LRA | PRESSURE_OUTCOME
+episode_id=P0004 | anchor=BREAKOUT_WATCH | direction=SHORT | horizon=15m
+entry_price=83740.0 | MFE=+319.9 USD | MAE=+92.7 USD
+MFE_pct=+0.382% | MAE_pct=+0.111%
+MFE_ATR=+4.360 | MAE_ATR=+1.263
+Источник результата: historical 1m OHLC; future leakage не используется.
+
+########## МОДУЛЬ=КООРДИНАТОР
+[2026-09-27 21:05:05 Panama UTC-5] BTC-LRA | PRESSURE_OUTCOME
+episode_id=P0004 | anchor=EARLY_CONTINUATION | direction=SHORT | horizon=15m
+entry_price=83620.3 | MFE=+200.2 USD | MAE=+212.4 USD
+MFE_pct=+0.239% | MAE_pct=+0.254%
+MFE_ATR=+2.729 | MAE_ATR=+2.895
+Источник результата: historical 1m OHLC; future leakage не используется.
+
+########## МОДУЛЬ=КООРДИНАТОР
+[2026-09-27 21:06:03 Panama UTC-5] BTC-LRA | PRESSURE_OUTCOME
+episode_id=P0004 | anchor=ACCEPTANCE | direction=SHORT | horizon=15m
+entry_price=83713.4 | MFE=+293.3 USD | MAE=+119.3 USD
+MFE_pct=+0.350% | MAE_pct=+0.143%
+MFE_ATR=+3.997 | MAE_ATR=+1.626
+Источник результата: historical 1m OHLC; future leakage не используется.
+
+########## МОДУЛЬ=КООРДИНАТОР
+[2026-09-27 21:17:02 Panama UTC-5] BTC-LRA | PRESSURE_OUTCOME
+episode_id=P0002 | anchor=PRESSURE_DETECTED | direction=SHORT | horizon=60m
+entry_price=83909.0 | MFE=+488.9 USD | MAE=+214.3 USD
+MFE_pct=+0.583% | MAE_pct=+0.255%
+MFE_ATR=+5.576 | MAE_ATR=+2.444
+Источник результата: historical 1m OHLC; future leakage не используется.
+
+########## МОДУЛЬ=КООРДИНАТОР
+[2026-09-27 21:17:08 Panama UTC-5] BTC-LRA | PRESSURE_OUTCOME
+episode_id=P0004 | anchor=PRESSURE_DETECTED | direction=SHORT | horizon=30m
+entry_price=83787.6 | MFE=+367.5 USD | MAE=+95.0 USD
+MFE_pct=+0.439% | MAE_pct=+0.113%
+MFE_ATR=+5.009 | MAE_ATR=+1.295
+Источник результата: historical 1m OHLC; future leakage не используется.
+
+########## МОДУЛЬ=КООРДИНАТОР
+[2026-09-27 21:18:29 Panama UTC-5] BTC-LRA | PRESSURE_OUTCOME
+episode_id=P0002 | anchor=BREAKOUT_WATCH | direction=SHORT | horizon=60m
+entry_price=83869.4 | MFE=+449.3 USD | MAE=+253.9 USD
+MFE_pct=+0.536% | MAE_pct=+0.303%
+MFE_ATR=+5.125 | MAE_ATR=+2.896
+Источник результата: historical 1m OHLC; future leakage не используется.
+
+########## МОДУЛЬ=КООРДИНАТОР
+[2026-09-27 21:19:10 Panama UTC-5] BTC-LRA | PRESSURE_OUTCOME
+episode_id=P0003 | anchor=PRESSURE_DETECTED | direction=SHORT | horizon=60m
+entry_price=83900.1 | MFE=+480.0 USD | MAE=+223.2 USD
+MFE_pct=+0.572% | MAE_pct=+0.266%
+MFE_ATR=+5.342 | MAE_ATR=+2.484
+Источник результата: historical 1m OHLC; future leakage не используется.
+
+########## МОДУЛЬ=КООРДИНАТОР
+[2026-09-27 21:19:22 Panama UTC-5] BTC-LRA | PRESSURE_OUTCOME
+episode_id=P0004 | anchor=BREAKOUT_WATCH | direction=SHORT | horizon=30m
+entry_price=83740.0 | MFE=+319.9 USD | MAE=+92.7 USD
+MFE_pct=+0.382% | MAE_pct=+0.111%
+MFE_ATR=+4.360 | MAE_ATR=+1.263
+Источник результата: historical 1m OHLC; future leakage не используется.
+
+########## МОДУЛЬ=КООРДИНАТОР
+[2026-09-27 21:20:02 Panama UTC-5] BTC-LRA | PRESSURE_OUTCOME
+episode_id=P0004 | anchor=EARLY_CONTINUATION | direction=SHORT | horizon=30m
+entry_price=83620.3 | MFE=+200.2 USD | MAE=+212.4 USD
+MFE_pct=+0.239% | MAE_pct=+0.254%
+MFE_ATR=+2.729 | MAE_ATR=+2.895
+Источник результата: historical 1m OHLC; future leakage не используется.
+
+########## МОДУЛЬ=КООРДИНАТОР
+[2026-09-27 21:21:01 Panama UTC-5] BTC-LRA | PRESSURE_OUTCOME
+episode_id=P0004 | anchor=ACCEPTANCE | direction=SHORT | horizon=30m
+entry_price=83713.4 | MFE=+293.3 USD | MAE=+119.3 USD
+MFE_pct=+0.350% | MAE_pct=+0.143%
+MFE_ATR=+3.997 | MAE_ATR=+1.626
+Источник результата: historical 1m OHLC; future leakage не используется.
+
+[27.09.26 / 21:30:00] ВОЗМОЖНАЯ ТВХ SELL | 83534.2
+SELL повторно получил результат, контроль сохраняется.
+
+########## МОДУЛЬ=КООРДИНАТОР
+[2026-09-27 21:38:03 Panama UTC-5] BTC-LRA | PRESSURE_DETECTED
+ПРОДАВЦЫ ДАВЯТ вниз. Пока это только наблюдение.
+Pressure side=DOWN | pressure_detected_price=83449.9
+pressure_window_start=2026-09-27 21:14:00
+reference_price=83420.1
+attempts=3 | cumulative_delta=-71.9 BTC | total_volume=1685.6 BTC | delta/volume=-4.3%
+OI source=live_monitor:/futures/data/openInterestHist | OI interval=5m | OI change=-92.961 BTC (-0.098%)
+Это наблюдение, НЕ вход.
+episode_id=P0005
+
+########## МОДУЛЬ=КООРДИНАТОР
+[2026-09-27 21:39:07 Panama UTC-5] BTC-LRA | PRESSURE_BREAKOUT_WATCH
+ПРОДАВЦЫ НАЧАЛИ РЕАЛИЗОВЫВАТЬ ДАВЛЕНИЕ.
+Цена начала выходить после последовательного давления.
+Проверяем две возможности:
+1. Исходная сторона сохранит результат — возможное продолжение.
+2. Выход провалится и противоположная сторона получит результат — возможный отказ.
+
+episode_id=P0005
+state=PRESSURE_BREAKOUT_WATCH | pressure_side=DOWN | direction=SHORT
+pressure_reference_price=83420.1
+attempt_time=2026-09-27 21:39:07 | attempt_price=83417.5
+pressure_attempts=3 | pressure_cumulative_delta=-71.9 BTC | pressure_volume=1685.6 BTC | pressure_delta/volume=-4.3%
+extension_reward=+4.8 USD | extension_reward_ATR=+0.082
+retained_reward=+2.6 USD | retained_reward_ATR=+0.045 | retained_fraction=+0.542
+pullback_after_extension=+2.2 USD | pullback_ATR=+0.038
+incremental_extension=+0.0 USD | incremental_extension_ATR=+0.000
+elapsed_seconds=0
+same_side_delta=+0.0 BTC | opposite_delta=+0.0 BTC | outside_closes=0 | bars=1
+Это исследовательское состояние, НЕ вход.
+
+########## МОДУЛЬ=КООРДИНАТОР
+[2026-09-27 21:39:07 Panama UTC-5] BTC-LRA | PRESSURE_RETENTION
+episode_id=P0005 | anchor=PRESSURE_DETECTED
+retained_1m=+32.4 USD | extension_1m=+34.6 USD | retained_fraction_1m=+0.936
+Источник: historical 1m OHLC.
+
+########## МОДУЛЬ=КООРДИНАТОР
+[2026-09-27 21:40:11 Panama UTC-5] BTC-LRA | PRESSURE_RETENTION
+episode_id=P0005 | anchor=BREAKOUT_WATCH
+retained_1m=+0.8 USD | extension_1m=+0.9 USD | retained_fraction_1m=+0.889
+Источник: historical 1m OHLC.
+
+########## МОДУЛЬ=КООРДИНАТОР
+[2026-09-27 21:41:09 Panama UTC-5] BTC-LRA | PRESSURE_RETENTION
+episode_id=P0005 | anchor=PRESSURE_DETECTED
+retained_3m=+0.0 USD | extension_3m=+86.9 USD | retained_fraction_3m=+0.000
+Источник: historical 1m OHLC.
+
+########## МОДУЛЬ=КООРДИНАТОР
+[2026-09-27 21:42:12 Panama UTC-5] BTC-LRA | NO_RESOLUTION
+episode_id=P0005
+state=NO_RESOLUTION | pressure_side=DOWN | direction=SHORT
+pressure_reference_price=83420.1
+attempt_time=2026-09-27 21:39:07 | attempt_price=83417.5
+pressure_attempts=3 | pressure_cumulative_delta=-71.9 BTC | pressure_volume=1685.6 BTC | pressure_delta/volume=-4.3%
+extension_reward=+4.8 USD | extension_reward_ATR=+0.082
+retained_reward=-30.9 USD | retained_reward_ATR=-0.530 | retained_fraction=-6.437
+pullback_after_extension=+35.7 USD | pullback_ATR=+0.612
+incremental_extension=+0.0 USD | incremental_extension_ATR=+0.000
+elapsed_seconds=180
+same_side_delta=+53.4 BTC | opposite_delta=+0.2 BTC | outside_closes=0 | bars=4
+Это исследовательское состояние, НЕ вход.
+resolution_reason=watch_ttl_expired
+
+########## МОДУЛЬ=КООРДИНАТОР
+[2026-09-27 21:42:13 Panama UTC-5] BTC-LRA | PRESSURE_RETENTION
+episode_id=P0005 | anchor=BREAKOUT_WATCH
+retained_3m=+0.0 USD | extension_3m=+0.9 USD | retained_fraction_3m=+0.000
+Источник: historical 1m OHLC.
+
+########## МОДУЛЬ=КООРДИНАТОР
+[2026-09-27 21:43:05 Panama UTC-5] BTC-LRA | PRESSURE_RETENTION
+episode_id=P0005 | anchor=PRESSURE_DETECTED
+retained_5m=+16.9 USD | extension_5m=+86.9 USD | retained_fraction_5m=+0.194
+Источник: historical 1m OHLC.
+
+########## МОДУЛЬ=КООРДИНАТОР
+[2026-09-27 21:43:05 Panama UTC-5] BTC-LRA | PRESSURE_OUTCOME
+episode_id=P0005 | anchor=PRESSURE_DETECTED | direction=SHORT | horizon=5m
+entry_price=83449.9 | MFE=+86.9 USD | MAE=+65.5 USD
+MFE_pct=+0.104% | MAE_pct=+0.078%
+MFE_ATR=+1.490 | MAE_ATR=+1.123
+Источник результата: historical 1m OHLC; future leakage не используется.
+
+########## МОДУЛЬ=КООРДИНАТОР
+[2026-09-27 21:44:09 Panama UTC-5] BTC-LRA | PRESSURE_RETENTION
+episode_id=P0005 | anchor=BREAKOUT_WATCH
+retained_5m=+0.0 USD | extension_5m=+0.9 USD | retained_fraction_5m=+0.000
+Источник: historical 1m OHLC.
+
+########## МОДУЛЬ=КООРДИНАТОР
+[2026-09-27 21:44:10 Panama UTC-5] BTC-LRA | PRESSURE_OUTCOME
+episode_id=P0005 | anchor=BREAKOUT_WATCH | direction=SHORT | horizon=5m
+entry_price=83417.5 | MFE=+0.9 USD | MAE=+97.9 USD
+MFE_pct=+0.001% | MAE_pct=+0.117%
+MFE_ATR=+0.015 | MAE_ATR=+1.679
+Источник результата: historical 1m OHLC; future leakage не используется.
+
+########## МОДУЛЬ=КООРДИНАТОР
+[2026-09-27 21:47:03 Panama UTC-5] BTC-LRA | PRESSURE_OUTCOME
+episode_id=P0004 | anchor=PRESSURE_DETECTED | direction=SHORT | horizon=60m
+entry_price=83787.6 | MFE=+424.6 USD | MAE=+95.0 USD
+MFE_pct=+0.507% | MAE_pct=+0.113%
+MFE_ATR=+5.787 | MAE_ATR=+1.295
+Источник результата: historical 1m OHLC; future leakage не используется.
+
+########## МОДУЛЬ=КООРДИНАТОР
+[2026-09-27 21:48:06 Panama UTC-5] BTC-LRA | PRESSURE_DETECTED
+ПРОДАВЦЫ ДАВЯТ вниз. Пока это только наблюдение.
+Pressure side=DOWN | pressure_detected_price=83373.2
+pressure_window_start=2026-09-27 21:24:00
+reference_price=83363.0
+attempts=3 | cumulative_delta=-132.3 BTC | total_volume=2309.8 BTC | delta/volume=-5.7%
+OI source=live_monitor:/futures/data/openInterestHist | OI interval=5m | OI change=+15.666 BTC (+0.016%)
+Это наблюдение, НЕ вход.
+episode_id=P0006
+
+########## МОДУЛЬ=КООРДИНАТОР
+[2026-09-27 21:48:41 Panama UTC-5] BTC-LRA | PRESSURE_BREAKOUT_WATCH
+ПРОДАВЦЫ НАЧАЛИ РЕАЛИЗОВЫВАТЬ ДАВЛЕНИЕ.
+Цена начала выходить после последовательного давления.
+Проверяем две возможности:
+1. Исходная сторона сохранит результат — возможное продолжение.
+2. Выход провалится и противоположная сторона получит результат — возможный отказ.
+
+episode_id=P0006
+state=PRESSURE_BREAKOUT_WATCH | pressure_side=DOWN | direction=SHORT
+pressure_reference_price=83363.0
+attempt_time=2026-09-27 21:48:41 | attempt_price=83356.5
+pressure_attempts=3 | pressure_cumulative_delta=-132.3 BTC | pressure_volume=2309.8 BTC | pressure_delta/volume=-5.7%
+extension_reward=+29.0 USD | extension_reward_ATR=+0.495
+retained_reward=+6.5 USD | retained_reward_ATR=+0.111 | retained_fraction=+0.224
+pullback_after_extension=+22.5 USD | pullback_ATR=+0.384
+incremental_extension=+0.0 USD | incremental_extension_ATR=+0.000
+elapsed_seconds=0
+same_side_delta=+0.0 BTC | opposite_delta=+0.0 BTC | outside_closes=0 | bars=1
+Это исследовательское состояние, НЕ вход.
+
+########## МОДУЛЬ=КООРДИНАТОР
+[2026-09-27 21:49:10 Panama UTC-5] BTC-LRA | PRESSURE_RETENTION
+episode_id=P0006 | anchor=PRESSURE_DETECTED
+retained_1m=+2.6 USD | extension_1m=+2.7 USD | retained_fraction_1m=+0.963
+Источник: historical 1m OHLC.
+
+########## МОДУЛЬ=КООРДИНАТОР
+[2026-09-27 21:49:22 Panama UTC-5] BTC-LRA | PRESSURE_OUTCOME
+episode_id=P0004 | anchor=BREAKOUT_WATCH | direction=SHORT | horizon=60m
+entry_price=83740.0 | MFE=+406.0 USD | MAE=+92.7 USD
+MFE_pct=+0.485% | MAE_pct=+0.111%
+MFE_ATR=+5.533 | MAE_ATR=+1.263
+Источник результата: historical 1m OHLC; future leakage не используется.
+
+########## МОДУЛЬ=КООРДИНАТОР
+[2026-09-27 21:49:46 Panama UTC-5] BTC-LRA | PRESSURE_RETENTION
+episode_id=P0006 | anchor=BREAKOUT_WATCH
+retained_1m=+0.0 USD | extension_1m=+0.0 USD | retained_fraction_1m=+0.000
+Источник: historical 1m OHLC.
+
+########## МОДУЛЬ=КООРДИНАТОР
+[2026-09-27 21:50:03 Panama UTC-5] BTC-LRA | PRESSURE_OUTCOME
+episode_id=P0004 | anchor=EARLY_CONTINUATION | direction=SHORT | horizon=60m
+entry_price=83620.3 | MFE=+286.3 USD | MAE=+212.4 USD
+MFE_pct=+0.342% | MAE_pct=+0.254%
+MFE_ATR=+3.902 | MAE_ATR=+2.895
+Источник результата: historical 1m OHLC; future leakage не используется.
+
+########## МОДУЛЬ=КООРДИНАТОР
+[2026-09-27 21:51:01 Panama UTC-5] BTC-LRA | PRESSURE_OUTCOME
+episode_id=P0004 | anchor=ACCEPTANCE | direction=SHORT | horizon=60m
+entry_price=83713.4 | MFE=+379.4 USD | MAE=+119.3 USD
+MFE_pct=+0.453% | MAE_pct=+0.143%
+MFE_ATR=+5.171 | MAE_ATR=+1.626
+Источник результата: historical 1m OHLC; future leakage не используется.
+
+########## МОДУЛЬ=КООРДИНАТОР
+[2026-09-27 21:51:07 Panama UTC-5] BTC-LRA | PRESSURE_RETENTION
+episode_id=P0006 | anchor=PRESSURE_DETECTED
+retained_3m=+0.0 USD | extension_3m=+2.7 USD | retained_fraction_3m=+0.000
+Источник: historical 1m OHLC.
+
+########## МОДУЛЬ=КООРДИНАТОР
+[2026-09-27 21:51:43 Panama UTC-5] BTC-LRA | NO_RESOLUTION
+episode_id=P0006
+state=NO_RESOLUTION | pressure_side=DOWN | direction=SHORT
+pressure_reference_price=83363.0
+attempt_time=2026-09-27 21:48:41 | attempt_price=83356.5
+pressure_attempts=3 | pressure_cumulative_delta=-132.3 BTC | pressure_volume=2309.8 BTC | pressure_delta/volume=-5.7%
+extension_reward=+29.0 USD | extension_reward_ATR=+0.495
+retained_reward=-67.1 USD | retained_reward_ATR=-1.146 | retained_fraction=-2.314
+pullback_after_extension=+96.1 USD | pullback_ATR=+1.641
+incremental_extension=+0.0 USD | incremental_extension_ATR=+0.000
+elapsed_seconds=180
+same_side_delta=+0.5 BTC | opposite_delta=+0.0 BTC | outside_closes=0 | bars=4
+Это исследовательское состояние, НЕ вход.
+resolution_reason=watch_ttl_expired
+
+########## МОДУЛЬ=КООРДИНАТОР
+[2026-09-27 21:51:43 Panama UTC-5] BTC-LRA | PRESSURE_RETENTION
+episode_id=P0006 | anchor=BREAKOUT_WATCH
+retained_3m=+0.0 USD | extension_3m=+0.0 USD | retained_fraction_3m=+0.000
+Источник: historical 1m OHLC.
+
+########## МОДУЛЬ=КООРДИНАТОР
+[2026-09-27 21:53:04 Panama UTC-5] BTC-LRA | PRESSURE_OUTCOME
+episode_id=P0005 | anchor=PRESSURE_DETECTED | direction=SHORT | horizon=15m
+entry_price=83449.9 | MFE=+115.9 USD | MAE=+65.5 USD
+MFE_pct=+0.139% | MAE_pct=+0.078%
+MFE_ATR=+1.988 | MAE_ATR=+1.123
+Источник результата: historical 1m OHLC; future leakage не используется.
+
+########## МОДУЛЬ=КООРДИНАТОР
+[2026-09-27 21:53:10 Panama UTC-5] BTC-LRA | PRESSURE_RETENTION
+episode_id=P0006 | anchor=PRESSURE_DETECTED
+retained_5m=+0.0 USD | extension_5m=+2.7 USD | retained_fraction_5m=+0.000
+Источник: historical 1m OHLC.
+
+########## МОДУЛЬ=КООРДИНАТОР
+[2026-09-27 21:53:11 Panama UTC-5] BTC-LRA | PRESSURE_OUTCOME
+episode_id=P0006 | anchor=PRESSURE_DETECTED | direction=SHORT | horizon=5m
+entry_price=83373.2 | MFE=+2.7 USD | MAE=+70.3 USD
+MFE_pct=+0.003% | MAE_pct=+0.084%
+MFE_ATR=+0.046 | MAE_ATR=+1.200
+Источник результата: historical 1m OHLC; future leakage не используется.
+
+########## МОДУЛЬ=КООРДИНАТОР
+[2026-09-27 21:53:46 Panama UTC-5] BTC-LRA | PRESSURE_RETENTION
+episode_id=P0006 | anchor=BREAKOUT_WATCH
+retained_5m=+0.0 USD | extension_5m=+0.0 USD | retained_fraction_5m=+0.000
+Источник: historical 1m OHLC.
+
+########## МОДУЛЬ=КООРДИНАТОР
+[2026-09-27 21:53:47 Panama UTC-5] BTC-LRA | PRESSURE_OUTCOME
+episode_id=P0006 | anchor=BREAKOUT_WATCH | direction=SHORT | horizon=5m
+entry_price=83356.5 | MFE=+0.0 USD | MAE=+87.0 USD
+MFE_pct=+0.000% | MAE_pct=+0.104%
+MFE_ATR=+0.000 | MAE_ATR=+1.486
+Источник результата: historical 1m OHLC; future leakage не используется.
+
+########## МОДУЛЬ=КООРДИНАТОР
+[2026-09-27 21:54:10 Panama UTC-5] BTC-LRA | PRESSURE_OUTCOME
+episode_id=P0005 | anchor=BREAKOUT_WATCH | direction=SHORT | horizon=15m
+entry_price=83417.5 | MFE=+83.5 USD | MAE=+97.9 USD
+MFE_pct=+0.100% | MAE_pct=+0.117%
+MFE_ATR=+1.432 | MAE_ATR=+1.679
+Источник результата: historical 1m OHLC; future leakage не используется.
+
+[27.09.26 / 21:58:00] ВОЗМОЖНАЯ ТВХ SELL | 83374.1
+SELL повторно получил результат, контроль сохраняется.
+
+########## МОДУЛЬ=КООРДИНАТОР
+[2026-09-27 22:00:01 Panama UTC-5] BTC-LRA | PRESSURE_DETECTED
+ПРОДАВЦЫ ДАВЯТ вниз. Пока это только наблюдение.
+Pressure side=DOWN | pressure_detected_price=83378.4
+pressure_window_start=2026-09-27 21:36:00
+reference_price=83333.8
+attempts=3 | cumulative_delta=-253.1 BTC | total_volume=2100.9 BTC | delta/volume=-12.0%
+OI source=live_monitor:/futures/data/openInterestHist | OI interval=5m | OI change=+48.714 BTC (+0.051%)
+Это наблюдение, НЕ вход.
+episode_id=P0007
+
+########## МОДУЛЬ=КООРДИНАТОР
+[2026-09-27 22:01:11 Panama UTC-5] BTC-LRA | PRESSURE_RETENTION
+episode_id=P0007 | anchor=PRESSURE_DETECTED
+retained_1m=+0.0 USD | extension_1m=+0.0 USD | retained_fraction_1m=+0.000
+Источник: historical 1m OHLC.
+
+########## МОДУЛЬ=КООРДИНАТОР
+[2026-09-27 22:03:07 Panama UTC-5] BTC-LRA | PRESSURE_OUTCOME
+episode_id=P0006 | anchor=PRESSURE_DETECTED | direction=SHORT | horizon=15m
+entry_price=83373.2 | MFE=+39.4 USD | MAE=+123.9 USD
+MFE_pct=+0.047% | MAE_pct=+0.149%
+MFE_ATR=+0.673 | MAE_ATR=+2.116
+Источник результата: historical 1m OHLC; future leakage не используется.
+
+########## МОДУЛЬ=КООРДИНАТОР
+[2026-09-27 22:03:07 Panama UTC-5] BTC-LRA | PRESSURE_RETENTION
+episode_id=P0007 | anchor=PRESSURE_DETECTED
+retained_3m=+0.0 USD | extension_3m=+0.0 USD | retained_fraction_3m=+0.000
+Источник: historical 1m OHLC.
+
+########## МОДУЛЬ=КООРДИНАТОР
+[2026-09-27 22:03:43 Panama UTC-5] BTC-LRA | PRESSURE_OUTCOME
+episode_id=P0006 | anchor=BREAKOUT_WATCH | direction=SHORT | horizon=15m
+entry_price=83356.5 | MFE=+22.7 USD | MAE=+140.6 USD
+MFE_pct=+0.027% | MAE_pct=+0.169%
+MFE_ATR=+0.388 | MAE_ATR=+2.401
+Источник результата: historical 1m OHLC; future leakage не используется.
+
+########## МОДУЛЬ=КООРДИНАТОР
+[2026-09-27 22:05:04 Panama UTC-5] BTC-LRA | PRESSURE_RETENTION
+episode_id=P0007 | anchor=PRESSURE_DETECTED
+retained_5m=+0.0 USD | extension_5m=+0.0 USD | retained_fraction_5m=+0.000
+Источник: historical 1m OHLC.
+
+########## МОДУЛЬ=КООРДИНАТОР
+[2026-09-27 22:05:04 Panama UTC-5] BTC-LRA | PRESSURE_OUTCOME
+episode_id=P0007 | anchor=PRESSURE_DETECTED | direction=SHORT | horizon=5m
+entry_price=83378.4 | MFE=+0.0 USD | MAE=+118.7 USD
+MFE_pct=+0.000% | MAE_pct=+0.142%
+MFE_ATR=+0.000 | MAE_ATR=+2.317
+Источник результата: historical 1m OHLC; future leakage не используется.
+
+########## МОДУЛЬ=КООРДИНАТОР
+[2026-09-27 22:08:09 Panama UTC-5] BTC-LRA | PRESSURE_OUTCOME
+episode_id=P0005 | anchor=PRESSURE_DETECTED | direction=SHORT | horizon=30m
+entry_price=83449.9 | MFE=+116.1 USD | MAE=+65.5 USD
+MFE_pct=+0.139% | MAE_pct=+0.078%
+MFE_ATR=+1.991 | MAE_ATR=+1.123
+Источник результата: historical 1m OHLC; future leakage не используется.
+
+########## МОДУЛЬ=КООРДИНАТОР
+[2026-09-27 22:09:07 Panama UTC-5] BTC-LRA | PRESSURE_OUTCOME
+episode_id=P0005 | anchor=BREAKOUT_WATCH | direction=SHORT | horizon=30m
+entry_price=83417.5 | MFE=+83.7 USD | MAE=+97.9 USD
+MFE_pct=+0.100% | MAE_pct=+0.117%
+MFE_ATR=+1.436 | MAE_ATR=+1.679
+Источник результата: historical 1m OHLC; future leakage не используется.
+
+########## МОДУЛЬ=КООРДИНАТОР
+[2026-09-27 22:15:06 Panama UTC-5] BTC-LRA | PRESSURE_OUTCOME
+episode_id=P0007 | anchor=PRESSURE_DETECTED | direction=SHORT | horizon=15m
+entry_price=83378.4 | MFE=+43.1 USD | MAE=+118.7 USD
+MFE_pct=+0.052% | MAE_pct=+0.142%
+MFE_ATR=+0.841 | MAE_ATR=+2.317
+Источник результата: historical 1m OHLC; future leakage не используется.
+
+########## МОДУЛЬ=КООРДИНАТОР
+[2026-09-27 22:18:11 Panama UTC-5] BTC-LRA | PRESSURE_OUTCOME
+episode_id=P0006 | anchor=PRESSURE_DETECTED | direction=SHORT | horizon=30m
+entry_price=83373.2 | MFE=+39.4 USD | MAE=+123.9 USD
+MFE_pct=+0.047% | MAE_pct=+0.149%
+MFE_ATR=+0.673 | MAE_ATR=+2.116
+Источник результата: historical 1m OHLC; future leakage не используется.
+
+########## МОДУЛЬ=КООРДИНАТОР
+[2026-09-27 22:18:46 Panama UTC-5] BTC-LRA | PRESSURE_OUTCOME
+episode_id=P0006 | anchor=BREAKOUT_WATCH | direction=SHORT | horizon=30m
+entry_price=83356.5 | MFE=+22.7 USD | MAE=+140.6 USD
+MFE_pct=+0.027% | MAE_pct=+0.169%
+MFE_ATR=+0.388 | MAE_ATR=+2.401
+Источник результата: historical 1m OHLC; future leakage не используется.
+
+########## МОДУЛЬ=КООРДИНАТОР
+[2026-09-27 22:25:41 Panama UTC-5] BTC-LRA | PRESSURE_BREAKOUT_WATCH
+ПРОДАВЦЫ НАЧАЛИ РЕАЛИЗОВЫВАТЬ ДАВЛЕНИЕ.
+Цена начала выходить после последовательного давления.
+Проверяем две возможности:
+1. Исходная сторона сохранит результат — возможное продолжение.
+2. Выход провалится и противоположная сторона получит результат — возможный отказ.
+
+episode_id=P0007
+state=PRESSURE_BREAKOUT_WATCH | pressure_side=DOWN | direction=SHORT
+pressure_reference_price=83333.8
+attempt_time=2026-09-27 22:25:41 | attempt_price=83314.8
+pressure_attempts=3 | pressure_cumulative_delta=-253.1 BTC | pressure_volume=2100.9 BTC | pressure_delta/volume=-12.0%
+extension_reward=+19.0 USD | extension_reward_ATR=+0.371
+retained_reward=+19.0 USD | retained_reward_ATR=+0.371 | retained_fraction=+1.000
+pullback_after_extension=+0.0 USD | pullback_ATR=+0.000
+incremental_extension=+0.0 USD | incremental_extension_ATR=+0.000
+elapsed_seconds=0
+same_side_delta=+0.0 BTC | opposite_delta=+0.0 BTC | outside_closes=0 | bars=1
+Это исследовательское состояние, НЕ вход.
+
+########## МОДУЛЬ=КООРДИНАТОР
+[2026-09-27 22:26:45 Panama UTC-5] BTC-LRA | PRESSURE_RETENTION
+episode_id=P0007 | anchor=BREAKOUT_WATCH
+retained_1m=+0.0 USD | extension_1m=+0.0 USD | retained_fraction_1m=+0.000
+Источник: historical 1m OHLC.
+
+########## МОДУЛЬ=КООРДИНАТОР
+[2026-09-27 22:27:02 Panama UTC-5] BTC-LRA | PRESSURE_CONTINUATION_CANDIDATE
+episode_id=P0007
+state=EARLY_CONTINUATION | pressure_side=DOWN | direction=SHORT
+pressure_reference_price=83333.8
+attempt_time=2026-09-27 22:25:41 | attempt_price=83314.8
+pressure_attempts=3 | pressure_cumulative_delta=-253.1 BTC | pressure_volume=2100.9 BTC | pressure_delta/volume=-12.0%
+extension_reward=+43.9 USD | extension_reward_ATR=+0.857
+retained_reward=+43.9 USD | retained_reward_ATR=+0.857 | retained_fraction=+1.000
+pullback_after_extension=+0.0 USD | pullback_ATR=+0.000
+incremental_extension=+24.9 USD | incremental_extension_ATR=+0.486
+elapsed_seconds=120
+same_side_delta=+0.0 BTC | opposite_delta=+6.7 BTC | outside_closes=1 | bars=3
+Это исследовательское состояние, НЕ вход.
+
+########## МОДУЛЬ=КООРДИНАТОР
+[2026-09-27 22:28:00 Panama UTC-5] BTC-LRA | PRESSURE_RETENTION
+episode_id=P0007 | anchor=EARLY_CONTINUATION
+retained_1m=+0.0 USD | extension_1m=+9.0 USD | retained_fraction_1m=+0.000
+Источник: historical 1m OHLC.
+
+########## МОДУЛЬ=КООРДИНАТОР
+[2026-09-27 22:28:06 Panama UTC-5] BTC-LRA | TEST_ENTRY_CANDIDATE
+[TEST SHORT] setup=PRESSURE_CONTINUATION
+price=83309.1 | event_id=T000002
+quality={"ACTIVE_LEG": "EFFECTIVE", "AGGRESSION": "LOW", "EFFICIENCY_TREND": "MIXED", "OI_STATE": "BUILDING", "PRICE_REWARD": "STRONG", "RETENTION": "HELD", "SEQUENCE": "REPEATED", "STRUCTURE_CONFIRMATION": "ACCEPTANCE"}
+Research anchor only. No order is sent.
+
+########## МОДУЛЬ=КООРДИНАТОР
+[2026-09-27 22:28:46 Panama UTC-5] BTC-LRA | PRESSURE_CONTINUATION
+episode_id=P0007
+state=PRESSURE_CONTINUATION | pressure_side=DOWN | direction=SHORT
+pressure_reference_price=83333.8
+attempt_time=2026-09-27 22:25:41 | attempt_price=83314.8
+pressure_attempts=3 | pressure_cumulative_delta=-253.1 BTC | pressure_volume=2100.9 BTC | pressure_delta/volume=-12.0%
+extension_reward=+43.9 USD | extension_reward_ATR=+0.857
+retained_reward=+24.7 USD | retained_reward_ATR=+0.482 | retained_fraction=+0.563
+pullback_after_extension=+19.2 USD | pullback_ATR=+0.375
+incremental_extension=+0.0 USD | incremental_extension_ATR=+0.000
+elapsed_seconds=180
+same_side_delta=+0.0 BTC | opposite_delta=+8.2 BTC | outside_closes=2 | bars=4
+Это исследовательское состояние, НЕ вход.
+resolution_reason=watch_ttl_expired
+
+########## МОДУЛЬ=КООРДИНАТОР
+[2026-09-27 22:28:47 Panama UTC-5] BTC-LRA | PRESSURE_RETENTION
+episode_id=P0007 | anchor=BREAKOUT_WATCH
+retained_3m=+0.0 USD | extension_3m=+42.4 USD | retained_fraction_3m=+0.000
+Источник: historical 1m OHLC.
+
+########## МОДУЛЬ=КООРДИНАТОР
+[2026-09-27 22:29:04 Panama UTC-5] BTC-LRA | PRESSURE_RETENTION
+episode_id=P0007 | anchor=ACCEPTANCE
+retained_1m=+4.1 USD | extension_1m=+4.5 USD | retained_fraction_1m=+0.911
+Источник: historical 1m OHLC.
+
+########## МОДУЛЬ=КООРДИНАТОР
+[2026-09-27 22:30:03 Panama UTC-5] BTC-LRA | PRESSURE_OUTCOME
+episode_id=P0007 | anchor=PRESSURE_DETECTED | direction=SHORT | horizon=30m
+entry_price=83378.4 | MFE=+118.6 USD | MAE=+118.7 USD
+MFE_pct=+0.142% | MAE_pct=+0.142%
+MFE_ATR=+2.315 | MAE_ATR=+2.317
+Источник результата: historical 1m OHLC; future leakage не используется.
+
+########## МОДУЛЬ=КООРДИНАТОР
+[2026-09-27 22:30:03 Panama UTC-5] BTC-LRA | PRESSURE_RETENTION
+episode_id=P0007 | anchor=EARLY_CONTINUATION
+retained_3m=+0.4 USD | extension_3m=+30.1 USD | retained_fraction_3m=+0.013
+Источник: historical 1m OHLC.
+
+########## МОДУЛЬ=КООРДИНАТОР
+[2026-09-27 22:30:09 Panama UTC-5] BTC-LRA | TREND_HEALTHY
+[HOLD] SHORT remains research-healthy
+entry_id=T000002 | progress_atr=0.722 | retained_fraction=0.997
+No effective opposite reward has invalidated the hypothesis.
+
+########## МОДУЛЬ=КООРДИНАТОР
+[2026-09-27 22:30:44 Panama UTC-5] BTC-LRA | PRESSURE_RETENTION
+episode_id=P0007 | anchor=BREAKOUT_WATCH
+retained_5m=+62.3 USD | extension_5m=+62.4 USD | retained_fraction_5m=+0.998
+Источник: historical 1m OHLC.
+
+########## МОДУЛЬ=КООРДИНАТОР
+[2026-09-27 22:30:44 Panama UTC-5] BTC-LRA | PRESSURE_OUTCOME
+episode_id=P0007 | anchor=BREAKOUT_WATCH | direction=SHORT | horizon=5m
+entry_price=83314.8 | MFE=+62.4 USD | MAE=+57.1 USD
+MFE_pct=+0.075% | MAE_pct=+0.069%
+MFE_ATR=+1.218 | MAE_ATR=+1.114
+Источник результата: historical 1m OHLC; future leakage не используется.
+
+########## МОДУЛЬ=КООРДИНАТОР
+[2026-09-27 22:31:02 Panama UTC-5] BTC-LRA | PRESSURE_RETENTION
+episode_id=P0007 | anchor=ACCEPTANCE
+retained_3m=+55.1 USD | extension_3m=+75.4 USD | retained_fraction_3m=+0.731
+Источник: historical 1m OHLC.
+
+########## МОДУЛЬ=КООРДИНАТОР
+[2026-09-27 22:32:00 Panama UTC-5] BTC-LRA | PRESSURE_RETENTION
+episode_id=P0007 | anchor=EARLY_CONTINUATION
+retained_5m=+53.8 USD | extension_5m=+65.7 USD | retained_fraction_5m=+0.819
+Источник: historical 1m OHLC.
+
+########## МОДУЛЬ=КООРДИНАТОР
+[2026-09-27 22:32:00 Panama UTC-5] BTC-LRA | PRESSURE_OUTCOME
+episode_id=P0007 | anchor=EARLY_CONTINUATION | direction=SHORT | horizon=5m
+entry_price=83289.9 | MFE=+65.7 USD | MAE=+61.5 USD
+MFE_pct=+0.079% | MAE_pct=+0.074%
+MFE_ATR=+1.282 | MAE_ATR=+1.200
+Источник результата: historical 1m OHLC; future leakage не используется.
+
+########## МОДУЛЬ=КООРДИНАТОР
+[2026-09-27 22:33:04 Panama UTC-5] BTC-LRA | PRESSURE_COUNTER_EVENT
+episode_id=P0007
+time=2026-09-27 22:33:00 | counter_side=BUY
+counter_delta=+46.2 BTC | price=83205.9
+reference_extreme=83192.9 | extension_reward=+30.1 USD | retained_reward=+13.0 USD
+Counter-event сохранён в массиве; это не автоматический reversal.
+
+########## МОДУЛЬ=КООРДИНАТОР
+[2026-09-27 22:33:04 Panama UTC-5] BTC-LRA | PRESSURE_RETENTION
+episode_id=P0007 | anchor=ACCEPTANCE
+retained_5m=+96.0 USD | extension_5m=+121.1 USD | retained_fraction_5m=+0.793
+Источник: historical 1m OHLC.
+
+########## МОДУЛЬ=КООРДИНАТОР
+[2026-09-27 22:33:05 Panama UTC-5] BTC-LRA | PRESSURE_OUTCOME
+episode_id=P0007 | anchor=ACCEPTANCE | direction=SHORT | horizon=5m
+entry_price=83309.1 | MFE=+121.1 USD | MAE=+42.3 USD
+MFE_pct=+0.145% | MAE_pct=+0.051%
+MFE_ATR=+2.364 | MAE_ATR=+0.826
+Источник результата: historical 1m OHLC; future leakage не используется.
+
+########## МОДУЛЬ=КООРДИНАТОР
+[2026-09-27 22:36:04 Panama UTC-5] BTC-LRA | MOMENTUM_DECAY
+[WATCH] SHORT momentum decay
+entry_id=T000002 | progress_atr=0.533 | retained_fraction=0.817
+Same-side aggression is producing less incremental progress.
+
+########## МОДУЛЬ=КООРДИНАТОР
+[2026-09-27 22:38:06 Panama UTC-5] BTC-LRA | PRESSURE_OUTCOME
+episode_id=P0005 | anchor=PRESSURE_DETECTED | direction=SHORT | horizon=60m
+entry_price=83449.9 | MFE=+283.3 USD | MAE=+65.5 USD
+MFE_pct=+0.339% | MAE_pct=+0.078%
+MFE_ATR=+4.859 | MAE_ATR=+1.123
+Источник результата: historical 1m OHLC; future leakage не используется.
+
+########## МОДУЛЬ=КООРДИНАТОР
+[2026-09-27 22:39:11 Panama UTC-5] BTC-LRA | PRESSURE_OUTCOME
+episode_id=P0005 | anchor=BREAKOUT_WATCH | direction=SHORT | horizon=60m
+entry_price=83417.5 | MFE=+250.9 USD | MAE=+97.9 USD
+MFE_pct=+0.301% | MAE_pct=+0.117%
+MFE_ATR=+4.303 | MAE_ATR=+1.679
+Источник результата: historical 1m OHLC; future leakage не используется.
+
+########## МОДУЛЬ=КООРДИНАТОР
+[2026-09-27 22:40:43 Panama UTC-5] BTC-LRA | PRESSURE_OUTCOME
+episode_id=P0007 | anchor=BREAKOUT_WATCH | direction=SHORT | horizon=15m
+entry_price=83314.8 | MFE=+148.2 USD | MAE=+105.2 USD
+MFE_pct=+0.178% | MAE_pct=+0.126%
+MFE_ATR=+2.892 | MAE_ATR=+2.053
+Источник результата: historical 1m OHLC; future leakage не используется.
+
+########## МОДУЛЬ=КООРДИНАТОР
+[2026-09-27 22:42:05 Panama UTC-5] BTC-LRA | PRESSURE_OUTCOME
+episode_id=P0007 | anchor=EARLY_CONTINUATION | direction=SHORT | horizon=15m
+entry_price=83289.9 | MFE=+123.3 USD | MAE=+131.0 USD
+MFE_pct=+0.148% | MAE_pct=+0.157%
+MFE_ATR=+2.406 | MAE_ATR=+2.557
+Источник результата: historical 1m OHLC; future leakage не используется.
+
+########## МОДУЛЬ=КООРДИНАТОР
+[2026-09-27 22:43:03 Panama UTC-5] BTC-LRA | PRESSURE_OUTCOME
+episode_id=P0007 | anchor=ACCEPTANCE | direction=SHORT | horizon=15m
+entry_price=83309.1 | MFE=+142.5 USD | MAE=+138.2 USD
+MFE_pct=+0.171% | MAE_pct=+0.166%
+MFE_ATR=+2.781 | MAE_ATR=+2.697
+Источник результата: historical 1m OHLC; future leakage не используется.
+
+########## МОДУЛЬ=КООРДИНАТОР
+[2026-09-27 22:48:11 Panama UTC-5] BTC-LRA | PRESSURE_OUTCOME
+episode_id=P0006 | anchor=PRESSURE_DETECTED | direction=SHORT | horizon=60m
+entry_price=83373.2 | MFE=+206.6 USD | MAE=+123.9 USD
+MFE_pct=+0.248% | MAE_pct=+0.149%
+MFE_ATR=+3.528 | MAE_ATR=+2.116
+Источник результата: historical 1m OHLC; future leakage не используется.
+
+########## МОДУЛЬ=КООРДИНАТОР
+[2026-09-27 22:48:46 Panama UTC-5] BTC-LRA | PRESSURE_OUTCOME
+episode_id=P0006 | anchor=BREAKOUT_WATCH | direction=SHORT | horizon=60m
+entry_price=83356.5 | MFE=+189.9 USD | MAE=+140.6 USD
+MFE_pct=+0.228% | MAE_pct=+0.169%
+MFE_ATR=+3.243 | MAE_ATR=+2.401
+Источник результата: historical 1m OHLC; future leakage не используется.
+
+########## МОДУЛЬ=КООРДИНАТОР
+[2026-09-27 22:55:41 Panama UTC-5] BTC-LRA | PRESSURE_OUTCOME
+episode_id=P0007 | anchor=BREAKOUT_WATCH | direction=SHORT | horizon=30m
+entry_price=83314.8 | MFE=+148.2 USD | MAE=+145.8 USD
+MFE_pct=+0.178% | MAE_pct=+0.175%
+MFE_ATR=+2.892 | MAE_ATR=+2.846
+Источник результата: historical 1m OHLC; future leakage не используется.
+
+########## МОДУЛЬ=КООРДИНАТОР
+[2026-09-27 22:57:02 Panama UTC-5] BTC-LRA | PRESSURE_OUTCOME
+episode_id=P0007 | anchor=EARLY_CONTINUATION | direction=SHORT | horizon=30m
+entry_price=83289.9 | MFE=+123.3 USD | MAE=+170.7 USD
+MFE_pct=+0.148% | MAE_pct=+0.205%
+MFE_ATR=+2.406 | MAE_ATR=+3.332
+Источник результата: historical 1m OHLC; future leakage не используется.
+
+########## МОДУЛЬ=КООРДИНАТОР
+[2026-09-27 22:58:00 Panama UTC-5] BTC-LRA | PRESSURE_OUTCOME
+episode_id=P0007 | anchor=ACCEPTANCE | direction=SHORT | horizon=30m
+entry_price=83309.1 | MFE=+142.5 USD | MAE=+151.5 USD
+MFE_pct=+0.171% | MAE_pct=+0.182%
+MFE_ATR=+2.781 | MAE_ATR=+2.957
+Источник результата: historical 1m OHLC; future leakage не используется.
+
+########## МОДУЛЬ=КООРДИНАТОР
+[2026-09-27 23:00:08 Panama UTC-5] BTC-LRA | PRESSURE_OUTCOME
+episode_id=P0007 | anchor=PRESSURE_DETECTED | direction=SHORT | horizon=60m
+entry_price=83378.4 | MFE=+211.8 USD | MAE=+118.7 USD
+MFE_pct=+0.254% | MAE_pct=+0.142%
+MFE_ATR=+4.134 | MAE_ATR=+2.317
+Источник результата: historical 1m OHLC; future leakage не используется.
+
+########## МОДУЛЬ=КООРДИНАТОР
+[2026-09-27 23:25:46 Panama UTC-5] BTC-LRA | PRESSURE_OUTCOME
+episode_id=P0007 | anchor=BREAKOUT_WATCH | direction=SHORT | horizon=60m
+entry_price=83314.8 | MFE=+148.2 USD | MAE=+165.2 USD
+MFE_pct=+0.178% | MAE_pct=+0.198%
+MFE_ATR=+2.892 | MAE_ATR=+3.224
+Источник результата: historical 1m OHLC; future leakage не используется.
+
+########## МОДУЛЬ=КООРДИНАТОР
+[2026-09-27 23:27:03 Panama UTC-5] BTC-LRA | PRESSURE_OUTCOME
+episode_id=P0007 | anchor=EARLY_CONTINUATION | direction=SHORT | horizon=60m
+entry_price=83289.9 | MFE=+123.3 USD | MAE=+190.1 USD
+MFE_pct=+0.148% | MAE_pct=+0.228%
+MFE_ATR=+2.406 | MAE_ATR=+3.710
+Источник результата: historical 1m OHLC; future leakage не используется.
+
+########## МОДУЛЬ=КООРДИНАТОР
+[2026-09-27 23:28:00 Panama UTC-5] BTC-LRA | PRESSURE_DETECTED
+ПОКУПАТЕЛИ ДАВЯТ вверх. Пока это только наблюдение.
+Pressure side=UP | pressure_detected_price=83437.7
+pressure_window_start=2026-09-27 23:04:00
+reference_price=83480.0
+attempts=4 | cumulative_delta=+155.6 BTC | total_volume=1575.6 BTC | delta/volume=+9.9%
+OI source=live_monitor:/futures/data/openInterestHist | OI interval=5m | OI change=-122.213 BTC (-0.127%)
+Это наблюдение, НЕ вход.
+episode_id=P0008
+
+########## МОДУЛЬ=КООРДИНАТОР
+[2026-09-27 23:28:01 Panama UTC-5] BTC-LRA | PRESSURE_OUTCOME
+episode_id=P0007 | anchor=ACCEPTANCE | direction=SHORT | horizon=60m
+entry_price=83309.1 | MFE=+142.5 USD | MAE=+170.9 USD
+MFE_pct=+0.171% | MAE_pct=+0.205%
+MFE_ATR=+2.781 | MAE_ATR=+3.336
+Источник результата: historical 1m OHLC; future leakage не используется.
+
+########## МОДУЛЬ=КООРДИНАТОР
+[2026-09-27 23:29:06 Panama UTC-5] BTC-LRA | PRESSURE_RETENTION
+episode_id=P0008 | anchor=PRESSURE_DETECTED
+retained_1m=+2.9 USD | extension_1m=+3.0 USD | retained_fraction_1m=+0.967
+Источник: historical 1m OHLC.
+
+[2026-09-27 23:29:48 Panama UTC-5] BTC-LRA | ЗАПУЩЕН И РАБОТАЕТ
+
+- Модуль «Импульс и истощение» следит за сильной агрессией, продолжением и её истощением.
+
+- Модуль «Встречная атака» проверяет, получает ли противоположная сторона реальный результат.
+
+- Модуль «Давление и свип» исследует последовательное давление и финальную попытку продолжения.
+
+- Модуль «Происхождение движения» исследует ранний кандидат по смене соотношения усилия → результата.
+
+[27.09.26 23:29:49] ДАВЛЕНИЕ ПОКУПАТЕЛЕЙ | 83446.3
+
+[2026-09-27 23:52:01 Panama UTC-5] BTC-LRA | ЗАПУЩЕН И РАБОТАЕТ
+
+- Модуль «Импульс и истощение» следит за сильной агрессией, продолжением и её истощением.
+
+- Модуль «Встречная атака» проверяет, получает ли противоположная сторона реальный результат.
+
+- Модуль «Давление и свип» исследует последовательное давление и финальную попытку продолжения.
+
+- Модуль «Происхождение движения» исследует ранний кандидат по смене соотношения усилия → результата.
+
+[28.09.26 01:17:05] ДАВЛЕНИЕ ПОКУПАТЕЛЕЙ | 83207.5
+
+########## МОДУЛЬ=КООРДИНАТОР
+[2026-09-28 01:18:11 Panama UTC-5] BTC-LRA | PRESSURE_RETENTION
+episode_id=P0001 | anchor=PRESSURE_DETECTED
+retained_1m=+0.0 USD | extension_1m=+0.0 USD | retained_fraction_1m=+0.000
+Источник: historical 1m OHLC.
+
+########## МОДУЛЬ=КООРДИНАТОР
+[2026-09-28 01:20:09 Panama UTC-5] BTC-LRA | PRESSURE_RETENTION
+episode_id=P0001 | anchor=PRESSURE_DETECTED
+retained_3m=+0.0 USD | extension_3m=+0.0 USD | retained_fraction_3m=+0.000
+Источник: historical 1m OHLC.
+
+########## МОДУЛЬ=КООРДИНАТОР
+[2026-09-28 01:22:08 Panama UTC-5] BTC-LRA | PRESSURE_RETENTION
+episode_id=P0001 | anchor=PRESSURE_DETECTED
+retained_5m=+0.0 USD | extension_5m=+0.0 USD | retained_fraction_5m=+0.000
+Источник: historical 1m OHLC.
+
+########## МОДУЛЬ=КООРДИНАТОР
+[2026-09-28 01:22:09 Panama UTC-5] BTC-LRA | PRESSURE_OUTCOME
+episode_id=P0001 | anchor=PRESSURE_DETECTED | direction=LONG | horizon=5m
+entry_price=83207.5 | MFE=+0.0 USD | MAE=+120.5 USD
+MFE_pct=+0.000% | MAE_pct=+0.145%
+MFE_ATR=+0.000 | MAE_ATR=+3.170
+Источник результата: historical 1m OHLC; future leakage не используется.
+
+########## МОДУЛЬ=КООРДИНАТОР
+[2026-09-28 01:32:09 Panama UTC-5] BTC-LRA | PRESSURE_OUTCOME
+episode_id=P0001 | anchor=PRESSURE_DETECTED | direction=LONG | horizon=15m
+entry_price=83207.5 | MFE=+0.0 USD | MAE=+204.6 USD
+MFE_pct=+0.000% | MAE_pct=+0.246%
+MFE_ATR=+0.000 | MAE_ATR=+5.382
+Источник результата: historical 1m OHLC; future leakage не используется.
+
+########## МОДУЛЬ=КООРДИНАТОР
+[2026-09-28 01:47:11 Panama UTC-5] BTC-LRA | PRESSURE_OUTCOME
+episode_id=P0001 | anchor=PRESSURE_DETECTED | direction=LONG | horizon=30m
+entry_price=83207.5 | MFE=+0.0 USD | MAE=+204.6 USD
+MFE_pct=+0.000% | MAE_pct=+0.246%
+MFE_ATR=+0.000 | MAE_ATR=+5.382
+Источник результата: historical 1m OHLC; future leakage не используется.
+
+====================================================================================================
+CASE=CASE2
+[2026-09-28 01:48:21 Panama UTC-5] CASE2 | LR_DETECTED | TF=5m
+BTCUSDT | TF=5m
+
+НАЙДЕН КАНДИДАТ НА РЕАЛЬНЫЙ LR
+
+LR: 83002.9 — 83255.0
+Ширина: 252.1 USD (0.303%)
+ATR: 119.9
+
+Inside ratio: 100.0%
+Lower visits: 3
+Upper visits: 2
+Mid crosses: 3
+Net displacement/range: 0.18
+Directional efficiency: 0.08
+Average overlap: 0.37
+
+LR прошёл фильтр бокового движения.
+
+С ЭТОГО МОМЕНТА CASE2 начинает собирать LIVE taker-flow + OI.
+
+Историческому участку до обнаружения OI задним числом не приписывается.
+====================================================================================================
+====================================================================================================
+CASE=CASE2
+[2026-09-28 02:08:27 Panama UTC-5] CASE2 | LR_ASYMMETRY | TF=5m
+BTCUSDT | TF=5m
+
+LR: 83002.9 — 83255.0
+Ширина: 252.1 USD (0.303%)
+
+Новых свечей после обнаружения LR: 4
+
+LOWER 30%
+Delta: +0.0 BTC
+Volume: 0.0 BTC
+SELL aggression bars: 0
+OI build при SELL aggression: +0.0 BTC
+
+MIDDLE 40%
+Delta: -27.2 BTC
+Volume: 582.7 BTC
+
+UPPER 30%
+Delta: +109.2 BTC
+Volume: 381.3 BTC
+BUY aggression bars: 0
+OI build при BUY aggression: +0.0 BTC
+
+OI после обнаружения LR: -0.4 BTC (-0.000%)
+
+НАБЛЮДАЕМАЯ АСИММЕТРИЯ: BUY_SIDE
+Lower SELL score: 0.0
+Upper BUY score: 109.2
+
+Это НЕ точное количество лонгов и шортов.
+Это наблюдаемая асимметрия taker-flow + OI + location.
+
+НАБЛЮДЕНИЕ:
+В верхней части LR сильнее наблюдаемая BUY-агрессия при создании/сохранении OI.
+
+Это НЕ LONG сигнал.
+Если рынок выйдет ВНИЗ, будет особенно интересно проверить, оказались ли верхние покупатели locked-in.
+====================================================================================================
+########## МОДУЛЬ=КООРДИНАТОР
+[2026-09-28 02:17:07 Panama UTC-5] BTC-LRA | PRESSURE_OUTCOME
+episode_id=P0001 | anchor=PRESSURE_DETECTED | direction=LONG | horizon=60m
+entry_price=83207.5 | MFE=+42.5 USD | MAE=+204.6 USD
+MFE_pct=+0.051% | MAE_pct=+0.246%
+MFE_ATR=+1.118 | MAE_ATR=+5.382
+Источник результата: historical 1m OHLC; future leakage не используется.
+
+[28.09.26 02:26:00] SELL-КОНТРОЛЬ СЛОМАН | 82942.3
+SELL не смог восстановить результат после встречного BUY.
+
+====================================================================================================
+CASE=CASE2
+[2026-09-28 02:28:31 Panama UTC-5] CASE2 | LR_BREAKOUT | TF=5m
+BTCUSDT | TF=5m
+
+LR: 83002.9 — 83255.0
+Ширина: 252.1 USD (0.303%)
+
+Новых свечей после обнаружения LR: 7
+
+LOWER 30%
+Delta: -55.1 BTC
+Volume: 222.6 BTC
+SELL aggression bars: 0
+OI build при SELL aggression: +0.0 BTC
+
+MIDDLE 40%
+Delta: -38.0 BTC
+Volume: 975.3 BTC
+
+UPPER 30%
+Delta: +109.2 BTC
+Volume: 381.3 BTC
+BUY aggression bars: 0
+OI build при BUY aggression: +0.0 BTC
+
+OI после обнаружения LR: -86.8 BTC (-0.091%)
+
+НАБЛЮДАЕМАЯ АСИММЕТРИЯ: BUY_SIDE
+Lower SELL score: 55.1
+Upper BUY score: 109.2
+
+Это НЕ точное количество лонгов и шортов.
+Это наблюдаемая асимметрия taker-flow + OI + location.
+
+====================================
+ВЫХОД ИЗ LR: DOWN
+Цена выхода: 82929.9
+Время: 2026-09-28 02:20:00
+
+PRE-BREAKOUT состояние ЗАФИКСИРОВАНО.
+Теперь наблюдаем фактический результат.
+====================================================================================================
+[2026-09-28 02:46:39 Panama UTC-5] BTC-LRA | ЗАПУЩЕН И РАБОТАЕТ
+
+- Модуль «Импульс и истощение» следит за сильной агрессией, продолжением и её истощением.
+
+- Модуль «Встречная атака» проверяет, получает ли противоположная сторона реальный результат.
+
+- Модуль «Давление и свип» исследует последовательное давление и финальную попытку продолжения.
+
+- Модуль «Происхождение движения» исследует ранний кандидат по смене соотношения усилия → результата.
+
+[28.09.26 02:58:00] ВОЗМОЖНАЯ ТВХ SELL | 82950.3
+SELL получил подтверждённый результат.
+
+====================================================================================================
+CASE=CASE2
+[2026-09-28 03:08:39 Panama UTC-5] CASE2 | LR_RECLAIM | TF=5m
+BTCUSDT | TF=5m
+
+LR: 83002.9 — 83255.0
+
+Предыдущий выход: DOWN
+Цена вернулась внутрь LR.
+Close: 83062.9
+
+PRE-BREAKOUT bias: BUY_SIDE
+
+ВОЗМОЖНЫЙ FAILED BREAKOUT / RECLAIM.
+Исследовательское событие. НЕ вход.
+====================================================================================================
+[28.09.26 03:23:05] ДАВЛЕНИЕ ПРОДАВЦОВ | 82858.1
+
+########## МОДУЛЬ=КООРДИНАТОР
+[2026-09-28 03:23:59 Panama UTC-5] BTC-LRA | PRESSURE_BREAKOUT_WATCH
+ПРОДАВЦЫ НАЧАЛИ РЕАЛИЗОВЫВАТЬ ДАВЛЕНИЕ.
+Цена начала выходить после последовательного давления.
+Проверяем две возможности:
+1. Исходная сторона сохранит результат — возможное продолжение.
+2. Выход провалится и противоположная сторона получит результат — возможный отказ.
+
+episode_id=P0001
+state=PRESSURE_BREAKOUT_WATCH | pressure_side=DOWN | direction=SHORT
+pressure_reference_price=82855.0
+attempt_time=2026-09-28 03:23:59 | attempt_price=82839.2
+pressure_attempts=3 | pressure_cumulative_delta=-317.3 BTC | pressure_volume=2712.0 BTC | pressure_delta/volume=-11.7%
+extension_reward=+31.0 USD | extension_reward_ATR=+0.547
+retained_reward=+15.8 USD | retained_reward_ATR=+0.279 | retained_fraction=+0.510
+pullback_after_extension=+15.2 USD | pullback_ATR=+0.268
+incremental_extension=+0.0 USD | incremental_extension_ATR=+0.000
+elapsed_seconds=0
+same_side_delta=+0.0 BTC | opposite_delta=+0.0 BTC | outside_closes=0 | bars=1
+Это исследовательское состояние, НЕ вход.
+
+########## МОДУЛЬ=КООРДИНАТОР
+[2026-09-28 03:24:11 Panama UTC-5] BTC-LRA | PRESSURE_RETENTION
+episode_id=P0001 | anchor=PRESSURE_DETECTED
+retained_1m=+1.8 USD | extension_1m=+1.9 USD | retained_fraction_1m=+0.947
+Источник: historical 1m OHLC.
+
+########## МОДУЛЬ=КООРДИНАТОР
+[2026-09-28 03:25:05 Panama UTC-5] BTC-LRA | PRESSURE_RETENTION
+episode_id=P0001 | anchor=BREAKOUT_WATCH
+retained_1m=+51.3 USD | extension_1m=+64.2 USD | retained_fraction_1m=+0.799
+Источник: historical 1m OHLC.
+
+########## МОДУЛЬ=КООРДИНАТОР
+[2026-09-28 03:25:11 Panama UTC-5] BTC-LRA | PRESSURE_CONTINUATION_CANDIDATE
+episode_id=P0001
+state=EARLY_CONTINUATION | pressure_side=DOWN | direction=SHORT
+pressure_reference_price=82855.0
+attempt_time=2026-09-28 03:23:59 | attempt_price=82839.2
+pressure_attempts=3 | pressure_cumulative_delta=-317.3 BTC | pressure_volume=2712.0 BTC | pressure_delta/volume=-11.7%
+extension_reward=+73.7 USD | extension_reward_ATR=+1.300
+retained_reward=+42.6 USD | retained_reward_ATR=+0.752 | retained_fraction=+0.578
+pullback_after_extension=+31.1 USD | pullback_ATR=+0.549
+incremental_extension=+42.7 USD | incremental_extension_ATR=+0.753
+elapsed_seconds=120
+same_side_delta=+3.7 BTC | opposite_delta=+7.9 BTC | outside_closes=1 | bars=3
+Это исследовательское состояние, НЕ вход.
+
+########## МОДУЛЬ=КООРДИНАТОР
+[2026-09-28 03:26:04 Panama UTC-5] BTC-LRA | TEST_ENTRY_CANDIDATE
+[TEST SHORT] setup=PRESSURE_CONTINUATION
+price=82789.9 | event_id=T000001
+quality={"ACTIVE_LEG": "EFFECTIVE", "AGGRESSION": "LOW", "EFFICIENCY_TREND": "MIXED", "OI_STATE": "DESTROYING", "PRICE_REWARD": "STRONG", "RETENTION": "HELD", "SEQUENCE": "REPEATED", "STRUCTURE_CONFIRMATION": "ACCEPTANCE"}
+Research anchor only. No order is sent.
+
+########## МОДУЛЬ=КООРДИНАТОР
+[2026-09-28 03:26:04 Panama UTC-5] BTC-LRA | PRESSURE_RETENTION
+episode_id=P0001 | anchor=EARLY_CONTINUATION
+retained_1m=+22.5 USD | extension_1m=+31.1 USD | retained_fraction_1m=+0.723
+Источник: historical 1m OHLC.
+
+########## МОДУЛЬ=КООРДИНАТОР
+[2026-09-28 03:26:10 Panama UTC-5] BTC-LRA | PRESSURE_RETENTION
+episode_id=P0001 | anchor=PRESSURE_DETECTED
+retained_3m=+52.7 USD | extension_3m=+83.1 USD | retained_fraction_3m=+0.634
+Источник: historical 1m OHLC.
+
+########## МОДУЛЬ=КООРДИНАТОР
+[2026-09-28 03:27:03 Panama UTC-5] BTC-LRA | PRESSURE_CONTINUATION
+episode_id=P0001
+state=PRESSURE_CONTINUATION | pressure_side=DOWN | direction=SHORT
+pressure_reference_price=82855.0
+attempt_time=2026-09-28 03:23:59 | attempt_price=82839.2
+pressure_attempts=3 | pressure_cumulative_delta=-317.3 BTC | pressure_volume=2712.0 BTC | pressure_delta/volume=-11.7%
+extension_reward=+73.7 USD | extension_reward_ATR=+1.300
+retained_reward=+65.1 USD | retained_reward_ATR=+1.149 | retained_fraction=+0.883
+pullback_after_extension=+8.6 USD | pullback_ATR=+0.152
+incremental_extension=+0.0 USD | incremental_extension_ATR=+0.000
+elapsed_seconds=180
+same_side_delta=+3.7 BTC | opposite_delta=+7.9 BTC | outside_closes=2 | bars=4
+Это исследовательское состояние, НЕ вход.
+resolution_reason=watch_ttl_expired
+
+########## МОДУЛЬ=КООРДИНАТОР
+[2026-09-28 03:27:04 Panama UTC-5] BTC-LRA | PRESSURE_RETENTION
+episode_id=P0001 | anchor=BREAKOUT_WATCH
+retained_3m=+0.0 USD | extension_3m=+64.2 USD | retained_fraction_3m=+0.000
+Источник: historical 1m OHLC.
+
+########## МОДУЛЬ=КООРДИНАТОР
+[2026-09-28 03:27:04 Panama UTC-5] BTC-LRA | PRESSURE_RETENTION
+episode_id=P0001 | anchor=ACCEPTANCE
+retained_1m=+0.0 USD | extension_1m=+0.0 USD | retained_fraction_1m=+0.000
+Источник: historical 1m OHLC.
+
+########## МОДУЛЬ=КООРДИНАТОР
+[2026-09-28 03:28:04 Panama UTC-5] BTC-LRA | PRESSURE_RETENTION
+episode_id=P0001 | anchor=EARLY_CONTINUATION
+retained_3m=+0.0 USD | extension_3m=+31.1 USD | retained_fraction_3m=+0.000
+Источник: historical 1m OHLC.
+
+########## МОДУЛЬ=КООРДИНАТОР
+[2026-09-28 03:28:10 Panama UTC-5] BTC-LRA | PRESSURE_RETENTION
+episode_id=P0001 | anchor=PRESSURE_DETECTED
+retained_5m=+38.1 USD | extension_5m=+83.1 USD | retained_fraction_5m=+0.458
+Источник: historical 1m OHLC.
+
+########## МОДУЛЬ=КООРДИНАТОР
+[2026-09-28 03:28:11 Panama UTC-5] BTC-LRA | PRESSURE_OUTCOME
+episode_id=P0001 | anchor=PRESSURE_DETECTED | direction=SHORT | horizon=5m
+entry_price=82858.1 | MFE=+83.1 USD | MAE=+49.3 USD
+MFE_pct=+0.100% | MAE_pct=+0.059%
+MFE_ATR=+1.466 | MAE_ATR=+0.870
+Источник результата: historical 1m OHLC; future leakage не используется.
+
+====================================================================================================
+CASE=CASE2
+[2026-09-28 03:28:43 Panama UTC-5] CASE2 | LR_RESULT | TF=5m
+BTCUSDT | TF=5m
+
+LR: 83002.9 — 83255.0
+Ширина LR: 0.303%
+
+PRE-BREAKOUT bias: BUY_SIDE
+Breakout: DOWN
+
+Максимальное движение за границу LR:
+227.9 USD (0.275%)
+
+Reclaim: YES
+
+OI после breakout: +33.3 BTC (+0.035%)
+
+РЕЗУЛЬТАТ СОХРАНЁН.
+Никакая сторона автоматически не объявляется trapped.
+====================================================================================================
+########## МОДУЛЬ=КООРДИНАТОР
+[2026-09-28 03:29:04 Panama UTC-5] BTC-LRA | PRESSURE_RETENTION
+episode_id=P0001 | anchor=BREAKOUT_WATCH
+retained_5m=+22.4 USD | extension_5m=+64.2 USD | retained_fraction_5m=+0.349
+Источник: historical 1m OHLC.
+
+########## МОДУЛЬ=КООРДИНАТОР
+[2026-09-28 03:29:05 Panama UTC-5] BTC-LRA | PRESSURE_OUTCOME
+episode_id=P0001 | anchor=BREAKOUT_WATCH | direction=SHORT | horizon=5m
+entry_price=82839.2 | MFE=+64.2 USD | MAE=+68.2 USD
+MFE_pct=+0.077% | MAE_pct=+0.082%
+MFE_ATR=+1.133 | MAE_ATR=+1.203
+Источник результата: historical 1m OHLC; future leakage не используется.
+
+########## МОДУЛЬ=КООРДИНАТОР
+[2026-09-28 03:29:05 Panama UTC-5] BTC-LRA | PRESSURE_RETENTION
+episode_id=P0001 | anchor=ACCEPTANCE
+retained_3m=+0.0 USD | extension_3m=+0.0 USD | retained_fraction_3m=+0.000
+Источник: historical 1m OHLC.
+
+########## МОДУЛЬ=КООРДИНАТОР
+[2026-09-28 03:30:05 Panama UTC-5] BTC-LRA | PRESSURE_RETENTION
+episode_id=P0001 | anchor=EARLY_CONTINUATION
+retained_5m=+2.6 USD | extension_5m=+31.1 USD | retained_fraction_5m=+0.084
+Источник: historical 1m OHLC.
+
+########## МОДУЛЬ=КООРДИНАТОР
+[2026-09-28 03:30:06 Panama UTC-5] BTC-LRA | PRESSURE_OUTCOME
+episode_id=P0001 | anchor=EARLY_CONTINUATION | direction=SHORT | horizon=5m
+entry_price=82812.4 | MFE=+31.1 USD | MAE=+95.0 USD
+MFE_pct=+0.038% | MAE_pct=+0.115%
+MFE_ATR=+0.549 | MAE_ATR=+1.676
+Источник результата: historical 1m OHLC; future leakage не используется.
+
+[28.09.26 03:31:05] ДАВЛЕНИЕ ПРОДАВЦОВ | 82829.7
+
+########## МОДУЛЬ=КООРДИНАТОР
+[2026-09-28 03:31:06 Panama UTC-5] BTC-LRA | PRESSURE_RETENTION
+episode_id=P0001 | anchor=ACCEPTANCE
+retained_5m=+0.0 USD | extension_5m=+0.0 USD | retained_fraction_5m=+0.000
+Источник: historical 1m OHLC.
+
+########## МОДУЛЬ=КООРДИНАТОР
+[2026-09-28 03:31:06 Panama UTC-5] BTC-LRA | PRESSURE_OUTCOME
+episode_id=P0001 | anchor=ACCEPTANCE | direction=SHORT | horizon=5m
+entry_price=82789.9 | MFE=+0.0 USD | MAE=+117.5 USD
+MFE_pct=+0.000% | MAE_pct=+0.142%
+MFE_ATR=+0.000 | MAE_ATR=+2.073
+Источник результата: historical 1m OHLC; future leakage не используется.
+
+########## МОДУЛЬ=КООРДИНАТОР
+[2026-09-28 03:32:06 Panama UTC-5] BTC-LRA | PRESSURE_RETENTION
+episode_id=P0002 | anchor=PRESSURE_DETECTED
+retained_1m=+0.0 USD | extension_1m=+0.0 USD | retained_fraction_1m=+0.000
+Источник: historical 1m OHLC.
+
+########## МОДУЛЬ=КООРДИНАТОР
+[2026-09-28 03:33:11 Panama UTC-5] BTC-LRA | MOMENTUM_DECAY
+[WATCH] SHORT momentum decay
+entry_id=T000001 | progress_atr=0.000 | retained_fraction=0.000
+Same-side aggression is producing less incremental progress.
+
+########## МОДУЛЬ=КООРДИНАТОР
+[2026-09-28 03:34:10 Panama UTC-5] BTC-LRA | PRESSURE_RETENTION
+episode_id=P0002 | anchor=PRESSURE_DETECTED
+retained_3m=+0.0 USD | extension_3m=+0.0 USD | retained_fraction_3m=+0.000
+Источник: historical 1m OHLC.
+
+########## МОДУЛЬ=КООРДИНАТОР
+[2026-09-28 03:36:09 Panama UTC-5] BTC-LRA | PRESSURE_RETENTION
+episode_id=P0002 | anchor=PRESSURE_DETECTED
+retained_5m=+0.0 USD | extension_5m=+0.0 USD | retained_fraction_5m=+0.000
+Источник: historical 1m OHLC.
+
+########## МОДУЛЬ=КООРДИНАТОР
+[2026-09-28 03:36:10 Panama UTC-5] BTC-LRA | PRESSURE_OUTCOME
+episode_id=P0002 | anchor=PRESSURE_DETECTED | direction=SHORT | horizon=5m
+entry_price=82829.7 | MFE=+0.0 USD | MAE=+104.8 USD
+MFE_pct=+0.000% | MAE_pct=+0.127%
+MFE_ATR=+0.000 | MAE_ATR=+1.926
+Источник результата: historical 1m OHLC; future leakage не используется.
+
+########## МОДУЛЬ=КООРДИНАТОР
+[2026-09-28 03:38:09 Panama UTC-5] BTC-LRA | PRESSURE_OUTCOME
+episode_id=P0001 | anchor=PRESSURE_DETECTED | direction=SHORT | horizon=15m
+entry_price=82858.1 | MFE=+83.1 USD | MAE=+76.4 USD
+MFE_pct=+0.100% | MAE_pct=+0.092%
+MFE_ATR=+1.466 | MAE_ATR=+1.348
+Источник результата: historical 1m OHLC; future leakage не используется.
+
+########## МОДУЛЬ=КООРДИНАТОР
+[2026-09-28 03:38:15 Panama UTC-5] BTC-LRA | PRESSURE_BREAKOUT_WATCH
+ПРОДАВЦЫ НАЧАЛИ РЕАЛИЗОВЫВАТЬ ДАВЛЕНИЕ.
+Цена начала выходить после последовательного давления.
+Проверяем две возможности:
+1. Исходная сторона сохранит результат — возможное продолжение.
+2. Выход провалится и противоположная сторона получит результат — возможный отказ.
+
+episode_id=P0002
+state=PRESSURE_BREAKOUT_WATCH | pressure_side=DOWN | direction=SHORT
+pressure_reference_price=82775.0
+attempt_time=2026-09-28 03:38:15 | attempt_price=82764.9
+pressure_attempts=4 | pressure_cumulative_delta=-523.8 BTC | pressure_volume=2805.3 BTC | pressure_delta/volume=-18.7%
+extension_reward=+10.1 USD | extension_reward_ATR=+0.186
+retained_reward=+10.1 USD | retained_reward_ATR=+0.186 | retained_fraction=+1.000
+pullback_after_extension=+0.0 USD | pullback_ATR=+0.000
+incremental_extension=+0.0 USD | incremental_extension_ATR=+0.000
+elapsed_seconds=0
+same_side_delta=+0.0 BTC | opposite_delta=+0.0 BTC | outside_closes=0 | bars=1
+Это исследовательское состояние, НЕ вход.
+
+########## МОДУЛЬ=КООРДИНАТОР
+[2026-09-28 03:39:03 Panama UTC-5] BTC-LRA | PRESSURE_OUTCOME
+episode_id=P0001 | anchor=BREAKOUT_WATCH | direction=SHORT | horizon=15m
+entry_price=82839.2 | MFE=+113.7 USD | MAE=+95.3 USD
+MFE_pct=+0.137% | MAE_pct=+0.115%
+MFE_ATR=+2.006 | MAE_ATR=+1.682
+Источник результата: historical 1m OHLC; future leakage не используется.
+
+########## МОДУЛЬ=КООРДИНАТОР
+[2026-09-28 03:39:15 Panama UTC-5] BTC-LRA | PRESSURE_RETENTION
+episode_id=P0002 | anchor=BREAKOUT_WATCH
+retained_1m=+0.0 USD | extension_1m=+0.0 USD | retained_fraction_1m=+0.000
+Источник: historical 1m OHLC.
+
+########## МОДУЛЬ=КООРДИНАТОР
+[2026-09-28 03:40:03 Panama UTC-5] BTC-LRA | PRESSURE_OUTCOME
+episode_id=P0001 | anchor=EARLY_CONTINUATION | direction=SHORT | horizon=15m
+entry_price=82812.4 | MFE=+86.9 USD | MAE=+122.1 USD
+MFE_pct=+0.105% | MAE_pct=+0.147%
+MFE_ATR=+1.533 | MAE_ATR=+2.154
+Источник результата: historical 1m OHLC; future leakage не используется.
+
+########## МОДУЛЬ=КООРДИНАТОР
+[2026-09-28 03:41:03 Panama UTC-5] BTC-LRA | PRESSURE_OUTCOME
+episode_id=P0001 | anchor=ACCEPTANCE | direction=SHORT | horizon=15m
+entry_price=82789.9 | MFE=+64.4 USD | MAE=+144.6 USD
+MFE_pct=+0.078% | MAE_pct=+0.175%
+MFE_ATR=+1.136 | MAE_ATR=+2.551
+Источник результата: historical 1m OHLC; future leakage не используется.
+
+########## МОДУЛЬ=КООРДИНАТОР
+[2026-09-28 03:41:15 Panama UTC-5] BTC-LRA | NO_RESOLUTION
+episode_id=P0002
+state=NO_RESOLUTION | pressure_side=DOWN | direction=SHORT
+pressure_reference_price=82775.0
+attempt_time=2026-09-28 03:38:15 | attempt_price=82764.9
+pressure_attempts=4 | pressure_cumulative_delta=-523.8 BTC | pressure_volume=2805.3 BTC | pressure_delta/volume=-18.7%
+extension_reward=+10.1 USD | extension_reward_ATR=+0.186
+retained_reward=-48.1 USD | retained_reward_ATR=-0.884 | retained_fraction=-4.762
+pullback_after_extension=+58.2 USD | pullback_ATR=+1.069
+incremental_extension=+0.0 USD | incremental_extension_ATR=+0.000
+elapsed_seconds=180
+same_side_delta=+6.0 BTC | opposite_delta=+0.2 BTC | outside_closes=0 | bars=4
+Это исследовательское состояние, НЕ вход.
+resolution_reason=watch_ttl_expired
+
+########## МОДУЛЬ=КООРДИНАТОР
+[2026-09-28 03:41:15 Panama UTC-5] BTC-LRA | PRESSURE_RETENTION
+episode_id=P0002 | anchor=BREAKOUT_WATCH
+retained_3m=+0.0 USD | extension_3m=+0.0 USD | retained_fraction_3m=+0.000
+Источник: historical 1m OHLC.
+
+########## МОДУЛЬ=КООРДИНАТОР
+[2026-09-28 03:43:20 Panama UTC-5] BTC-LRA | PRESSURE_RETENTION
+episode_id=P0002 | anchor=BREAKOUT_WATCH
+retained_5m=+0.0 USD | extension_5m=+0.0 USD | retained_fraction_5m=+0.000
+Источник: historical 1m OHLC.
+
+########## МОДУЛЬ=КООРДИНАТОР
+[2026-09-28 03:43:21 Panama UTC-5] BTC-LRA | PRESSURE_OUTCOME
+episode_id=P0002 | anchor=BREAKOUT_WATCH | direction=SHORT | horizon=5m
+entry_price=82764.9 | MFE=+0.0 USD | MAE=+114.9 USD
+MFE_pct=+0.000% | MAE_pct=+0.139%
+MFE_ATR=+0.000 | MAE_ATR=+2.111
+Источник результата: historical 1m OHLC; future leakage не используется.
+
+########## МОДУЛЬ=КООРДИНАТОР
+[2026-09-28 03:46:08 Panama UTC-5] BTC-LRA | PRESSURE_OUTCOME
+episode_id=P0002 | anchor=PRESSURE_DETECTED | direction=SHORT | horizon=15m
+entry_price=82829.7 | MFE=+104.2 USD | MAE=+104.8 USD
+MFE_pct=+0.126% | MAE_pct=+0.127%
+MFE_ATR=+1.915 | MAE_ATR=+1.926
+Источник результата: historical 1m OHLC; future leakage не используется.
+
+########## МОДУЛЬ=КООРДИНАТОР
+[2026-09-28 03:53:11 Panama UTC-5] BTC-LRA | PRESSURE_OUTCOME
+episode_id=P0001 | anchor=PRESSURE_DETECTED | direction=SHORT | horizon=30m
+entry_price=82858.1 | MFE=+132.6 USD | MAE=+94.7 USD
+MFE_pct=+0.160% | MAE_pct=+0.114%
+MFE_ATR=+2.340 | MAE_ATR=+1.671
+Источник результата: historical 1m OHLC; future leakage не используется.
+
+########## МОДУЛЬ=КООРДИНАТОР
+[2026-09-28 03:53:17 Panama UTC-5] BTC-LRA | PRESSURE_OUTCOME
+episode_id=P0002 | anchor=BREAKOUT_WATCH | direction=SHORT | horizon=15m
+entry_price=82764.9 | MFE=+0.0 USD | MAE=+187.9 USD
+MFE_pct=+0.000% | MAE_pct=+0.227%
+MFE_ATR=+0.000 | MAE_ATR=+3.453
+Источник результата: historical 1m OHLC; future leakage не используется.
+
+########## МОДУЛЬ=КООРДИНАТОР
+[2026-09-28 03:53:59 Panama UTC-5] BTC-LRA | PRESSURE_OUTCOME
+episode_id=P0001 | anchor=BREAKOUT_WATCH | direction=SHORT | horizon=30m
+entry_price=82839.2 | MFE=+113.7 USD | MAE=+136.6 USD
+MFE_pct=+0.137% | MAE_pct=+0.165%
+MFE_ATR=+2.006 | MAE_ATR=+2.410
+Источник результата: historical 1m OHLC; future leakage не используется.
+
+########## МОДУЛЬ=КООРДИНАТОР
+[2026-09-28 03:55:05 Panama UTC-5] BTC-LRA | PRESSURE_OUTCOME
+episode_id=P0001 | anchor=EARLY_CONTINUATION | direction=SHORT | horizon=30m
+entry_price=82812.4 | MFE=+86.9 USD | MAE=+182.3 USD
+MFE_pct=+0.105% | MAE_pct=+0.220%
+MFE_ATR=+1.533 | MAE_ATR=+3.217
+Источник результата: historical 1m OHLC; future leakage не используется.
+
+########## МОДУЛЬ=КООРДИНАТОР
+[2026-09-28 03:56:05 Panama UTC-5] BTC-LRA | PRESSURE_OUTCOME
+episode_id=P0001 | anchor=ACCEPTANCE | direction=SHORT | horizon=30m
+entry_price=82789.9 | MFE=+64.4 USD | MAE=+204.8 USD
+MFE_pct=+0.078% | MAE_pct=+0.247%
+MFE_ATR=+1.136 | MAE_ATR=+3.614
+Источник результата: historical 1m OHLC; future leakage не используется.
+
+########## МОДУЛЬ=КООРДИНАТОР
+[2026-09-28 04:00:10 Panama UTC-5] BTC-LRA | PRESSURE_COUNTER_EVENT
+episode_id=P0001
+time=2026-09-28 04:00:00 | counter_side=BUY
+counter_delta=+26.8 BTC | price=82971.3
+reference_extreme=82781.3 | extension_reward=+198.1 USD | retained_reward=+190.0 USD
+Counter-event сохранён в массиве; это не автоматический reversal.
+
+########## МОДУЛЬ=КООРДИНАТОР
+[2026-09-28 04:00:10 Panama UTC-5] BTC-LRA | TEST_ENTRY_INVALIDATED
+[EXIT CANDIDATE] source=T000001
+source_direction=SHORT | opposite_reward_atr=3.201
+Momentum decay plus effective opposite reward. Research only.
+
+########## МОДУЛЬ=КООРДИНАТОР
+[2026-09-28 04:01:10 Panama UTC-5] BTC-LRA | PRESSURE_OUTCOME
+episode_id=P0002 | anchor=PRESSURE_DETECTED | direction=SHORT | horizon=30m
+entry_price=82829.7 | MFE=+104.2 USD | MAE=+165.0 USD
+MFE_pct=+0.126% | MAE_pct=+0.199%
+MFE_ATR=+1.915 | MAE_ATR=+3.032
+Источник результата: historical 1m OHLC; future leakage не используется.
+
+########## МОДУЛЬ=КООРДИНАТОР
+[2026-09-28 04:03:10 Panama UTC-5] BTC-LRA | PRESSURE_COUNTER_EVENT
+episode_id=P0001
+time=2026-09-28 04:03:00 | counter_side=BUY
+counter_delta=+21.5 BTC | price=82771.7
+reference_extreme=82760.0 | extension_reward=+13.2 USD | retained_reward=+11.7 USD
+Counter-event сохранён в массиве; это не автоматический reversal.
+
+########## МОДУЛЬ=КООРДИНАТОР
+[2026-09-28 04:08:15 Panama UTC-5] BTC-LRA | PRESSURE_OUTCOME
+episode_id=P0002 | anchor=BREAKOUT_WATCH | direction=SHORT | horizon=30m
+entry_price=82764.9 | MFE=+92.5 USD | MAE=+229.8 USD
+MFE_pct=+0.112% | MAE_pct=+0.278%
+MFE_ATR=+1.700 | MAE_ATR=+4.223
+Источник результата: historical 1m OHLC; future leakage не используется.
+
+########## МОДУЛЬ=КООРДИНАТОР
+[2026-09-28 04:09:09 Panama UTC-5] BTC-LRA | PRESSURE_COUNTER_EVENT
+episode_id=P0001
+time=2026-09-28 04:09:00 | counter_side=BUY
+counter_delta=+22.5 BTC | price=82587.7
+reference_extreme=82575.9 | extension_reward=+44.1 USD | retained_reward=+11.8 USD
+Counter-event сохранён в массиве; это не автоматический reversal.
+
+########## МОДУЛЬ=КООРДИНАТОР
+[2026-09-28 04:12:07 Panama UTC-5] BTC-LRA | PRESSURE_COUNTER_EVENT
+episode_id=P0001
+time=2026-09-28 04:12:00 | counter_side=BUY
+counter_delta=+44.5 BTC | price=82730.9
+reference_extreme=82575.9 | extension_reward=+155.0 USD | retained_reward=+155.0 USD
+Counter-event сохранён в массиве; это не автоматический reversal.
+
+########## МОДУЛЬ=КООРДИНАТОР
+[2026-09-28 04:23:10 Panama UTC-5] BTC-LRA | PRESSURE_OUTCOME
+episode_id=P0001 | anchor=PRESSURE_DETECTED | direction=SHORT | horizon=60m
+entry_price=82858.1 | MFE=+306.5 USD | MAE=+136.6 USD
+MFE_pct=+0.370% | MAE_pct=+0.165%
+MFE_ATR=+5.408 | MAE_ATR=+2.410
+Источник результата: historical 1m OHLC; future leakage не используется.
+
+########## МОДУЛЬ=КООРДИНАТОР
+[2026-09-28 04:24:04 Panama UTC-5] BTC-LRA | PRESSURE_OUTCOME
+episode_id=P0001 | anchor=BREAKOUT_WATCH | direction=SHORT | horizon=60m
+entry_price=82839.2 | MFE=+287.6 USD | MAE=+155.5 USD
+MFE_pct=+0.347% | MAE_pct=+0.188%
+MFE_ATR=+5.075 | MAE_ATR=+2.744
+Источник результата: historical 1m OHLC; future leakage не используется.
+
+########## МОДУЛЬ=КООРДИНАТОР
+[2026-09-28 04:25:04 Panama UTC-5] BTC-LRA | PRESSURE_OUTCOME
+episode_id=P0001 | anchor=EARLY_CONTINUATION | direction=SHORT | horizon=60m
+entry_price=82812.4 | MFE=+260.8 USD | MAE=+182.3 USD
+MFE_pct=+0.315% | MAE_pct=+0.220%
+MFE_ATR=+4.602 | MAE_ATR=+3.217
+Источник результата: historical 1m OHLC; future leakage не используется.
+
+########## МОДУЛЬ=КООРДИНАТОР
+[2026-09-28 04:26:04 Panama UTC-5] BTC-LRA | PRESSURE_OUTCOME
+episode_id=P0001 | anchor=ACCEPTANCE | direction=SHORT | horizon=60m
+entry_price=82789.9 | MFE=+238.3 USD | MAE=+204.8 USD
+MFE_pct=+0.288% | MAE_pct=+0.247%
+MFE_ATR=+4.205 | MAE_ATR=+3.614
+Источник результата: historical 1m OHLC; future leakage не используется.
+
+########## МОДУЛЬ=КООРДИНАТОР
+[2026-09-28 04:31:08 Panama UTC-5] BTC-LRA | PRESSURE_OUTCOME
+episode_id=P0002 | anchor=PRESSURE_DETECTED | direction=SHORT | horizon=60m
+entry_price=82829.7 | MFE=+278.1 USD | MAE=+165.0 USD
+MFE_pct=+0.336% | MAE_pct=+0.199%
+MFE_ATR=+5.110 | MAE_ATR=+3.032
+Источник результата: historical 1m OHLC; future leakage не используется.
+
+########## МОДУЛЬ=КООРДИНАТОР
+[2026-09-28 04:38:19 Panama UTC-5] BTC-LRA | PRESSURE_OUTCOME
+episode_id=P0002 | anchor=BREAKOUT_WATCH | direction=SHORT | horizon=60m
+entry_price=82764.9 | MFE=+213.3 USD | MAE=+229.8 USD
+MFE_pct=+0.258% | MAE_pct=+0.278%
+MFE_ATR=+3.920 | MAE_ATR=+4.223
+Источник результата: historical 1m OHLC; future leakage не используется.
+
+[28.09.26 05:09:00] ВОЗМОЖНАЯ ТВХ SELL | 82726.4
+SELL повторно получил результат, контроль сохраняется.
+
+[28.09.26 05:44:04] ДАВЛЕНИЕ ПОКУПАТЕЛЕЙ | 82909.4
+
+########## МОДУЛЬ=КООРДИНАТОР
+[2026-09-28 05:45:10 Panama UTC-5] BTC-LRA | PRESSURE_RETENTION
+episode_id=P0003 | anchor=PRESSURE_DETECTED
+retained_1m=+8.0 USD | extension_1m=+11.7 USD | retained_fraction_1m=+0.684
+Источник: historical 1m OHLC.
+
+########## МОДУЛЬ=КООРДИНАТОР
+[2026-09-28 05:47:09 Panama UTC-5] BTC-LRA | PRESSURE_RETENTION
+episode_id=P0003 | anchor=PRESSURE_DETECTED
+retained_3m=+0.0 USD | extension_3m=+11.7 USD | retained_fraction_3m=+0.000
+Источник: historical 1m OHLC.
+
+########## МОДУЛЬ=КООРДИНАТОР
+[2026-09-28 05:49:09 Panama UTC-5] BTC-LRA | PRESSURE_RETENTION
+episode_id=P0003 | anchor=PRESSURE_DETECTED
+retained_5m=+0.0 USD | extension_5m=+11.7 USD | retained_fraction_5m=+0.000
+Источник: historical 1m OHLC.
+
+########## МОДУЛЬ=КООРДИНАТОР
+[2026-09-28 05:49:10 Panama UTC-5] BTC-LRA | PRESSURE_OUTCOME
+episode_id=P0003 | anchor=PRESSURE_DETECTED | direction=LONG | horizon=5m
+entry_price=82909.4 | MFE=+11.7 USD | MAE=+76.0 USD
+MFE_pct=+0.014% | MAE_pct=+0.092%
+MFE_ATR=+0.342 | MAE_ATR=+2.219
+Источник результата: historical 1m OHLC; future leakage не используется.
+
+########## МОДУЛЬ=КООРДИНАТОР
+[2026-09-28 05:52:26 Panama UTC-5] BTC-LRA | PRESSURE_BREAKOUT_WATCH
+ПОКУПАТЕЛИ НАЧАЛИ РЕАЛИЗОВЫВАТЬ ДАВЛЕНИЕ.
+Цена начала выходить после последовательного давления.
+Проверяем две возможности:
+1. Исходная сторона сохранит результат — возможное продолжение.
+2. Выход провалится и противоположная сторона получит результат — возможный отказ.
+
+episode_id=P0003
+state=PRESSURE_BREAKOUT_WATCH | pressure_side=UP | direction=LONG
+pressure_reference_price=82933.8
+attempt_time=2026-09-28 05:52:26 | attempt_price=83000.1
+pressure_attempts=3 | pressure_cumulative_delta=+310.9 BTC | pressure_volume=1156.4 BTC | pressure_delta/volume=+26.9%
+extension_reward=+76.3 USD | extension_reward_ATR=+2.228
+retained_reward=+66.3 USD | retained_reward_ATR=+1.936 | retained_fraction=+0.869
+pullback_after_extension=+10.0 USD | pullback_ATR=+0.292
+incremental_extension=+0.0 USD | incremental_extension_ATR=+0.000
+elapsed_seconds=0
+same_side_delta=+0.0 BTC | opposite_delta=+0.0 BTC | outside_closes=0 | bars=1
+Это исследовательское состояние, НЕ вход.
+
+########## МОДУЛЬ=КООРДИНАТОР
+[2026-09-28 05:53:08 Panama UTC-5] BTC-LRA | PRESSURE_CONTINUATION_CANDIDATE
+episode_id=P0003
+state=EARLY_CONTINUATION | pressure_side=UP | direction=LONG
+pressure_reference_price=82933.8
+attempt_time=2026-09-28 05:52:26 | attempt_price=83000.1
+pressure_attempts=3 | pressure_cumulative_delta=+310.9 BTC | pressure_volume=1156.4 BTC | pressure_delta/volume=+26.9%
+extension_reward=+78.2 USD | extension_reward_ATR=+2.284
+retained_reward=+78.2 USD | retained_reward_ATR=+2.284 | retained_fraction=+1.000
+pullback_after_extension=+0.0 USD | pullback_ATR=+0.000
+incremental_extension=+1.9 USD | incremental_extension_ATR=+0.055
+elapsed_seconds=60
+same_side_delta=+9.3 BTC | opposite_delta=+0.0 BTC | outside_closes=1 | bars=2
+Это исследовательское состояние, НЕ вход.
+
+########## МОДУЛЬ=КООРДИНАТОР
+[2026-09-28 05:53:32 Panama UTC-5] BTC-LRA | PRESSURE_RETENTION
+episode_id=P0003 | anchor=BREAKOUT_WATCH
+retained_1m=+0.0 USD | extension_1m=+11.9 USD | retained_fraction_1m=+0.000
+Источник: historical 1m OHLC.
+
+########## МОДУЛЬ=КООРДИНАТОР
+[2026-09-28 05:54:02 Panama UTC-5] BTC-LRA | PRESSURE_RETENTION
+episode_id=P0003 | anchor=EARLY_CONTINUATION
+retained_1m=+0.0 USD | extension_1m=+0.0 USD | retained_fraction_1m=+0.000
+Источник: historical 1m OHLC.
+
+########## МОДУЛЬ=КООРДИНАТОР
+[2026-09-28 05:54:08 Panama UTC-5] BTC-LRA | TEST_ENTRY_CANDIDATE
+[TEST LONG] setup=PRESSURE_CONTINUATION
+price=82961.7 | event_id=T000002
+quality={"ACTIVE_LEG": "EFFECTIVE", "AGGRESSION": "LOW", "EFFICIENCY_TREND": "MIXED", "OI_STATE": "DESTROYING", "PRICE_REWARD": "STRONG", "RETENTION": "WEAK", "SEQUENCE": "REPEATED", "STRUCTURE_CONFIRMATION": "ACCEPTANCE"}
+Research anchor only. No order is sent.
+
+########## МОДУЛЬ=КООРДИНАТОР
+[2026-09-28 05:55:02 Panama UTC-5] BTC-LRA | PRESSURE_RETENTION
+episode_id=P0003 | anchor=ACCEPTANCE
+retained_1m=+0.0 USD | extension_1m=+15.6 USD | retained_fraction_1m=+0.000
+Источник: historical 1m OHLC.
+
+########## МОДУЛЬ=КООРДИНАТОР
+[2026-09-28 05:55:32 Panama UTC-5] BTC-LRA | PRESSURE_CONTINUATION
+episode_id=P0003
+state=PRESSURE_CONTINUATION | pressure_side=UP | direction=LONG
+pressure_reference_price=82933.8
+attempt_time=2026-09-28 05:52:26 | attempt_price=83000.1
+pressure_attempts=3 | pressure_cumulative_delta=+310.9 BTC | pressure_volume=1156.4 BTC | pressure_delta/volume=+26.9%
+extension_reward=+78.2 USD | extension_reward_ATR=+2.284
+retained_reward=+12.5 USD | retained_reward_ATR=+0.365 | retained_fraction=+0.160
+pullback_after_extension=+65.7 USD | pullback_ATR=+1.919
+incremental_extension=+0.0 USD | incremental_extension_ATR=+0.000
+elapsed_seconds=180
+same_side_delta=+9.3 BTC | opposite_delta=+6.1 BTC | outside_closes=3 | bars=4
+Это исследовательское состояние, НЕ вход.
+resolution_reason=watch_ttl_expired
+
+########## МОДУЛЬ=КООРДИНАТОР
+[2026-09-28 05:55:32 Panama UTC-5] BTC-LRA | PRESSURE_RETENTION
+episode_id=P0003 | anchor=BREAKOUT_WATCH
+retained_3m=+0.0 USD | extension_3m=+11.9 USD | retained_fraction_3m=+0.000
+Источник: historical 1m OHLC.
+
+########## МОДУЛЬ=КООРДИНАТОР
+[2026-09-28 05:56:02 Panama UTC-5] BTC-LRA | PRESSURE_RETENTION
+episode_id=P0003 | anchor=EARLY_CONTINUATION
+retained_3m=+0.0 USD | extension_3m=+0.0 USD | retained_fraction_3m=+0.000
+Источник: historical 1m OHLC.
+
+########## МОДУЛЬ=КООРДИНАТОР
+[2026-09-28 05:57:02 Panama UTC-5] BTC-LRA | PRESSURE_RETENTION
+episode_id=P0003 | anchor=ACCEPTANCE
+retained_3m=+0.0 USD | extension_3m=+22.1 USD | retained_fraction_3m=+0.000
+Источник: historical 1m OHLC.
+
+########## МОДУЛЬ=КООРДИНАТОР
+[2026-09-28 05:57:08 Panama UTC-5] BTC-LRA | MOMENTUM_DECAY
+[WATCH] LONG momentum decay
+entry_id=T000002 | progress_atr=0.000 | retained_fraction=0.000
+Same-side aggression is producing less incremental progress.
+
+########## МОДУЛЬ=КООРДИНАТОР
+[2026-09-28 05:57:32 Panama UTC-5] BTC-LRA | PRESSURE_RETENTION
+episode_id=P0003 | anchor=BREAKOUT_WATCH
+retained_5m=+0.0 USD | extension_5m=+11.9 USD | retained_fraction_5m=+0.000
+Источник: historical 1m OHLC.
+
+########## МОДУЛЬ=КООРДИНАТОР
+[2026-09-28 05:57:33 Panama UTC-5] BTC-LRA | PRESSURE_OUTCOME
+episode_id=P0003 | anchor=BREAKOUT_WATCH | direction=LONG | horizon=5m
+entry_price=83000.1 | MFE=+11.9 USD | MAE=+61.3 USD
+MFE_pct=+0.014% | MAE_pct=+0.074%
+MFE_ATR=+0.348 | MAE_ATR=+1.790
+Источник результата: historical 1m OHLC; future leakage не используется.
+
+########## МОДУЛЬ=КООРДИНАТОР
+[2026-09-28 05:58:03 Panama UTC-5] BTC-LRA | PRESSURE_RETENTION
+episode_id=P0003 | anchor=EARLY_CONTINUATION
+retained_5m=+0.0 USD | extension_5m=+0.0 USD | retained_fraction_5m=+0.000
+Источник: historical 1m OHLC.
+
+########## МОДУЛЬ=КООРДИНАТОР
+[2026-09-28 05:58:04 Panama UTC-5] BTC-LRA | PRESSURE_OUTCOME
+episode_id=P0003 | anchor=EARLY_CONTINUATION | direction=LONG | horizon=5m
+entry_price=83012.0 | MFE=+0.0 USD | MAE=+77.4 USD
+MFE_pct=+0.000% | MAE_pct=+0.093%
+MFE_ATR=+0.000 | MAE_ATR=+2.260
+Источник результата: historical 1m OHLC; future leakage не используется.
+
+########## МОДУЛЬ=КООРДИНАТОР
+[2026-09-28 05:59:04 Panama UTC-5] BTC-LRA | PRESSURE_RETENTION
+episode_id=P0003 | anchor=ACCEPTANCE
+retained_5m=+0.0 USD | extension_5m=+22.1 USD | retained_fraction_5m=+0.000
+Источник: historical 1m OHLC.
+
+########## МОДУЛЬ=КООРДИНАТОР
+[2026-09-28 05:59:04 Panama UTC-5] BTC-LRA | PRESSURE_OUTCOME
+episode_id=P0003 | anchor=ACCEPTANCE | direction=LONG | horizon=5m
+entry_price=82961.7 | MFE=+22.1 USD | MAE=+32.0 USD
+MFE_pct=+0.027% | MAE_pct=+0.039%
+MFE_ATR=+0.645 | MAE_ATR=+0.934
+Источник результата: historical 1m OHLC; future leakage не используется.
+
+########## МОДУЛЬ=КООРДИНАТОР
+[2026-09-28 05:59:11 Panama UTC-5] BTC-LRA | PRESSURE_OUTCOME
+episode_id=P0003 | anchor=PRESSURE_DETECTED | direction=LONG | horizon=15m
+entry_price=82909.4 | MFE=+115.2 USD | MAE=+84.3 USD
+MFE_pct=+0.139% | MAE_pct=+0.102%
+MFE_ATR=+3.364 | MAE_ATR=+2.462
+Источник результата: historical 1m OHLC; future leakage не используется.
+
+[28.09.26 06:02:03] ДАВЛЕНИЕ ПОКУПАТЕЛЕЙ | 82981.3
+
+########## МОДУЛЬ=КООРДИНАТОР
+[2026-09-28 06:03:10 Panama UTC-5] BTC-LRA | PRESSURE_RETENTION
+episode_id=P0004 | anchor=PRESSURE_DETECTED
+retained_1m=+11.7 USD | extension_1m=+18.7 USD | retained_fraction_1m=+0.626
+Источник: historical 1m OHLC.
+
+########## МОДУЛЬ=КООРДИНАТОР
+[2026-09-28 06:05:09 Panama UTC-5] BTC-LRA | PRESSURE_RETENTION
+episode_id=P0004 | anchor=PRESSURE_DETECTED
+retained_3m=+11.0 USD | extension_3m=+39.5 USD | retained_fraction_3m=+0.278
+Источник: historical 1m OHLC.
+
+########## МОДУЛЬ=КООРДИНАТОР
+[2026-09-28 06:07:09 Panama UTC-5] BTC-LRA | PRESSURE_RETENTION
+episode_id=P0004 | anchor=PRESSURE_DETECTED
+retained_5m=+13.6 USD | extension_5m=+39.5 USD | retained_fraction_5m=+0.344
+Источник: historical 1m OHLC.
+
+########## МОДУЛЬ=КООРДИНАТОР
+[2026-09-28 06:07:10 Panama UTC-5] BTC-LRA | PRESSURE_OUTCOME
+episode_id=P0004 | anchor=PRESSURE_DETECTED | direction=LONG | horizon=5m
+entry_price=82981.3 | MFE=+39.5 USD | MAE=+28.3 USD
+MFE_pct=+0.048% | MAE_pct=+0.034%
+MFE_ATR=+0.951 | MAE_ATR=+0.681
+Источник результата: historical 1m OHLC; future leakage не используется.
+
+########## МОДУЛЬ=КООРДИНАТОР
+[2026-09-28 06:07:28 Panama UTC-5] BTC-LRA | PRESSURE_OUTCOME
+episode_id=P0003 | anchor=BREAKOUT_WATCH | direction=LONG | horizon=15m
+entry_price=83000.1 | MFE=+36.6 USD | MAE=+77.1 USD
+MFE_pct=+0.044% | MAE_pct=+0.093%
+MFE_ATR=+1.069 | MAE_ATR=+2.252
+Источник результата: historical 1m OHLC; future leakage не используется.
+
+########## МОДУЛЬ=КООРДИНАТОР
+[2026-09-28 06:08:05 Panama UTC-5] BTC-LRA | PRESSURE_OUTCOME
+episode_id=P0003 | anchor=EARLY_CONTINUATION | direction=LONG | horizon=15m
+entry_price=83012.0 | MFE=+24.7 USD | MAE=+89.0 USD
+MFE_pct=+0.030% | MAE_pct=+0.107%
+MFE_ATR=+0.721 | MAE_ATR=+2.599
+Источник результата: historical 1m OHLC; future leakage не используется.
+
+########## МОДУЛЬ=КООРДИНАТОР
+[2026-09-28 06:09:05 Panama UTC-5] BTC-LRA | PRESSURE_OUTCOME
+episode_id=P0003 | anchor=ACCEPTANCE | direction=LONG | horizon=15m
+entry_price=82961.7 | MFE=+75.0 USD | MAE=+38.7 USD
+MFE_pct=+0.090% | MAE_pct=+0.047%
+MFE_ATR=+2.190 | MAE_ATR=+1.130
+Источник результата: historical 1m OHLC; future leakage не используется.
+
+########## МОДУЛЬ=КООРДИНАТОР
+[2026-09-28 06:14:11 Panama UTC-5] BTC-LRA | PRESSURE_OUTCOME
+episode_id=P0003 | anchor=PRESSURE_DETECTED | direction=LONG | horizon=30m
+entry_price=82909.4 | MFE=+127.3 USD | MAE=+84.3 USD
+MFE_pct=+0.154% | MAE_pct=+0.102%
+MFE_ATR=+3.718 | MAE_ATR=+2.462
+Источник результата: historical 1m OHLC; future leakage не используется.
+
+[28.09.26 06:17:03] ДАВЛЕНИЕ ПОКУПАТЕЛЕЙ | 83004.8
+
+########## МОДУЛЬ=КООРДИНАТОР
+[2026-09-28 06:17:04 Panama UTC-5] BTC-LRA | PRESSURE_OUTCOME
+episode_id=P0004 | anchor=PRESSURE_DETECTED | direction=LONG | horizon=15m
+entry_price=82981.3 | MFE=+58.4 USD | MAE=+42.8 USD
+MFE_pct=+0.070% | MAE_pct=+0.052%
+MFE_ATR=+1.406 | MAE_ATR=+1.030
+Источник результата: historical 1m OHLC; future leakage не используется.
+
+########## МОДУЛЬ=КООРДИНАТОР
+[2026-09-28 06:17:16 Panama UTC-5] BTC-LRA | PRESSURE_BREAKOUT_WATCH
+ПОКУПАТЕЛИ НАЧАЛИ РЕАЛИЗОВЫВАТЬ ДАВЛЕНИЕ.
+Цена начала выходить после последовательного давления.
+Проверяем две возможности:
+1. Исходная сторона сохранит результат — возможное продолжение.
+2. Выход провалится и противоположная сторона получит результат — возможный отказ.
+
+episode_id=P0005
+state=PRESSURE_BREAKOUT_WATCH | pressure_side=UP | direction=LONG
+pressure_reference_price=83039.7
+attempt_time=2026-09-28 06:17:16 | attempt_price=83045.7
+pressure_attempts=3 | pressure_cumulative_delta=+347.7 BTC | pressure_volume=2007.2 BTC | pressure_delta/volume=+17.3%
+extension_reward=+10.3 USD | extension_reward_ATR=+0.229
+retained_reward=+6.0 USD | retained_reward_ATR=+0.134 | retained_fraction=+0.583
+pullback_after_extension=+4.3 USD | pullback_ATR=+0.096
+incremental_extension=+0.0 USD | incremental_extension_ATR=+0.000
+elapsed_seconds=0
+same_side_delta=+0.0 BTC | opposite_delta=+0.0 BTC | outside_closes=0 | bars=1
+Это исследовательское состояние, НЕ вход.
+
+########## МОДУЛЬ=КООРДИНАТОР
+[2026-09-28 06:18:05 Panama UTC-5] BTC-LRA | PRESSURE_RETENTION
+episode_id=P0005 | anchor=PRESSURE_DETECTED
+retained_1m=+45.0 USD | extension_1m=+45.1 USD | retained_fraction_1m=+0.998
+Источник: historical 1m OHLC.
+
+########## МОДУЛЬ=КООРДИНАТОР
+[2026-09-28 06:18:17 Panama UTC-5] BTC-LRA | PRESSURE_RETENTION
+episode_id=P0005 | anchor=BREAKOUT_WATCH
+retained_1m=+0.0 USD | extension_1m=+4.2 USD | retained_fraction_1m=+0.000
+Источник: historical 1m OHLC.
+
+########## МОДУЛЬ=КООРДИНАТОР
+[2026-09-28 06:20:04 Panama UTC-5] BTC-LRA | PRESSURE_RETENTION
+episode_id=P0005 | anchor=PRESSURE_DETECTED
+retained_3m=+0.0 USD | extension_3m=+45.1 USD | retained_fraction_3m=+0.000
+Источник: historical 1m OHLC.
+
+########## МОДУЛЬ=КООРДИНАТОР
+[2026-09-28 06:20:22 Panama UTC-5] BTC-LRA | NO_RESOLUTION
+episode_id=P0005
+state=NO_RESOLUTION | pressure_side=UP | direction=LONG
+pressure_reference_price=83039.7
+attempt_time=2026-09-28 06:17:16 | attempt_price=83045.7
+pressure_attempts=3 | pressure_cumulative_delta=+347.7 BTC | pressure_volume=2007.2 BTC | pressure_delta/volume=+17.3%
+extension_reward=+10.3 USD | extension_reward_ATR=+0.229
+retained_reward=-53.9 USD | retained_reward_ATR=-1.200 | retained_fraction=-5.233
+pullback_after_extension=+64.2 USD | pullback_ATR=+1.429
+incremental_extension=+0.0 USD | incremental_extension_ATR=+0.000
+elapsed_seconds=180
+same_side_delta=+0.1 BTC | opposite_delta=+1.2 BTC | outside_closes=1 | bars=4
+Это исследовательское состояние, НЕ вход.
+resolution_reason=watch_ttl_expired
+
+########## МОДУЛЬ=КООРДИНАТОР
+[2026-09-28 06:20:22 Panama UTC-5] BTC-LRA | PRESSURE_RETENTION
+episode_id=P0005 | anchor=BREAKOUT_WATCH
+retained_3m=+0.0 USD | extension_3m=+4.2 USD | retained_fraction_3m=+0.000
+Источник: historical 1m OHLC.
+
+########## МОДУЛЬ=КООРДИНАТОР
+[2026-09-28 06:22:09 Panama UTC-5] BTC-LRA | PRESSURE_RETENTION
+episode_id=P0005 | anchor=PRESSURE_DETECTED
+retained_5m=+0.0 USD | extension_5m=+45.1 USD | retained_fraction_5m=+0.000
+Источник: historical 1m OHLC.
+
+########## МОДУЛЬ=КООРДИНАТОР
+[2026-09-28 06:22:10 Panama UTC-5] BTC-LRA | PRESSURE_OUTCOME
+episode_id=P0005 | anchor=PRESSURE_DETECTED | direction=LONG | horizon=5m
+entry_price=83004.8 | MFE=+45.1 USD | MAE=+64.3 USD
+MFE_pct=+0.054% | MAE_pct=+0.077%
+MFE_ATR=+1.004 | MAE_ATR=+1.431
+Источник результата: historical 1m OHLC; future leakage не используется.
+
+########## МОДУЛЬ=КООРДИНАТОР
+[2026-09-28 06:22:22 Panama UTC-5] BTC-LRA | PRESSURE_RETENTION
+episode_id=P0005 | anchor=BREAKOUT_WATCH
+retained_5m=+0.0 USD | extension_5m=+4.2 USD | retained_fraction_5m=+0.000
+Источник: historical 1m OHLC.
+
+########## МОДУЛЬ=КООРДИНАТОР
+[2026-09-28 06:22:22 Panama UTC-5] BTC-LRA | PRESSURE_OUTCOME
+episode_id=P0005 | anchor=BREAKOUT_WATCH | direction=LONG | horizon=5m
+entry_price=83045.7 | MFE=+4.2 USD | MAE=+105.2 USD
+MFE_pct=+0.005% | MAE_pct=+0.127%
+MFE_ATR=+0.093 | MAE_ATR=+2.342
+Источник результата: historical 1m OHLC; future leakage не используется.
+
+########## МОДУЛЬ=КООРДИНАТОР
+[2026-09-28 06:22:29 Panama UTC-5] BTC-LRA | PRESSURE_OUTCOME
+episode_id=P0003 | anchor=BREAKOUT_WATCH | direction=LONG | horizon=30m
+entry_price=83000.1 | MFE=+49.9 USD | MAE=+77.1 USD
+MFE_pct=+0.060% | MAE_pct=+0.093%
+MFE_ATR=+1.457 | MAE_ATR=+2.252
+Источник результата: historical 1m OHLC; future leakage не используется.
+
+########## МОДУЛЬ=КООРДИНАТОР
+[2026-09-28 06:23:05 Panama UTC-5] BTC-LRA | PRESSURE_OUTCOME
+episode_id=P0003 | anchor=EARLY_CONTINUATION | direction=LONG | horizon=30m
+entry_price=83012.0 | MFE=+38.0 USD | MAE=+89.0 USD
+MFE_pct=+0.046% | MAE_pct=+0.107%
+MFE_ATR=+1.110 | MAE_ATR=+2.599
+Источник результата: historical 1m OHLC; future leakage не используется.
+
+########## МОДУЛЬ=КООРДИНАТОР
+[2026-09-28 06:24:05 Panama UTC-5] BTC-LRA | PRESSURE_OUTCOME
+episode_id=P0003 | anchor=ACCEPTANCE | direction=LONG | horizon=30m
+entry_price=82961.7 | MFE=+88.3 USD | MAE=+38.7 USD
+MFE_pct=+0.106% | MAE_pct=+0.047%
+MFE_ATR=+2.579 | MAE_ATR=+1.130
+Источник результата: historical 1m OHLC; future leakage не используется.
+
+########## МОДУЛЬ=КООРДИНАТОР
+[2026-09-28 06:32:08 Panama UTC-5] BTC-LRA | PRESSURE_OUTCOME
+episode_id=P0004 | anchor=PRESSURE_DETECTED | direction=LONG | horizon=30m
+entry_price=82981.3 | MFE=+68.7 USD | MAE=+42.8 USD
+MFE_pct=+0.083% | MAE_pct=+0.052%
+MFE_ATR=+1.653 | MAE_ATR=+1.030
+Источник результата: historical 1m OHLC; future leakage не используется.
+
+########## МОДУЛЬ=КООРДИНАТОР
+[2026-09-28 06:32:08 Panama UTC-5] BTC-LRA | PRESSURE_OUTCOME
+episode_id=P0005 | anchor=PRESSURE_DETECTED | direction=LONG | horizon=15m
+entry_price=83004.8 | MFE=+45.1 USD | MAE=+64.3 USD
+MFE_pct=+0.054% | MAE_pct=+0.077%
+MFE_ATR=+1.004 | MAE_ATR=+1.431
+Источник результата: historical 1m OHLC; future leakage не используется.
+
+########## МОДУЛЬ=КООРДИНАТОР
+[2026-09-28 06:32:20 Panama UTC-5] BTC-LRA | PRESSURE_OUTCOME
+episode_id=P0005 | anchor=BREAKOUT_WATCH | direction=LONG | horizon=15m
+entry_price=83045.7 | MFE=+4.2 USD | MAE=+105.2 USD
+MFE_pct=+0.005% | MAE_pct=+0.127%
+MFE_ATR=+0.093 | MAE_ATR=+2.342
+Источник результата: historical 1m OHLC; future leakage не используется.
+
+########## МОДУЛЬ=КООРДИНАТОР
+[2026-09-28 06:40:16 Panama UTC-5] BTC-LRA | PRESSURE_BREAKOUT_WATCH
+ПОКУПАТЕЛИ НАЧАЛИ РЕАЛИЗОВЫВАТЬ ДАВЛЕНИЕ.
+Цена начала выходить после последовательного давления.
+Проверяем две возможности:
+1. Исходная сторона сохранит результат — возможное продолжение.
+2. Выход провалится и противоположная сторона получит результат — возможный отказ.
+
+episode_id=P0005
+state=PRESSURE_BREAKOUT_WATCH | pressure_side=UP | direction=LONG
+pressure_reference_price=83039.7
+attempt_time=2026-09-28 06:40:16 | attempt_price=83050.0
+pressure_attempts=3 | pressure_cumulative_delta=+347.7 BTC | pressure_volume=2007.2 BTC | pressure_delta/volume=+17.3%
+extension_reward=+20.3 USD | extension_reward_ATR=+0.452
+retained_reward=+10.3 USD | retained_reward_ATR=+0.229 | retained_fraction=+0.507
+pullback_after_extension=+10.0 USD | pullback_ATR=+0.223
+incremental_extension=+0.0 USD | incremental_extension_ATR=+0.000
+elapsed_seconds=0
+same_side_delta=+0.0 BTC | opposite_delta=+0.0 BTC | outside_closes=0 | bars=1
+Это исследовательское состояние, НЕ вход.
+
+########## МОДУЛЬ=КООРДИНАТОР
+[2026-09-28 06:43:20 Panama UTC-5] BTC-LRA | NO_RESOLUTION
+episode_id=P0005
+state=NO_RESOLUTION | pressure_side=UP | direction=LONG
+pressure_reference_price=83039.7
+attempt_time=2026-09-28 06:40:16 | attempt_price=83050.0
+pressure_attempts=3 | pressure_cumulative_delta=+347.7 BTC | pressure_volume=2007.2 BTC | pressure_delta/volume=+17.3%
+extension_reward=+20.3 USD | extension_reward_ATR=+0.452
+retained_reward=+6.6 USD | retained_reward_ATR=+0.147 | retained_fraction=+0.325
+pullback_after_extension=+13.7 USD | pullback_ATR=+0.305
+incremental_extension=+0.0 USD | incremental_extension_ATR=+0.000
+elapsed_seconds=180
+same_side_delta=+3.2 BTC | opposite_delta=+0.1 BTC | outside_closes=3 | bars=4
+Это исследовательское состояние, НЕ вход.
+resolution_reason=watch_ttl_expired
+
+########## МОДУЛЬ=КООРДИНАТОР
+[2026-09-28 06:44:08 Panama UTC-5] BTC-LRA | PRESSURE_OUTCOME
+episode_id=P0003 | anchor=PRESSURE_DETECTED | direction=LONG | horizon=60m
+entry_price=82909.4 | MFE=+172.2 USD | MAE=+84.3 USD
+MFE_pct=+0.208% | MAE_pct=+0.102%
+MFE_ATR=+5.029 | MAE_ATR=+2.462
+Источник результата: historical 1m OHLC; future leakage не используется.
+
+########## МОДУЛЬ=КООРДИНАТОР
+[2026-09-28 06:47:09 Panama UTC-5] BTC-LRA | PRESSURE_OUTCOME
+episode_id=P0005 | anchor=PRESSURE_DETECTED | direction=LONG | horizon=30m
+entry_price=83004.8 | MFE=+76.8 USD | MAE=+64.3 USD
+MFE_pct=+0.093% | MAE_pct=+0.077%
+MFE_ATR=+1.710 | MAE_ATR=+1.431
+Источник результата: historical 1m OHLC; future leakage не используется.
+
+########## МОДУЛЬ=КООРДИНАТОР
+[2026-09-28 06:52:31 Panama UTC-5] BTC-LRA | PRESSURE_OUTCOME
+episode_id=P0003 | anchor=BREAKOUT_WATCH | direction=LONG | horizon=60m
+entry_price=83000.1 | MFE=+81.5 USD | MAE=+77.1 USD
+MFE_pct=+0.098% | MAE_pct=+0.093%
+MFE_ATR=+2.380 | MAE_ATR=+2.252
+Источник результата: historical 1m OHLC; future leakage не используется.
+
+########## МОДУЛЬ=КООРДИНАТОР
+[2026-09-28 06:53:02 Panama UTC-5] BTC-LRA | PRESSURE_OUTCOME
+episode_id=P0003 | anchor=EARLY_CONTINUATION | direction=LONG | horizon=60m
+entry_price=83012.0 | MFE=+69.6 USD | MAE=+89.0 USD
+MFE_pct=+0.084% | MAE_pct=+0.107%
+MFE_ATR=+2.033 | MAE_ATR=+2.599
+Источник результата: historical 1m OHLC; future leakage не используется.
+
+########## МОДУЛЬ=КООРДИНАТОР
+[2026-09-28 06:54:02 Panama UTC-5] BTC-LRA | PRESSURE_OUTCOME
+episode_id=P0003 | anchor=ACCEPTANCE | direction=LONG | horizon=60m
+entry_price=82961.7 | MFE=+119.9 USD | MAE=+38.7 USD
+MFE_pct=+0.145% | MAE_pct=+0.047%
+MFE_ATR=+3.501 | MAE_ATR=+1.130
+Источник результата: historical 1m OHLC; future leakage не используется.
+
+########## МОДУЛЬ=КООРДИНАТОР
+[2026-09-28 07:02:06 Panama UTC-5] BTC-LRA | PRESSURE_OUTCOME
+episode_id=P0004 | anchor=PRESSURE_DETECTED | direction=LONG | horizon=60m
+entry_price=82981.3 | MFE=+100.3 USD | MAE=+42.8 USD
+MFE_pct=+0.121% | MAE_pct=+0.052%
+MFE_ATR=+2.414 | MAE_ATR=+1.030
+Источник результата: historical 1m OHLC; future leakage не используется.
+
+########## МОДУЛЬ=КООРДИНАТОР
+[2026-09-28 07:02:12 Panama UTC-5] BTC-LRA | PRESSURE_COUNTER_EVENT
+episode_id=P0003
+time=2026-09-28 07:02:00 | counter_side=SELL
+counter_delta=-45.6 BTC | price=82983.9
+reference_extreme=83067.0 | extension_reward=+87.1 USD | retained_reward=+83.1 USD
+Counter-event сохранён в массиве; это не автоматический reversal.
+
+########## МОДУЛЬ=КООРДИНАТОР
+[2026-09-28 07:02:12 Panama UTC-5] BTC-LRA | TEST_ENTRY_INVALIDATED
+[EXIT CANDIDATE] source=T000002
+source_direction=LONG | opposite_reward_atr=2.231
+Momentum decay plus effective opposite reward. Research only.
+
+########## МОДУЛЬ=КООРДИНАТОР
+[2026-09-28 07:10:21 Panama UTC-5] BTC-LRA | PRESSURE_OUTCOME
+episode_id=P0005 | anchor=BREAKOUT_WATCH | direction=LONG | horizon=30m
+entry_price=83050.0 | MFE=+427.7 USD | MAE=+97.0 USD
+MFE_pct=+0.515% | MAE_pct=+0.117%
+MFE_ATR=+9.521 | MAE_ATR=+2.159
+Источник результата: historical 1m OHLC; future leakage не используется.
+
+########## МОДУЛЬ=КООРДИНАТОР
+[2026-09-28 07:16:07 Panama UTC-5] BTC-LRA | PRESSURE_COUNTER_EVENT
+episode_id=P0003
+time=2026-09-28 07:16:00 | counter_side=SELL
+counter_delta=-35.4 BTC | price=83254.1
+reference_extreme=83460.1 | extension_reward=+206.1 USD | retained_reward=+206.0 USD
+Counter-event сохранён в массиве; это не автоматический reversal.
+
+########## МОДУЛЬ=КООРДИНАТОР
+[2026-09-28 07:17:08 Panama UTC-5] BTC-LRA | PRESSURE_OUTCOME
+episode_id=P0005 | anchor=PRESSURE_DETECTED | direction=LONG | horizon=60m
+entry_price=83004.8 | MFE=+472.9 USD | MAE=+64.3 USD
+MFE_pct=+0.570% | MAE_pct=+0.077%
+MFE_ATR=+10.527 | MAE_ATR=+1.431
+Источник результата: historical 1m OHLC; future leakage не используется.
+
+########## МОДУЛЬ=КООРДИНАТОР
+[2026-09-28 07:22:07 Panama UTC-5] BTC-LRA | PRESSURE_COUNTER_EVENT
+episode_id=P0003
+time=2026-09-28 07:22:00 | counter_side=SELL
+counter_delta=-26.3 BTC | price=83323.1
+reference_extreme=83460.1 | extension_reward=+137.0 USD | retained_reward=+137.0 USD
+Counter-event сохранён в массиве; это не автоматический reversal.
+
+########## МОДУЛЬ=КООРДИНАТОР
+[2026-09-28 07:40:18 Panama UTC-5] BTC-LRA | PRESSURE_OUTCOME
+episode_id=P0005 | anchor=BREAKOUT_WATCH | direction=LONG | horizon=60m
+entry_price=83050.0 | MFE=+427.7 USD | MAE=+97.0 USD
+MFE_pct=+0.515% | MAE_pct=+0.117%
+MFE_ATR=+9.521 | MAE_ATR=+2.159
+Источник результата: historical 1m OHLC; future leakage не используется.
+
+########## МОДУЛЬ=КООРДИНАТОР
+[2026-09-28 08:04:12 Panama UTC-5] BTC-LRA | PRESSURE_COUNTER_EVENT
+episode_id=P0003
+time=2026-09-28 08:04:00 | counter_side=SELL
+counter_delta=-24.6 BTC | price=83364.7
+reference_extreme=83587.3 | extension_reward=+222.7 USD | retained_reward=+222.6 USD
+Counter-event сохранён в массиве; это не автоматический reversal.
+
+====================================================================================================
+CASE=CASE2
+[2026-09-28 08:34:43 Panama UTC-5] CASE2 | LR_DETECTED | TF=5m
+BTCUSDT | TF=5m
+
+НАЙДЕН КАНДИДАТ НА РЕАЛЬНЫЙ LR
+
+LR: 83232.6 — 83609.4
+Ширина: 376.8 USD (0.452%)
+ATR: 113.0
+
+Inside ratio: 100.0%
+Lower visits: 3
+Upper visits: 3
+Mid crosses: 3
+Net displacement/range: 0.41
+Directional efficiency: 0.19
+Average overlap: 0.33
+
+LR прошёл фильтр бокового движения.
+
+С ЭТОГО МОМЕНТА CASE2 начинает собирать LIVE taker-flow + OI.
+
+Историческому участку до обнаружения OI задним числом не приписывается.
+====================================================================================================
+====================================================================================================
+CASE=CASE2
+[2026-09-28 08:44:45 Panama UTC-5] CASE2 | LR_BREAKOUT | TF=5m
+BTCUSDT | TF=5m
+
+LR: 83232.6 — 83609.4
+Ширина: 376.8 USD (0.452%)
+
+Новых свечей после обнаружения LR: 1
+
+LOWER 30%
+Delta: +0.0 BTC
+Volume: 0.0 BTC
+SELL aggression bars: 0
+OI build при SELL aggression: +0.0 BTC
+
+MIDDLE 40%
+Delta: +0.0 BTC
+Volume: 0.0 BTC
+
+UPPER 30%
+Delta: +130.7 BTC
+Volume: 1466.5 BTC
+BUY aggression bars: 0
+OI build при BUY aggression: +0.0 BTC
+
+OI после обнаружения LR: -106.6 BTC (-0.112%)
+
+НАБЛЮДАЕМАЯ АСИММЕТРИЯ: BUY_SIDE
+Lower SELL score: 0.0
+Upper BUY score: 130.7
+
+Это НЕ точное количество лонгов и шортов.
+Это наблюдаемая асимметрия taker-flow + OI + location.
+
+====================================
+ВЫХОД ИЗ LR: UP
+Цена выхода: 83687.6
+Время: 2026-09-28 08:35:00
+
+PRE-BREAKOUT состояние ЗАФИКСИРОВАНО.
+Теперь наблюдаем фактический результат.
+====================================================================================================
+====================================================================================================
+CASE=CASE2
+[2026-09-28 08:54:47 Panama UTC-5] CASE2 | LR_RECLAIM | TF=5m
+BTCUSDT | TF=5m
+
+LR: 83232.6 — 83609.4
+
+Предыдущий выход: UP
+Цена вернулась внутрь LR.
+Close: 83556.6
+
+PRE-BREAKOUT bias: BUY_SIDE
+
+ВОЗМОЖНЫЙ FAILED BREAKOUT / RECLAIM.
+Исследовательское событие. НЕ вход.
+====================================================================================================
+[28.09.26 09:20:03] ДАВЛЕНИЕ ПРОДАВЦОВ | 83349.5
+
+########## МОДУЛЬ=КООРДИНАТОР
+[2026-09-28 09:21:08 Panama UTC-5] BTC-LRA | PRESSURE_RETENTION
+episode_id=P0006 | anchor=PRESSURE_DETECTED
+retained_1m=+0.0 USD | extension_1m=+0.0 USD | retained_fraction_1m=+0.000
+Источник: historical 1m OHLC.
+
+########## МОДУЛЬ=КООРДИНАТОР
+[2026-09-28 09:23:05 Panama UTC-5] BTC-LRA | PRESSURE_RETENTION
+episode_id=P0006 | anchor=PRESSURE_DETECTED
+retained_3m=+0.0 USD | extension_3m=+0.0 USD | retained_fraction_3m=+0.000
+Источник: historical 1m OHLC.
+
+########## МОДУЛЬ=КООРДИНАТОР
+[2026-09-28 09:25:05 Panama UTC-5] BTC-LRA | PRESSURE_RETENTION
+episode_id=P0006 | anchor=PRESSURE_DETECTED
+retained_5m=+0.0 USD | extension_5m=+0.0 USD | retained_fraction_5m=+0.000
+Источник: historical 1m OHLC.
+
+########## МОДУЛЬ=КООРДИНАТОР
+[2026-09-28 09:25:05 Panama UTC-5] BTC-LRA | PRESSURE_OUTCOME
+episode_id=P0006 | anchor=PRESSURE_DETECTED | direction=SHORT | horizon=5m
+entry_price=83349.5 | MFE=+0.0 USD | MAE=+216.0 USD
+MFE_pct=+0.000% | MAE_pct=+0.259%
+MFE_ATR=+0.000 | MAE_ATR=+2.361
+Источник результата: historical 1m OHLC; future leakage не используется.
+
+[2026-09-28 09:32:28 Panama UTC-5] BTC-LRA | ЗАПУЩЕН И РАБОТАЕТ
+
+- Модуль «Импульс и истощение» следит за сильной агрессией, продолжением и её истощением.
+
+- Модуль «Встречная атака» проверяет, получает ли противоположная сторона реальный результат.
+
+- Модуль «Давление и свип» исследует последовательное давление и финальную попытку продолжения.
+
+- Модуль «Происхождение движения» исследует ранний кандидат по смене соотношения усилия → результата.
+
+[28.09.26 09:38:03] ДАВЛЕНИЕ ПРОДАВЦОВ | 83347.2
+
+########## МОДУЛЬ=КООРДИНАТОР
+[2026-09-28 09:39:08 Panama UTC-5] BTC-LRA | PRESSURE_RETENTION
+episode_id=P0001 | anchor=PRESSURE_DETECTED
+retained_1m=+59.1 USD | extension_1m=+59.2 USD | retained_fraction_1m=+0.998
+Источник: historical 1m OHLC.
+
+########## МОДУЛЬ=КООРДИНАТОР
+[2026-09-28 09:41:08 Panama UTC-5] BTC-LRA | PRESSURE_RETENTION
+episode_id=P0001 | anchor=PRESSURE_DETECTED
+retained_3m=+42.3 USD | extension_3m=+59.2 USD | retained_fraction_3m=+0.715
+Источник: historical 1m OHLC.
+
+########## МОДУЛЬ=КООРДИНАТОР
+[2026-09-28 09:42:49 Panama UTC-5] BTC-LRA | PRESSURE_BREAKOUT_WATCH
+ПРОДАВЦЫ НАЧАЛИ РЕАЛИЗОВЫВАТЬ ДАВЛЕНИЕ.
+Цена начала выходить после последовательного давления.
+Проверяем две возможности:
+1. Исходная сторона сохранит результат — возможное продолжение.
+2. Выход провалится и противоположная сторона получит результат — возможный отказ.
+
+episode_id=P0001
+state=PRESSURE_BREAKOUT_WATCH | pressure_side=DOWN | direction=SHORT
+pressure_reference_price=83048.5
+attempt_time=2026-09-28 09:42:49 | attempt_price=83028.6
+pressure_attempts=3 | pressure_cumulative_delta=-265.3 BTC | pressure_volume=3837.6 BTC | pressure_delta/volume=-6.9%
+extension_reward=+35.9 USD | extension_reward_ATR=+0.354
+retained_reward=+19.9 USD | retained_reward_ATR=+0.196 | retained_fraction=+0.554
+pullback_after_extension=+16.0 USD | pullback_ATR=+0.158
+incremental_extension=+0.0 USD | incremental_extension_ATR=+0.000
+elapsed_seconds=0
+same_side_delta=+0.0 BTC | opposite_delta=+0.0 BTC | outside_closes=0 | bars=1
+Это исследовательское состояние, НЕ вход.
+
+########## МОДУЛЬ=КООРДИНАТОР
+[2026-09-28 09:43:06 Panama UTC-5] BTC-LRA | PRESSURE_CONTINUATION_CANDIDATE
+episode_id=P0001
+state=EARLY_CONTINUATION | pressure_side=DOWN | direction=SHORT
+pressure_reference_price=83048.5
+attempt_time=2026-09-28 09:42:49 | attempt_price=83028.6
+pressure_attempts=3 | pressure_cumulative_delta=-265.3 BTC | pressure_volume=3837.6 BTC | pressure_delta/volume=-6.9%
+extension_reward=+51.2 USD | extension_reward_ATR=+0.504
+retained_reward=+51.1 USD | retained_reward_ATR=+0.503 | retained_fraction=+0.998
+pullback_after_extension=+0.1 USD | pullback_ATR=+0.001
+incremental_extension=+15.3 USD | incremental_extension_ATR=+0.151
+elapsed_seconds=60
+same_side_delta=+0.0 BTC | opposite_delta=+0.7 BTC | outside_closes=1 | bars=2
+Это исследовательское состояние, НЕ вход.
+
+########## МОДУЛЬ=КООРДИНАТОР
+[2026-09-28 09:43:07 Panama UTC-5] BTC-LRA | PRESSURE_RETENTION
+episode_id=P0001 | anchor=PRESSURE_DETECTED
+retained_5m=+349.8 USD | extension_5m=+389.7 USD | retained_fraction_5m=+0.898
+Источник: historical 1m OHLC.
+
+########## МОДУЛЬ=КООРДИНАТОР
+[2026-09-28 09:43:07 Panama UTC-5] BTC-LRA | PRESSURE_OUTCOME
+episode_id=P0001 | anchor=PRESSURE_DETECTED | direction=SHORT | horizon=5m
+entry_price=83347.2 | MFE=+389.7 USD | MAE=+89.8 USD
+MFE_pct=+0.468% | MAE_pct=+0.108%
+MFE_ATR=+3.839 | MAE_ATR=+0.885
+Источник результата: historical 1m OHLC; future leakage не используется.
+
+########## МОДУЛЬ=КООРДИНАТОР
+[2026-09-28 09:43:49 Panama UTC-5] BTC-LRA | PRESSURE_RETENTION
+episode_id=P0001 | anchor=BREAKOUT_WATCH
+retained_1m=+148.7 USD | extension_1m=+183.6 USD | retained_fraction_1m=+0.810
+Источник: historical 1m OHLC.
+
+########## МОДУЛЬ=КООРДИНАТОР
+[2026-09-28 09:44:02 Panama UTC-5] BTC-LRA | PRESSURE_RETENTION
+episode_id=P0001 | anchor=EARLY_CONTINUATION
+retained_1m=+153.1 USD | extension_1m=+160.4 USD | retained_fraction_1m=+0.954
+Источник: historical 1m OHLC.
+
+########## МОДУЛЬ=КООРДИНАТОР
+[2026-09-28 09:44:08 Panama UTC-5] BTC-LRA | TEST_ENTRY_CANDIDATE
+[TEST SHORT] setup=PRESSURE_CONTINUATION
+price=82839.8 | event_id=T000001
+quality={"ACTIVE_LEG": "EFFECTIVE", "AGGRESSION": "LOW", "EFFICIENCY_TREND": "MIXED", "OI_STATE": "DESTROYING", "PRICE_REWARD": "STRONG", "RETENTION": "HELD", "SEQUENCE": "REPEATED", "STRUCTURE_CONFIRMATION": "ACCEPTANCE"}
+Research anchor only. No order is sent.
+
+====================================================================================================
+CASE=CASE2
+[2026-09-28 09:44:57 Panama UTC-5] CASE2 | LR_RESULT | TF=5m
+BTCUSDT | TF=5m
+
+LR: 83232.6 — 83609.4
+Ширина LR: 0.452%
+
+PRE-BREAKOUT bias: BUY_SIDE
+Breakout: UP
+
+Максимальное движение за границу LR:
+185.5 USD (0.222%)
+
+Reclaim: YES
+
+OI после breakout: -231.5 BTC (-0.243%)
+
+РЕЗУЛЬТАТ СОХРАНЁН.
+Никакая сторона автоматически не объявляется trapped.
+====================================================================================================
+########## МОДУЛЬ=КООРДИНАТОР
+[2026-09-28 09:45:02 Panama UTC-5] BTC-LRA | PRESSURE_RETENTION
+episode_id=P0001 | anchor=ACCEPTANCE
+retained_1m=+0.0 USD | extension_1m=+39.6 USD | retained_fraction_1m=+0.000
+Источник: historical 1m OHLC.
+
+########## МОДУЛЬ=КООРДИНАТОР
+[2026-09-28 09:45:50 Panama UTC-5] BTC-LRA | PRESSURE_CONTINUATION
+episode_id=P0001
+state=PRESSURE_CONTINUATION | pressure_side=DOWN | direction=SHORT
+pressure_reference_price=83048.5
+attempt_time=2026-09-28 09:42:49 | attempt_price=83028.6
+pressure_attempts=3 | pressure_cumulative_delta=-265.3 BTC | pressure_volume=3837.6 BTC | pressure_delta/volume=-6.9%
+extension_reward=+213.0 USD | extension_reward_ATR=+2.098
+retained_reward=+142.3 USD | retained_reward_ATR=+1.402 | retained_fraction=+0.668
+pullback_after_extension=+70.7 USD | pullback_ATR=+0.696
+incremental_extension=+0.0 USD | incremental_extension_ATR=+0.000
+elapsed_seconds=180
+same_side_delta=+7.7 BTC | opposite_delta=+0.7 BTC | outside_closes=3 | bars=4
+Это исследовательское состояние, НЕ вход.
+resolution_reason=watch_ttl_expired
+
+########## МОДУЛЬ=КООРДИНАТОР
+[2026-09-28 09:45:51 Panama UTC-5] BTC-LRA | PRESSURE_RETENTION
+episode_id=P0001 | anchor=BREAKOUT_WATCH
+retained_3m=+104.1 USD | extension_3m=+228.4 USD | retained_fraction_3m=+0.456
+Источник: historical 1m OHLC.
+
+########## МОДУЛЬ=КООРДИНАТОР
+[2026-09-28 09:46:03 Panama UTC-5] BTC-LRA | PRESSURE_RETENTION
+episode_id=P0001 | anchor=EARLY_CONTINUATION
+retained_3m=+80.2 USD | extension_3m=+197.2 USD | retained_fraction_3m=+0.407
+Источник: historical 1m OHLC.
+
+########## МОДУЛЬ=КООРДИНАТОР
+[2026-09-28 09:46:09 Panama UTC-5] BTC-LRA | MOMENTUM_DECAY
+[WATCH] SHORT momentum decay
+entry_id=T000001 | progress_atr=0.000 | retained_fraction=0.000
+Same-side aggression is producing less incremental progress.
+
+########## МОДУЛЬ=КООРДИНАТОР
+[2026-09-28 09:47:03 Panama UTC-5] BTC-LRA | PRESSURE_RETENTION
+episode_id=P0001 | anchor=ACCEPTANCE
+retained_3m=+0.0 USD | extension_3m=+39.6 USD | retained_fraction_3m=+0.000
+Источник: historical 1m OHLC.
+
+########## МОДУЛЬ=КООРДИНАТОР
+[2026-09-28 09:47:51 Panama UTC-5] BTC-LRA | PRESSURE_RETENTION
+episode_id=P0001 | anchor=BREAKOUT_WATCH
+retained_5m=+136.5 USD | extension_5m=+228.4 USD | retained_fraction_5m=+0.598
+Источник: historical 1m OHLC.
+
+########## МОДУЛЬ=КООРДИНАТОР
+[2026-09-28 09:47:52 Panama UTC-5] BTC-LRA | PRESSURE_OUTCOME
+episode_id=P0001 | anchor=BREAKOUT_WATCH | direction=SHORT | horizon=5m
+entry_price=83028.6 | MFE=+228.4 USD | MAE=+8.3 USD
+MFE_pct=+0.275% | MAE_pct=+0.010%
+MFE_ATR=+2.250 | MAE_ATR=+0.082
+Источник результата: historical 1m OHLC; future leakage не используется.
+
+########## МОДУЛЬ=КООРДИНАТОР
+[2026-09-28 09:48:04 Panama UTC-5] BTC-LRA | PRESSURE_RETENTION
+episode_id=P0001 | anchor=EARLY_CONTINUATION
+retained_5m=+181.4 USD | extension_5m=+197.2 USD | retained_fraction_5m=+0.920
+Источник: historical 1m OHLC.
+
+########## МОДУЛЬ=КООРДИНАТОР
+[2026-09-28 09:48:04 Panama UTC-5] BTC-LRA | PRESSURE_OUTCOME
+episode_id=P0001 | anchor=EARLY_CONTINUATION | direction=SHORT | horizon=5m
+entry_price=82997.4 | MFE=+197.2 USD | MAE=+39.5 USD
+MFE_pct=+0.238% | MAE_pct=+0.048%
+MFE_ATR=+1.942 | MAE_ATR=+0.389
+Источник результата: historical 1m OHLC; future leakage не используется.
+
+########## МОДУЛЬ=КООРДИНАТОР
+[2026-09-28 09:49:04 Panama UTC-5] BTC-LRA | PRESSURE_RETENTION
+episode_id=P0001 | anchor=ACCEPTANCE
+retained_5m=+0.0 USD | extension_5m=+66.9 USD | retained_fraction_5m=+0.000
+Источник: historical 1m OHLC.
+
+########## МОДУЛЬ=КООРДИНАТОР
+[2026-09-28 09:49:05 Panama UTC-5] BTC-LRA | PRESSURE_OUTCOME
+episode_id=P0001 | anchor=ACCEPTANCE | direction=SHORT | horizon=5m
+entry_price=82839.8 | MFE=+66.9 USD | MAE=+132.7 USD
+MFE_pct=+0.081% | MAE_pct=+0.160%
+MFE_ATR=+0.659 | MAE_ATR=+1.307
+Источник результата: historical 1m OHLC; future leakage не используется.
+
+########## МОДУЛЬ=КООРДИНАТОР
+[2026-09-28 09:50:10 Panama UTC-5] BTC-LRA | PRESSURE_COUNTER_EVENT
+episode_id=P0001
+time=2026-09-28 09:50:00 | counter_side=BUY
+counter_delta=+20.9 BTC | price=82960.7
+reference_extreme=82772.9 | extension_reward=+189.4 USD | retained_reward=+187.8 USD
+Counter-event сохранён в массиве; это не автоматический reversal.
+
+########## МОДУЛЬ=КООРДИНАТОР
+[2026-09-28 09:50:10 Panama UTC-5] BTC-LRA | TEST_ENTRY_INVALIDATED
+[EXIT CANDIDATE] source=T000001
+source_direction=SHORT | opposite_reward_atr=1.850
+Momentum decay plus effective opposite reward. Research only.
+
+########## МОДУЛЬ=КООРДИНАТОР
+[2026-09-28 09:53:08 Panama UTC-5] BTC-LRA | PRESSURE_OUTCOME
+episode_id=P0001 | anchor=PRESSURE_DETECTED | direction=SHORT | horizon=15m
+entry_price=83347.2 | MFE=+691.6 USD | MAE=+89.8 USD
+MFE_pct=+0.830% | MAE_pct=+0.108%
+MFE_ATR=+6.812 | MAE_ATR=+0.885
+Источник результата: historical 1m OHLC; future leakage не используется.
+
+########## МОДУЛЬ=КООРДИНАТОР
+[2026-09-28 09:57:49 Panama UTC-5] BTC-LRA | PRESSURE_OUTCOME
+episode_id=P0001 | anchor=BREAKOUT_WATCH | direction=SHORT | horizon=15m
+entry_price=83028.6 | MFE=+528.5 USD | MAE=+8.3 USD
+MFE_pct=+0.637% | MAE_pct=+0.010%
+MFE_ATR=+5.206 | MAE_ATR=+0.082
+Источник результата: historical 1m OHLC; future leakage не используется.
+
+########## МОДУЛЬ=КООРДИНАТОР
+[2026-09-28 09:58:03 Panama UTC-5] BTC-LRA | PRESSURE_OUTCOME
+episode_id=P0001 | anchor=EARLY_CONTINUATION | direction=SHORT | horizon=15m
+entry_price=82997.4 | MFE=+497.3 USD | MAE=+39.5 USD
+MFE_pct=+0.599% | MAE_pct=+0.048%
+MFE_ATR=+4.898 | MAE_ATR=+0.389
+Источник результата: historical 1m OHLC; future leakage не используется.
+
+########## МОДУЛЬ=КООРДИНАТОР
+[2026-09-28 09:59:03 Panama UTC-5] BTC-LRA | PRESSURE_OUTCOME
+episode_id=P0001 | anchor=ACCEPTANCE | direction=SHORT | horizon=15m
+entry_price=82839.8 | MFE=+339.7 USD | MAE=+189.7 USD
+MFE_pct=+0.410% | MAE_pct=+0.229%
+MFE_ATR=+3.346 | MAE_ATR=+1.869
+Источник результата: historical 1m OHLC; future leakage не используется.
+
+########## МОДУЛЬ=КООРДИНАТОР
+[2026-09-28 10:08:03 Panama UTC-5] BTC-LRA | PRESSURE_OUTCOME
+episode_id=P0001 | anchor=PRESSURE_DETECTED | direction=SHORT | horizon=30m
+entry_price=83347.2 | MFE=+847.1 USD | MAE=+89.8 USD
+MFE_pct=+1.016% | MAE_pct=+0.108%
+MFE_ATR=+8.344 | MAE_ATR=+0.885
+Источник результата: historical 1m OHLC; future leakage не используется.
+
+########## МОДУЛЬ=КООРДИНАТОР
+[2026-09-28 10:12:51 Panama UTC-5] BTC-LRA | PRESSURE_OUTCOME
+episode_id=P0001 | anchor=BREAKOUT_WATCH | direction=SHORT | horizon=30m
+entry_price=83028.6 | MFE=+528.5 USD | MAE=+204.5 USD
+MFE_pct=+0.637% | MAE_pct=+0.246%
+MFE_ATR=+5.206 | MAE_ATR=+2.014
+Источник результата: historical 1m OHLC; future leakage не используется.
+
+########## МОДУЛЬ=КООРДИНАТОР
+[2026-09-28 10:13:03 Panama UTC-5] BTC-LRA | PRESSURE_OUTCOME
+episode_id=P0001 | anchor=EARLY_CONTINUATION | direction=SHORT | horizon=30m
+entry_price=82997.4 | MFE=+497.3 USD | MAE=+235.7 USD
+MFE_pct=+0.599% | MAE_pct=+0.284%
+MFE_ATR=+4.898 | MAE_ATR=+2.322
+Источник результата: historical 1m OHLC; future leakage не используется.
+
+########## МОДУЛЬ=КООРДИНАТОР
+[2026-09-28 10:14:03 Panama UTC-5] BTC-LRA | PRESSURE_OUTCOME
+episode_id=P0001 | anchor=ACCEPTANCE | direction=SHORT | horizon=30m
+entry_price=82839.8 | MFE=+339.7 USD | MAE=+393.3 USD
+MFE_pct=+0.410% | MAE_pct=+0.475%
+MFE_ATR=+3.346 | MAE_ATR=+3.874
+Источник результата: historical 1m OHLC; future leakage не используется.
+
