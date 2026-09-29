@@ -1,0 +1,10 @@
+{
+  "schema_version": "BTC-LRA-002-v1",
+  "last_processed_bar_ts": null,
+  "processed_event_ids": [],
+  "human_event_ids": [],
+  "zones": {},
+  "battles": {},
+  "releases": {},
+  "bar_count": 0
+}
