@@ -13,3 +13,17 @@
 - **what remains unproven:** Passive opposing liquidity не идентифицирована; candidates не являются trading signals; proportional-efficiency interpretation не является универсальным detector threshold.
 - **next research question:** Сравнить ту же attempt-sequence на других BUY releases и проверить, сохраняются ли различия между restored pullbacks и failed retention без hardcoded benchmark values.
 - **commit SHA:** `7912907b1b906cbd9ef6b9509ac21ff60192bffd`
+
+## 2026-09-29 17:31:40 -05:00 — BTC-LRA-002 first live market risk observer
+
+- **task / research question:** Создать единый causal engine для replay/live и подготовить research-only realtime observer с persistent state, silent machine telemetry и ограниченным human output.
+- **working hypothesis:** Одна последовательность закрытых 1m bars должна давать одинаковые causal states в replay и live; release failure следует наблюдать через cumulative effort/result, retention и restoration, а не через одиночную свечу.
+- **what was inspected:** `btc-lra-001.py`, `btc-lra-market-risk-memory.js`, `btc-lra-battle-resolution.js`, logic map, existing benchmark event references и доступный MASTER 1m dataset.
+- **bugs / semantic problems found:** Требовалось отделить causal evidence от outcome и не использовать будущие bars. Для retained pushes нужен cumulative effort since previous extreme. Resolution holding не должен появляться на той же свече, что candidate. Live startup должен seed context без human alerts.
+- **changes made:** Добавлен независимый `btc-lra-002.py` с общим `CausalEngine`, replay/live adapters, 5m/15m/1h/4h aggregation, nested persistent zones, battle/release state, retained-push baselines, attempt metrics, passive-rejection/exit-warning и opposite-control machine events, persistent dedupe, OI metadata и live bootstrap. Добавлены требуемые persistent 002 files.
+- **why those changes were chosen:** Это сохраняет один порядок обработки closed 1m bars, делает startup/restart recoverable и оставляет research observations отдельно от human alerts и торговых приказов.
+- **alternatives rejected and why:** `btc-lra-001.py` не переиспользован и не изменён; live decision logic не подключает order book/liquidations/SPX/NQ; hard relative-impact threshold не добавлен; отдельные независимые TF engines отклонены в пользу общей 1m-derived hierarchy.
+- **benchmark observations:** В коде подготовлены replay checks/reference hooks для 22.09, 28.09 и 29.09, но фактический replay/self-test не выполнен: в текущей Windows-среде доступен только нерабочий WindowsApps Python alias без установленного interpreter.
+- **what remains unproven:** Benchmark parity, runtime syntax, actual 23:33/23:37 event timing, restart persistence и live Binance connectivity требуют запуска в окружении с Python и dataset replay. Это не утверждается как пройденное.
+- **next research question:** Запустить replay/self-test, сравнить sequence parity и leakage audit на MASTER, затем объяснить semantic mismatches до live deployment.
+- **commit SHA:** `db3b2adf0bb17734f43c327135fa842b5f8707c2`
