@@ -8,6 +8,6 @@ The previous SELL MAE bug (absolute max future high) was corrected. Existing tra
 
 Transfer observations checked: 994
 Formula violations found: 0
-Signed directional excursions below zero (not formula violations): 40
+Signed directional excursions below zero (not formula violations): 0
 
 MFE/MAE are outcome-only fields and are not used by transfer or battle candidate logic.
