@@ -9,7 +9,8 @@ __pycache__/
 .codex/
 
 # Local archives and temporary backups
-archive/
+archive/code/
+archive/generated/
 script-versions/
 *.archive_*
 *.archive
@@ -20,3 +21,7 @@ script-versions/
 # Local runtime locks and transient dumps
 *.lock
 BTC_LRA_DUMP.txt
+
+# Structured generated runtime and ad-hoc dump outputs
+runtime/
+data/dumps/

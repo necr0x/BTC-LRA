@@ -1,12 +1,13 @@
 const fs = require('fs');
 const path = require('path');
 
-const ROOT = __dirname;
-const masterFile = path.join(ROOT, 'BTC_LRA_MASTER_20260920_NOW_1M.csv');
-const transferFile = path.join(ROOT, 'BTC_LRA_TRANSFER_EVENTS.jsonl');
-const trajectoryFile = path.join(ROOT, 'BTC_LRA_ZONE_EFFORT_RESULT_ANALYSIS.jsonl');
-const zoneStateFile = path.join(ROOT, 'BTC_LRA_ZONE_STATE.json');
-const zoneEventsFile = path.join(ROOT, 'BTC_LRA_ZONE_EVENTS.jsonl');
+const ROOT = path.resolve(__dirname, '../..');
+const OUTPUT_ROOT = path.join(ROOT, 'research', 'battle-resolution');
+const masterFile = path.join(ROOT, 'data', 'master', 'BTC_LRA_MASTER_20260920_NOW_1M.csv');
+const transferFile = path.join(ROOT, 'research', 'effort-transfer', 'BTC_LRA_TRANSFER_EVENTS.jsonl');
+const trajectoryFile = path.join(ROOT, 'research', 'effort-transfer', 'BTC_LRA_ZONE_EFFORT_RESULT_ANALYSIS.jsonl');
+const zoneStateFile = path.join(ROOT, 'research', 'market-risk', 'BTC_LRA_ZONE_STATE.json');
+const zoneEventsFile = path.join(ROOT, 'research', 'market-risk', 'BTC_LRA_ZONE_EVENTS.jsonl');
 
 function jsonl(file) { return fs.readFileSync(file, 'utf8').split(/\r?\n/).filter(Boolean).map(JSON.parse); }
 function parseCsvLine(line) { const out=[]; let cur='', quoted=false; for (let i=0;i<line.length;i++) { const c=line[i]; if (c==='"') { if (quoted && line[i+1]==='"') { cur+='"'; i++; } else quoted=!quoted; } else if (c===',' && !quoted) { out.push(cur); cur=''; } else cur+=c; } out.push(cur); return out; }
@@ -85,7 +86,7 @@ function audit() {
   const sample=transfers.slice(0,1000); let formulaErrors=0; let signedBelowZero=0;
   for (const c of sample) for (const h of [5,15,30,60]) { const o=c.future_outcome?.[`${h}m`]; if (!o) continue; if (o.mfe_usd<0 || o.mae_usd<0) signedBelowZero++; }
   const lines=['# BTC-LRA battle-resolution MFE/MAE audit','','The transfer script now uses directional distances from candidate price:','- BUY: MFE = max future high - candidate price; MAE = candidate price - min future low.','- SELL: MFE = candidate price - min future low; MAE = max future high - candidate price.','','The previous SELL MAE bug (absolute max future high) was corrected. Existing transfer observations were regenerated; no transfer was removed or filtered.','',`Transfer observations checked: ${sample.length}`,`Formula violations found: ${formulaErrors}`,`Signed directional excursions below zero (not formula violations): ${signedBelowZero}`,'','MFE/MAE are outcome-only fields and are not used by transfer or battle candidate logic.'];
-  fs.writeFileSync(path.join(ROOT,'BTC_LRA_BATTLE_RESOLUTION_MFE_MAE_AUDIT.md'),lines.join('\n')+'\n');
+  fs.writeFileSync(path.join(OUTPUT_ROOT,'BTC_LRA_BATTLE_RESOLUTION_MFE_MAE_AUDIT.md'),lines.join('\n')+'\n');
 }
 
 function main() {
@@ -96,8 +97,8 @@ function main() {
   for (const [id,list] of byZone) { const z=zonesById.get(id), rec=trajectories.get(id); if (!z||!rec) continue; const sorted=list.slice().sort((a,b)=>a.candidate_time-b.candidate_time); for(let i=0;i<sorted.length;i++){const c=sorted[i],next=sorted[i+1]||null,ev=postTransferEvidence(c,z,rec,next),release=releaseAfter(id,c.candidate_time),bid=`BATTLE-${id}`; events.push({battle_id:bid,zone_id:id,time:c.candidate_time,time_text:fmt(c.candidate_time),state:'TRANSFER_LOCAL',source_transfer:c.event_type,available_at:c.candidate_time,evidence:{price:c.candidate_price,side_a:c.side_a,side_b:c.side_b,effort:c.evidence?.side_b_effort??null,result_per_100_BTC:c.evidence?.side_b_result_per_100_BTC??null,retention:c.evidence?.side_b_retained_reward??null,OI_BTC:c.evidence?.OI_BTC??null,price_location:location(c.candidate_price,z),time_since_previous_transfer:i?(c.candidate_time-sorted[i-1].candidate_time)/60000:null}}); if(next && !ev.new_side_holding)events.push({battle_id:bid,zone_id:id,time:next.candidate_time,time_text:fmt(next.candidate_time),state:'TRANSFER_CHALLENGED',source_transfer:c.event_type,available_at:next.candidate_time,evidence:{next_transfer:next.event_type,new_side_holding:ev.new_side_holding,old_side_restored:ev.old_side_restored}}); if(ev.first_new_side_reward)events.push({battle_id:bid,zone_id:id,time:ev.first_new_side_reward.ts,time_text:ev.first_new_side_reward.timestamp,state:'BATTLE_RESOLUTION_CANDIDATE',source_transfer:c.event_type,available_at:ev.first_new_side_reward.ts,evidence:ev.first_new_side_reward}); if(ev.holding_bar)events.push({battle_id:bid,zone_id:id,time:ev.holding_bar.ts,time_text:ev.holding_bar.timestamp,state:'BATTLE_RESOLUTION_HOLDING',source_transfer:c.event_type,available_at:ev.holding_bar.ts,evidence:ev.holding_bar}); if(ev.first_old_side_restoration)events.push({battle_id:bid,zone_id:id,time:ev.first_old_side_restoration.ts,time_text:ev.first_old_side_restoration.timestamp,state:'OLD_SIDE_RESTORED',source_transfer:c.event_type,available_at:ev.first_old_side_restoration.ts,evidence:ev.first_old_side_restoration}); if(release){releaseRegistry.set(release.release_id,{release_id:release.release_id,zone_id:id,time:release.ts,time_text:release.time,state:'RELEASE_OBSERVED',available_at:release.ts,evidence:{event:release.event,direction:release.direction,price:release.price}}); events.push({battle_id:bid,zone_id:id,time:release.ts,time_text:release.time,state:'RELEASE_OBSERVED_LINK',source_transfer:c.event_type,release_id:release.release_id,available_at:release.ts,evidence:{event:release.event,direction:release.direction,price:release.price,after_fact:true}}); }} }
   events.push(...releaseRegistry.values());
   events.sort((a,b)=>a.time-b.time);
-  fs.writeFileSync(path.join(ROOT,'BTC_LRA_TRANSFER_BATTLES.jsonl'),battles.map(JSON.stringify).join('\n')+'\n');
-  fs.writeFileSync(path.join(ROOT,'BTC_LRA_BATTLE_RESOLUTION_EVENTS.jsonl'),events.map(JSON.stringify).join('\n')+'\n');
+  fs.writeFileSync(path.join(OUTPUT_ROOT,'BTC_LRA_TRANSFER_BATTLES.jsonl'),battles.map(JSON.stringify).join('\n')+'\n');
+  fs.writeFileSync(path.join(OUTPUT_ROOT,'BTC_LRA_BATTLE_RESOLUTION_EVENTS.jsonl'),events.map(JSON.stringify).join('\n')+'\n');
   audit();
   const benchmarkIds=['1H-1790046000000']; const bench=events.filter(e=>benchmarkIds.includes(e.zone_id)&&(e.time>=Date.parse('2026-09-22T18:20:00-05:00')&&e.time<=Date.parse('2026-09-22T21:10:00-05:00')));
   const b28=events.filter(e=>e.time>=Date.parse('2026-09-28T06:00:00-05:00')&&e.time<=Date.parse('2026-09-28T07:15:00-05:00'));
@@ -107,7 +108,7 @@ function main() {
   lines.push('','## Benchmark 2026-09-28 06:00–07:15 Panama'); for(const e of b28)lines.push(`- ${e.time_text} | ${e.state} | ${e.source_transfer||'BATTLE'}`);
   lines.push('','## Benchmark 2026-09-29 00:20–02:00 Panama'); for(const e of b29)lines.push(`- ${e.time_text} | ${e.state} | ${e.source_transfer||'BATTLE'}`);
   lines.push('','## Interpretation limits','The first pass records raw post-transfer trajectories and descriptive observations. It does not select a winner, infer position side from OI, or promote a battle resolution into a trading signal.','');
-  fs.writeFileSync(path.join(ROOT,'BTC_LRA_BATTLE_RESOLUTION_ANALYSIS.md'),lines.join('\n'));
+  fs.writeFileSync(path.join(OUTPUT_ROOT,'BTC_LRA_BATTLE_RESOLUTION_ANALYSIS.md'),lines.join('\n'));
   console.log(JSON.stringify({source_transfers:transfers.length,battles:battles.length,resolution_events:events.length,benchmark_0922:bench.length,benchmark_0928:b28.length,benchmark_0929:b29.length},null,2));
 }
 main();

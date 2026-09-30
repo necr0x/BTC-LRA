@@ -8,7 +8,8 @@ BASE = "https://fapi.binance.com"
 SYMBOL = "BTCUSDT"
 PANAMA = timezone(timedelta(hours=-5))
 
-LOG_FILE = Path(__file__).with_name("BTC_LRA_RESEARCH_LOG.txt")
+PROJECT_ROOT = Path(__file__).resolve().parent
+LOG_FILE = PROJECT_ROOT / "runtime" / "logs" / "BTC_LRA_RESEARCH_LOG.txt"
 DEFAULT_START = "2026-09-24 09:00"
 DEFAULT_END = "2026-09-25 23:59"
 

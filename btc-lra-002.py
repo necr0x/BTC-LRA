@@ -30,6 +30,8 @@ DEDUPE_WINDOW = 4096
 ENGINE_EVENT_SAMPLE = 256
 
 ROOT = Path(__file__).resolve().parent
+DATA_MASTER_ROOT = ROOT / "data" / "master"
+RUNTIME_ROOT = ROOT / "runtime"
 SYMBOL = "BTCUSDT"
 TZ_LABEL = "America/Panama"
 TF_MINUTES = {"5m": 5, "15m": 15, "1h": 60, "4h": 240}
@@ -37,15 +39,15 @@ PARENT_TFS = {"5m": ("15m", "1h", "4h"), "15m": ("1h", "4h"), "1h": ("4h",), "4h
 ZONE_WINDOWS = {"5m": 36, "15m": 24, "1h": 18, "4h": 12}
 BOOTSTRAP_MINUTES = ZONE_WINDOWS["4h"] * TF_MINUTES["4h"] + TF_MINUTES["4h"]
 OUTPUTS = {
-    "state": ROOT / "BTC_LRA_002_STATE.json",
-    "zones": ROOT / "BTC_LRA_002_ZONE_STATE.json",
-    "events": ROOT / "BTC_LRA_002_EVENTS.jsonl",
-    "battles": ROOT / "BTC_LRA_002_BATTLES.jsonl",
-    "releases": ROOT / "BTC_LRA_002_RELEASES.jsonl",
-    "oi": ROOT / "BTC_LRA_002_OI_SAMPLES.jsonl",
-    "human": ROOT / "BTC_LRA_002_HUMAN.log",
-    "debug": ROOT / "BTC_LRA_002_DEBUG.log",
-    "audit": ROOT / "BTC_LRA_002_REPLAY_AUDIT.md",
+    "state": RUNTIME_ROOT / "state" / "BTC_LRA_002_STATE.json",
+    "zones": RUNTIME_ROOT / "state" / "BTC_LRA_002_ZONE_STATE.json",
+    "events": RUNTIME_ROOT / "events" / "BTC_LRA_002_EVENTS.jsonl",
+    "battles": RUNTIME_ROOT / "events" / "BTC_LRA_002_BATTLES.jsonl",
+    "releases": RUNTIME_ROOT / "events" / "BTC_LRA_002_RELEASES.jsonl",
+    "oi": RUNTIME_ROOT / "events" / "BTC_LRA_002_OI_SAMPLES.jsonl",
+    "human": RUNTIME_ROOT / "logs" / "BTC_LRA_002_HUMAN.log",
+    "debug": RUNTIME_ROOT / "debug" / "BTC_LRA_002_DEBUG.log",
+    "audit": RUNTIME_ROOT / "debug" / "BTC_LRA_002_REPLAY_AUDIT.md",
 }
 
 
@@ -508,7 +510,7 @@ class CausalEngine:
         return {"zone_id": zid, "timeframe": tf, "state": "ACTIVE_BALANCE", "start_ts": start, "available_at_ts": bars[-1]["bucket_ts"] + TF_MINUTES[tf] * 60000 - 1, "low": lo, "high": hi, "mid": (lo + hi) / 2, "width_usd": width, "volume_BTC": sum(x["volume_BTC"] for x in bars), "delta_BTC": sum(x["delta_BTC"] for x in bars), "OI_path": [{"ts": x["ts"], "OI_BTC": x.get("OI_BTC"), "dOI_BTC": x.get("dOI_BTC"), "oi_source": x.get("oi_source"), "oi_sample_time_ts": x.get("oi_sample_time_ts"), "oi_resolution": x.get("oi_resolution"), "oi_age_seconds": x.get("oi_age_seconds")} for x in bars if x.get("OI_BTC") is not None], "gross_travel": sum(x["high"] - x["low"] for x in bars), "net_displacement": bars[-1]["close"] - bars[0]["open"], "boundary_attacks": 0, "returns": 0, "turnover_after_departure_BTC": 0.0, "nested_parent_ids": [], "events": []}
 
     def update_zones(self, bar: dict[str, Any]) -> None:
-        for zid in list(self.active_zone_ids):
+        for zid in sorted(self.active_zone_ids):
             zone = self.state["zones"].get(zid)
             if not zone:
                 continue
@@ -552,7 +554,7 @@ class CausalEngine:
     def active_zones_at(self, bar: dict[str, Any]) -> list[dict[str, Any]]:
         # Historical zones remain queryable; only interactable zones enter the
         # hot bar loop. This does not alter zone membership or causal checks.
-        candidate_ids = self.active_zone_ids | self.return_zone_ids
+        candidate_ids = sorted(self.active_zone_ids | self.return_zone_ids)
         return [
             zone for zid in candidate_ids
             if (zone := self.state["zones"].get(zid))
@@ -803,7 +805,7 @@ class CausalEngine:
         for zone in active_zones:
             started = time.perf_counter(); self.battle_step(zone, bar); self.profile["time_seconds"]["battle_step"] += time.perf_counter() - started
         self.profile["counts"]["peak_active_zones"] = max(self.profile["counts"]["peak_active_zones"], len(active_zones))
-        for release_id in list(self.active_release_ids):
+        for release_id in sorted(self.active_release_ids):
             release = self.state["releases"].get(release_id)
             if release and bar["ts"] > release["start_ts"]:
                 started = time.perf_counter(); self.release_step(release, self.state["zones"][release["zone_id"]], bar); self.profile["time_seconds"]["release_step"] += time.perf_counter() - started
@@ -838,7 +840,7 @@ class CausalEngine:
             battle["transfers"] = list(battle.get("transfers", []))[-64:]
             battle["candidate_history"] = list(battle.get("candidate_history", []))[-64:]
         releases = {}
-        for rid in self.active_release_ids:
+        for rid in sorted(self.active_release_ids):
             release = self.state.get("releases", {}).get(rid)
             if not release:
                 continue
@@ -880,7 +882,7 @@ def replay_bars(csv_path: Path) -> list[dict[str, Any]]:
 
 
 def benchmark_references() -> list[dict[str, Any]]:
-    path = ROOT / "BTC_LRA_BATTLE_RESOLUTION_EVENTS.jsonl"; refs = []
+    path = ROOT / "research" / "battle-resolution" / "BTC_LRA_BATTLE_RESOLUTION_EVENTS.jsonl"; refs = []
     if not path.exists(): return refs
     wanted = {"2026-09-22 19:10:00", "2026-09-22 19:11:00", "2026-09-22 20:56:00", "2026-09-22 20:58:00", "2026-09-28 06:56:00", "2026-09-28 06:58:00", "2026-09-28 07:04:00", "2026-09-28 07:06:00", "2026-09-29 00:48:00", "2026-09-29 00:50:00"}
     for row in CausalEngine.load_jsonl(path):
@@ -1007,7 +1009,7 @@ def run_self_test(args: argparse.Namespace) -> dict[str, Any]:
 def main() -> None:
     parser = argparse.ArgumentParser(description="BTC-LRA-002 causal realtime research observer")
     parser.add_argument("--mode", choices=("replay", "live"), default="replay")
-    parser.add_argument("--csv", type=Path, default=ROOT / "BTC_LRA_MASTER_20260920_NOW_1M.csv")
+    parser.add_argument("--csv", type=Path, default=DATA_MASTER_ROOT / "BTC_LRA_MASTER_20260920_NOW_1M.csv")
     parser.add_argument("--reset", action="store_true")
     parser.add_argument("--poll-seconds", type=int, default=5)
     parser.add_argument("--self-test", action="store_true")

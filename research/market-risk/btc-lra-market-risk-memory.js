@@ -1,7 +1,9 @@
 const fs = require('fs/promises');
 const path = require('path');
 
-const ROOT = __dirname;
+const ROOT = path.resolve(__dirname, '../..');
+const DATA_ROOT = path.join(ROOT, 'data', 'master');
+const OUTPUT_ROOT = path.join(ROOT, 'research', 'market-risk');
 const API = 'https://fapi.binance.com';
 const SYMBOL = 'BTCUSDT';
 const TZ = 'America/Panama';
@@ -29,7 +31,8 @@ function panama(ms) {
 function num(x) { return x == null || x === '' ? null : Number(x); }
 function csv(v) { if (v == null) return ''; const s = String(v); return /[",\n]/.test(s) ? `"${s.replaceAll('"','""')}"` : s; }
 function writeCsv(file, headers, rows) {
-  return fs.writeFile(path.join(ROOT, file), [headers.join(','), ...rows.map(r => headers.map(h => csv(r[h])).join(','))].join('\n') + '\n', 'utf8');
+  const base = file.startsWith('BTC_LRA_MASTER_') ? DATA_ROOT : OUTPUT_ROOT;
+  return fs.writeFile(path.join(base, file), [headers.join(','), ...rows.map(r => headers.map(h => csv(r[h])).join(','))].join('\n') + '\n', 'utf8');
 }
 function signedDelta(k) { return 2 * num(k[9]) - num(k[5]); }
 
@@ -132,9 +135,9 @@ async function main() {
   for(const [n,a] of Object.entries(aggregates)){ const h=['timestamp_panama','timestamp_utc','open','high','low','close','volume_BTC','taker_buy_BTC','taker_sell_BTC','delta_BTC','delta_volume_ratio','OI_start_BTC','OI_end_BTC','dOI_BTC','bar_count','position_relative_to_LR']; await writeCsv(`BTC_LRA_MASTER_20260920_NOW_${n}.csv`,h,a.map(x=>({timestamp_panama:panama(x.ts),timestamp_utc:new Date(x.ts).toISOString(),open:x.open,high:x.high,low:x.low,close:x.close,volume_BTC:x.volume,taker_buy_BTC:x.takerBuy,taker_sell_BTC:x.takerSell,delta_BTC:x.delta,delta_volume_ratio:x.deltaVolumeRatio,OI_start_BTC:x.oiStart,OI_end_BTC:x.oiEnd,dOI_BTC:x.doi,bar_count:x.barCount,position_relative_to_LR:position(x)}))); }
   const allZones=[],allEvents=[]; for(const [n,m] of [['5M',5],['15M',15],['1H',60],['4H',240]]){ const z=describeZones(aggregates[n],n,m); allZones.push(...z.zones); allEvents.push(...z.events); }
   const memory=allZones.map(z=>({...z,observed_data_only:true,interpretation:null,inference:null}));
-  await fs.writeFile(path.join(ROOT,'BTC_LRA_MARKET_RISK_MEMORY.jsonl'),memory.map(x=>JSON.stringify(x)).join('\n')+'\n','utf8');
-  await fs.writeFile(path.join(ROOT,'BTC_LRA_ZONE_EVENTS.jsonl'),allEvents.map(x=>JSON.stringify(x)).join('\n')+'\n','utf8');
-  await fs.writeFile(path.join(ROOT,'BTC_LRA_ZONE_STATE.json'),JSON.stringify({generated_at:new Date().toISOString(),timezone:TZ,source:'Binance Futures',zones:memory},null,2)+'\n','utf8');
+  await fs.writeFile(path.join(OUTPUT_ROOT,'BTC_LRA_MARKET_RISK_MEMORY.jsonl'),memory.map(x=>JSON.stringify(x)).join('\n')+'\n','utf8');
+  await fs.writeFile(path.join(OUTPUT_ROOT,'BTC_LRA_ZONE_EVENTS.jsonl'),allEvents.map(x=>JSON.stringify(x)).join('\n')+'\n','utf8');
+  await fs.writeFile(path.join(OUTPUT_ROOT,'BTC_LRA_ZONE_STATE.json'),JSON.stringify({generated_at:new Date().toISOString(),timezone:TZ,source:'Binance Futures',zones:memory},null,2)+'\n','utf8');
   const missing=[]; for(let i=1;i<rows.length;i++)if(rows[i].ts-rows[i-1].ts!==60000)missing.push({from:panama(rows[i-1].ts),to:panama(rows[i].ts),missing_minutes:(rows[i].ts-rows[i-1].ts)/60000-1});
   const start=panama(rows[0].ts), finish=panama(rows.at(-1).ts), zoneCounts=Object.fromEntries(['5M','15M','1H','4H'].map(tf=>[tf,memory.filter(z=>z.timeframe===tf).length]));
   const chronology = allEvents.sort((a,b)=>String(a.event_time).localeCompare(String(b.event_time))).map(e=>`- ${e.event_time} | ${e.timeframe} | ${e.event} | zone=${e.zone_id} | price=${e.price} | available_at=${e.available_at}`).join('\n');
@@ -165,7 +168,7 @@ async function main() {
     '## Hypothesis', 'Future research may test whether repeated loss of retained result plus opposite-side retained reward coincides with risk migration. This output does not score or decide that hypothesis.', '',
     '## Important limitation', 'This first replay records measurable price/volume/delta/OI behavior and descriptive zones. It does not infer who is trapped, who is market maker inventory, or whether any release is a valid entry.', ''
   ].join('\n');
-  await fs.writeFile(path.join(ROOT,'BTC_LRA_MASTER_ANALYSIS_20260920_NOW.md'),md,'utf8');
+  await fs.writeFile(path.join(OUTPUT_ROOT,'BTC_LRA_MASTER_ANALYSIS_20260920_NOW.md'),md,'utf8');
   console.log(JSON.stringify({start,finish,oneMin:rows.length,oiSamples:oi.length,missing1m:missing.length,zones:zoneCounts},null,2));
 }
 main().catch(err=>{console.error(err.stack||err);process.exitCode=1;});

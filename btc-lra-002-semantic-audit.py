@@ -20,6 +20,9 @@ from typing import Any
 
 ROOT = Path(__file__).resolve().parent
 ENGINE_PATH = ROOT / "btc-lra-002.py"
+DATA_MASTER_ROOT = ROOT / "data" / "master"
+PARITY_ROOT = ROOT / "research" / "restart-parity"
+RUNTIME_EVENTS_ROOT = ROOT / "runtime" / "events"
 HUMAN_EVENTS = {"BATTLE_STARTED", "BATTLE_RESOLUTION_CANDIDATE", "BATTLE_RESOLUTION_HOLDING", "PASSIVE_REJECTION_EXIT_WARNING", "OPPOSITE_CONTROL_CANDIDATE"}
 SELECTED_EVENTS = {"TRANSFER_CANDIDATE", "BATTLE_RESOLUTION_CANDIDATE", "BATTLE_RESOLUTION_HOLDING", "TRANSFER_CHALLENGED", "OLD_SIDE_RESTORED", "PASSIVE_REJECTION_EXIT_WARNING", "OPPOSITE_CONTROL_CANDIDATE"}
 CLUSTER_MAX_GAP_MINUTES = 5
@@ -76,7 +79,7 @@ def population_audit(root: Path):
     counts = Counter(); ids = defaultdict(lambda: {"zone": set(), "battle": set(), "release": set()})
     by_minute = defaultdict(lambda: {"events": 0, "types": Counter(), "zones": set(), "battles": set(), "releases": set(), "selected_count": 0, "selected_directions": set(), "selected_low": None, "selected_high": None, "selected_zone_ids": set(), "selected_battle_ids": set(), "selected_release_ids": set()})
     active_battles: set[str] = set(); active_releases: set[str] = set(); active_zones: set[str] = set(); returned_zones: set[str] = set(); benchmark_events = defaultdict(list)
-    paths = [root / "BTC_LRA_002_EVENTS.jsonl", root / "BTC_LRA_002_BATTLES.jsonl", root / "BTC_LRA_002_RELEASES.jsonl"]
+    paths = [RUNTIME_EVENTS_ROOT / "BTC_LRA_002_EVENTS.jsonl", RUNTIME_EVENTS_ROOT / "BTC_LRA_002_BATTLES.jsonl", RUNTIME_EVENTS_ROOT / "BTC_LRA_002_RELEASES.jsonl"]
     benchmark_windows = [(f"{start}..{end}", local_minute(start), local_minute(end) + 59999) for start, end in BENCHMARK_LOCAL]
     for path in paths:
         for row in iter_jsonl(path):
@@ -152,6 +155,85 @@ SIGNATURE_KEYS = (
     "status", "winner", "leader", "old_side_restored", "new_side_progress",
 )
 SEMANTIC_KEYS = tuple(key for key in SIGNATURE_KEYS if key not in {"zone_id", "battle_id", "release_id"})
+
+
+class DeterministicSet(set):
+    """Audit-only set preserving set membership while making iteration stable."""
+    def __iter__(self):
+        return iter(sorted(set.__iter__(self)))
+
+    def __or__(self, other):
+        return DeterministicSet(set(set.__iter__(self)).union(other))
+
+
+def apply_audit_variant(engine: Any, deterministic_sets: bool) -> None:
+    if not deterministic_sets:
+        return
+    for name in ("active_zone_ids", "return_zone_ids", "active_release_ids"):
+        setattr(engine, name, DeterministicSet(getattr(engine, name)))
+
+
+def rehydrate_audit(engine: Any, bars: list[dict[str, Any]], module: Any, preserve_swing_candidates: bool) -> None:
+    saved_candidates = [dict(x) for x in engine.swing_candidates] if preserve_swing_candidates else None
+    start = max(0, len(bars) - module.BOOTSTRAP_MINUTES - 1)
+    for bar in bars[start:]:
+        engine.rehydrate_bar(dict(bar))
+    if saved_candidates is not None:
+        engine.swing_candidates[:] = saved_candidates
+        engine.state["swing_candidates"] = engine.swing_candidates
+        engine.swing_candidate_ids = {x.get("reference_id") for x in saved_candidates}
+
+
+def install_digest_probe(engine: Any, initial_semantic: str = "") -> dict[str, Any]:
+    semantic_digest = initial_semantic
+    original_emit = engine.emit
+
+    def probed_emit(kind: str, ts: int, payload: dict[str, Any], human: dict[str, Any] | None = None, machine_file: str = "events", observable_at_ts: int | None = None):
+        nonlocal semantic_digest
+        before = engine.event_digest_count
+        record = original_emit(kind, ts, payload, human=human, machine_file=machine_file, observable_at_ts=observable_at_ts)
+        if engine.event_digest_count != before:
+            signature = causal_signature(record, engine.event_digest_count)
+            core = signature_core(signature, SEMANTIC_KEYS)
+            semantic_digest = hashlib.sha256((semantic_digest + "|" + json.dumps(core, separators=(",", ":"), ensure_ascii=False)).encode()).hexdigest()
+        return record
+
+    engine.emit = probed_emit
+    return {"semantic": lambda: semantic_digest}
+
+
+def isolation_variant(module: Any, bars: list[dict[str, Any]], split: int, label: str, deterministic_sets: bool, preserve_swing_candidates: bool) -> dict[str, Any]:
+    root = Path(tempfile.mkdtemp(prefix="btc002-isolation-"))
+
+    def outputs(prefix: str) -> dict[str, Path]:
+        branch = root / prefix; branch.mkdir()
+        return {key: branch / f"{key}.json" for key in ("state", "zones", "events", "battles", "releases", "oi", "human", "debug", "audit")}
+
+    def make(paths: dict[str, Path]) -> tuple[Any, dict[str, Any]]:
+        engine = module.CausalEngine(outputs=paths, reset=True, human_enabled=False, persist_each_bar=False, telemetry="none")
+        engine.write_jsonl = lambda path, value: None
+        apply_audit_variant(engine, deterministic_sets)
+        return engine, install_digest_probe(engine)
+
+    continuous, continuous_probe = make(outputs("continuous"))
+    for bar in bars: continuous.process_closed_bar(dict(bar))
+    continuous_result = {"digest": continuous.digest(), "semantic_digest": continuous_probe["semantic"](), "battles": continuous.profile["counts"]["battles_created"], "releases": continuous.profile["counts"]["releases_created"]}
+    del continuous; gc.collect()
+
+    paths = outputs("restart")
+    first, first_probe = make(paths)
+    for bar in bars[:split]: first.process_closed_bar(dict(bar))
+    snapshot = first.persistence_state(); module.atomic_json(paths["state"], snapshot); module.atomic_json(paths["zones"], {"zones": list(snapshot["zones"].values())})
+    prefix_semantic = first_probe["semantic"]()
+    del first; gc.collect()
+    restarted = module.CausalEngine(outputs=paths, human_enabled=False, persist_each_bar=False, telemetry="none")
+    restarted.write_jsonl = lambda path, value: None
+    apply_audit_variant(restarted, deterministic_sets)
+    rehydrate_audit(restarted, bars[:split], module, preserve_swing_candidates)
+    restarted_probe = install_digest_probe(restarted, prefix_semantic)
+    for bar in bars[split:]: restarted.process_closed_bar(dict(bar))
+    restarted_result = {"digest": restarted.digest(), "semantic_digest": restarted_probe["semantic"](), "battles": restarted.profile["counts"]["battles_created"], "releases": restarted.profile["counts"]["releases_created"]}
+    return {"label": label, "split": split, "bars": len(bars), "temp_root": str(root), "continuous": continuous_result, "restarted": restarted_result, "strict_parity": continuous_result["digest"] == restarted_result["digest"], "semantic_parity": continuous_result["semantic_digest"] == restarted_result["semantic_digest"], "battle_parity": continuous_result["battles"] == restarted_result["battles"], "release_parity": continuous_result["releases"] == restarted_result["releases"]}
 
 
 def compact_value(value: Any) -> Any:
@@ -355,6 +437,38 @@ def diagnostic_parity_case(module, bars, split, label):
     return result
 
 
+def parity_case(module, bars, split, label):
+    root = Path(tempfile.mkdtemp(prefix="btc002-parity-"))
+    def make_engine():
+        outputs = {key: root / f"{key}.json" for key in ("state", "zones", "events", "battles", "releases", "oi", "human", "debug", "audit")}
+        engine = module.CausalEngine(outputs=outputs, reset=True, human_enabled=False, persist_each_bar=False, telemetry="none")
+        engine.write_jsonl = lambda path, value: None
+        return engine
+    def run(engine, sequence):
+        for bar in sequence:
+            engine.process_closed_bar(dict(bar))
+    continuous = make_engine()
+    run(continuous, bars)
+    continuous_result = {"digest": continuous.digest(), "events": continuous.event_digest_count, "battles": continuous.profile["counts"]["battles_created"], "releases": continuous.profile["counts"]["releases_created"]}
+    del continuous
+    gc.collect()
+    first = make_engine()
+    run(first, bars[:split])
+    snapshot = first.persistence_state()
+    module.atomic_json(first.outputs["state"], snapshot)
+    module.atomic_json(first.outputs["zones"], {"zones": list(snapshot["zones"].values())})
+    outputs = first.outputs
+    del first
+    gc.collect()
+    restarted = module.CausalEngine(outputs=outputs, human_enabled=False, persist_each_bar=False, telemetry="none")
+    restarted.write_jsonl = lambda path, value: None
+    start = max(0, split - module.BOOTSTRAP_MINUTES - 1)
+    for bar in bars[start:split]:
+        restarted.rehydrate_bar(dict(bar))
+    run(restarted, bars[split:])
+    return {"label": label, "split": split, "bars": len(bars), "parity": continuous_result["digest"] == restarted.digest(), "continuous_digest": continuous_result["digest"], "restarted_digest": restarted.digest(), "continuous_event_count": continuous_result["events"], "restarted_event_count": restarted.event_digest_count, "continuous_battles": continuous_result["battles"], "restarted_battles": restarted.profile["counts"]["battles_created"], "continuous_releases": continuous_result["releases"], "restarted_releases": restarted.profile["counts"]["releases_created"], "first_divergent_event": None if continuous_result["digest"] == restarted.digest() else "digest differs; no detector changes were made"}
+
+
 def split_boundary_case(module, bars, split, label):
     root = Path(tempfile.mkdtemp(prefix="btc002-split-state-"))
     paths = {key: root / f"{key}.json" for key in ("state", "zones", "events", "battles", "releases", "oi", "human", "debug", "audit")}
@@ -391,25 +505,33 @@ def split_boundary_case(module, bars, split, label):
 
 def write_outputs(summary, metrics, clusters):
     result = {"population": summary, "physical_clusters": {"count": len(clusters), "raw_events": sum(x["raw_event_count"] for x in clusters), "raw_human_eligible": sum(x["human_eligible_count"] for x in clusters), "unique_physical_episodes_with_human": sum(bool(x["human_eligible_count"]) for x in clusters), "representations_per_episode": {"median": statistics.median([x["zone_representations"] for x in clusters]) if clusters else 0, "max": max((x["zone_representations"] for x in clusters), default=0)}}}
-    (ROOT / "BTC_LRA_002_EVENT_POPULATION_SUMMARY.json").write_text(json.dumps(result, ensure_ascii=False, indent=2), encoding="utf-8")
-    with (ROOT / "BTC_LRA_002_BAR_CONCURRENCY.csv").open("w", newline="", encoding="utf-8") as handle:
+    (PARITY_ROOT / "BTC_LRA_002_EVENT_POPULATION_SUMMARY.json").write_text(json.dumps(result, ensure_ascii=False, indent=2), encoding="utf-8")
+    with (PARITY_ROOT / "BTC_LRA_002_BAR_CONCURRENCY.csv").open("w", newline="", encoding="utf-8") as handle:
         writer = csv.DictWriter(handle, fieldnames=["minute_ts", "events", "zones", "interactable_zones", "battles", "releases"]); writer.writeheader(); writer.writerows(metrics)
-    with (ROOT / "BTC_LRA_002_PHYSICAL_EPISODES.jsonl").open("w", encoding="utf-8") as handle:
+    with (PARITY_ROOT / "BTC_LRA_002_PHYSICAL_EPISODES.jsonl").open("w", encoding="utf-8") as handle:
         for row in clusters: handle.write(json.dumps(row, ensure_ascii=False) + "\n")
 
 
 def main():
-    parser = argparse.ArgumentParser(); parser.add_argument("--csv", type=Path, default=ROOT / "BTC_LRA_MASTER_20260920_NOW_1M.csv"); parser.add_argument("--population", action="store_true"); parser.add_argument("--parity", action="store_true"); parser.add_argument("--diagnose-parity", action="store_true"); parser.add_argument("--split-state", action="store_true"); args = parser.parse_args()
-    if not args.population and not args.parity and not args.diagnose_parity and not args.split_state: args.population = args.parity = True
+    parser = argparse.ArgumentParser(); parser.add_argument("--csv", type=Path, default=DATA_MASTER_ROOT / "BTC_LRA_MASTER_20260920_NOW_1M.csv"); parser.add_argument("--population", action="store_true"); parser.add_argument("--parity", action="store_true"); parser.add_argument("--diagnose-parity", action="store_true"); parser.add_argument("--split-state", action="store_true"); parser.add_argument("--isolation", action="store_true"); args = parser.parse_args()
+    if not args.population and not args.parity and not args.diagnose_parity and not args.split_state and not args.isolation: args.population = args.parity = True
     output = {}
     if args.population:
         summary, metrics, by_minute = population_audit(ROOT); clusters = physical_clusters(by_minute); write_outputs(summary, metrics, clusters); output["population"] = {"total_machine_events": summary["total_machine_events"], "top_event_types": list(summary["event_types"].items())[:10], "physical_episode_count": len(clusters), "raw_human_eligible": sum(x["human_eligible_count"] for x in clusters), "unique_physical_episodes_with_human": sum(bool(x["human_eligible_count"]) for x in clusters)}
     if args.parity:
-        module = load_engine(); bars = module.replay_bars(args.csv); cases = [parity_case(module, bars[:9000], 7000, "0-9000 split 7000"), parity_case(module, bars, 11000, "0-13810 split 11000")]; (ROOT / "BTC_LRA_002_RESTART_PARITY.json").write_text(json.dumps(cases, ensure_ascii=False, indent=2), encoding="utf-8"); output["restart_parity"] = cases
+        module = load_engine(); bars = module.replay_bars(args.csv); cases = [parity_case(module, bars[:9000], 7000, "0-9000 split 7000"), parity_case(module, bars, 11000, "0-13810 split 11000")]; (PARITY_ROOT / "BTC_LRA_002_RESTART_PARITY.json").write_text(json.dumps(cases, ensure_ascii=False, indent=2), encoding="utf-8"); output["restart_parity"] = cases
     if args.diagnose_parity:
-        module = load_engine(); bars = module.replay_bars(args.csv); case = diagnostic_parity_case(module, bars[:9000], 7000, "0-9000 split 7000"); (ROOT / "BTC_LRA_002_RESTART_DIVERGENCE.json").write_text(json.dumps(case, ensure_ascii=False, indent=2), encoding="utf-8"); output["restart_divergence"] = case
+        module = load_engine(); bars = module.replay_bars(args.csv); case = diagnostic_parity_case(module, bars[:9000], 7000, "0-9000 split 7000"); (PARITY_ROOT / "BTC_LRA_002_RESTART_DIVERGENCE.json").write_text(json.dumps(case, ensure_ascii=False, indent=2), encoding="utf-8"); output["restart_divergence"] = case
     if args.split_state:
-        module = load_engine(); bars = module.replay_bars(args.csv); case = split_boundary_case(module, bars[:7001], 7000, "split boundary 7000"); (ROOT / "BTC_LRA_002_SPLIT_STATE.json").write_text(json.dumps(case, ensure_ascii=False, indent=2), encoding="utf-8"); output["split_state"] = case
+        module = load_engine(); bars = module.replay_bars(args.csv); case = split_boundary_case(module, bars[:7001], 7000, "split boundary 7000"); (PARITY_ROOT / "BTC_LRA_002_SPLIT_STATE.json").write_text(json.dumps(case, ensure_ascii=False, indent=2), encoding="utf-8"); output["split_state"] = case
+    if args.isolation:
+        module = load_engine(); bars = module.replay_bars(args.csv)[:9000]
+        variants = [
+            isolation_variant(module, bars, 7000, "SET_ORDER_ONLY", deterministic_sets=True, preserve_swing_candidates=False),
+            isolation_variant(module, bars, 7000, "SWING_REHYDRATION_ONLY", deterministic_sets=False, preserve_swing_candidates=True),
+            isolation_variant(module, bars, 7000, "BOTH", deterministic_sets=True, preserve_swing_candidates=True),
+        ]
+        (PARITY_ROOT / "BTC_LRA_002_RESTART_ISOLATION.json").write_text(json.dumps(variants, ensure_ascii=False, indent=2), encoding="utf-8"); output["restart_isolation"] = variants
     print(json.dumps(output, ensure_ascii=False, indent=2))
 
 

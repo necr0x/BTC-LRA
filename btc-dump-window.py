@@ -12,7 +12,8 @@ PANAMA = timezone(timedelta(hours=-5))
 # Эти значения можно изменить прямо здесь или передать через --start/--end.
 DEFAULT_START = "2026-08-18 00:00"
 DEFAULT_END = "2026-08-23 23:59"
-DEFAULT_OUTPUT = Path(__file__).with_name("BTC_LRA_DUMP.txt")
+PROJECT_ROOT = Path(__file__).resolve().parent
+DEFAULT_OUTPUT = PROJECT_ROOT / "data" / "dumps" / "BTC_LRA_DUMP.txt"
 
 INTERVAL_MS = {
     "1m": 60_000,

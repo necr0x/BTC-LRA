@@ -69,3 +69,35 @@
 - **what remains unproven:** STATE remains larger than ideal because all compact zone summaries and active causal context are retained; benchmark semantic comparison and long live restart remain separate validation tasks.
 - **next research question:** Reduce restart zone summaries further only after proving which historical references are required by live expected-path reconstruction.
 - **commit SHA:** `17df982e40060861e49b656f112007b22bdbc353`
+
+## 2026-09-30 — BTC-LRA-002 TEST 1 first causal divergence investigation
+
+- **task / research question:** Locate the first causal divergence between continuous `0→9000` replay and restart `0→7000→9000` without changing detector semantics, thresholds, or production output.
+- **what was inspected:** Aligned streaming causal signatures, strict and semantic digests, compact state immediately before the first mismatch, and continuous-vs-restarted state at the split boundary.
+- **confirmed findings:** Total event counts remain equal. The first strict mismatch is sequence `938473` (`PULLBACK_OBSERVATION`, `BUY`, `1790301180000`): event type/time/direction/extreme values match, but `zone_id` and `release_id` differ (identity classification A). The first semantic mismatch is sequence `1052032` (`1790316840000`): continuous emits `OPPOSITE_CONTROL_CANDIDATE BUY`, while restart emits `PULLBACK_OBSERVATION SELL` (classification C).
+- **split-boundary evidence:** Recent bars, TF rolling context, OI, cumulative volume, active/return zone membership, active battle/release membership, and processed-event tail match. The actual iteration order of `active_zone_ids`, `return_zone_ids`, and their union differs because production code iterates unordered sets directly. `swing_candidates` also differs after rehydration: historical bootstrap bars append after the persisted current candidate list and leave an old tail.
+- **decision:** Do not modify production semantics yet. Isolate deterministic set ordering and swing-candidate rehydration independently with audit-only A/B tests on TEST 1. Only after isolation, propose the smallest restart-only fix and require `7000→9000` parity PASS before TEST 2.
+- **artifacts:** `BTC_LRA_002_RESTART_DIVERGENCE.json`, `BTC_LRA_002_SPLIT_STATE.json`, and temporary signature/state files under `%TEMP%\btc002-divergence-*` and `%TEMP%\btc002-split-state-*`.
+- **what remains unproven:** Whether set-order drift alone, swing-candidate drift alone, or both are required for the semantic divergence. No population audit or TEST 2 run is authorized until this is resolved.
+
+## 2026-09-30 — BTC-LRA-002 TEST 1 A/B root-cause isolation
+
+- **task / research question:** Determine whether unordered set iteration, `swing_candidates` rehydration, or both are required for the `0→7000→9000` restart parity failure.
+- **method:** Audit-only sequential variants on TEST 1 (`split=7000`, `bars=9000`): `SET_ORDER_ONLY`, `SWING_REHYDRATION_ONLY`, and `BOTH`. No detector, threshold, market-semantic, or production-output changes were made.
+- **confirmed results:** All variants emitted `2,061,933` events per branch. `SET_ORDER_ONLY` produced identical strict digest `2c3e17691e3f3b94a33c1e696bda72c04fd931ffd6e2d721853adf0d87a570c2` and identical semantic digest `365824597dacc345e5fce1bed4e1e3409d47895c356a253c5df58adedeadfc24` for continuous and restarted runs. `BOTH` produced the same parity result. `SWING_REHYDRATION_ONLY` failed strict and semantic parity.
+- **population note:** The audit branch reports continuous/restarted battle counts `17,469/7,211` and release counts `15,168/6,590`; these are not used as the parity verdict because the restarted compact branch retains only post-split active objects while the continuous branch retains full-run totals.
+- **decision:** Unordered set iteration is sufficient to explain the TEST 1 strict and semantic event-stream divergence. Swing-candidate rehydration drift is a separate state defect but is not sufficient by itself to cause the observed parity failure. Do not alter detector semantics or thresholds. Propose the smallest restart-only deterministic-order fix, then require a fresh `7000→9000` strict and semantic parity PASS before TEST 2. Do not start the population audit yet.
+- **artifact:** `BTC_LRA_002_RESTART_ISOLATION.json` is generated diagnostic output and remains untracked/not for commit.
+- **what remains unproven:** Whether the production implementation should separately repair swing-candidate rehydration after the ordering fix, and whether the production fix passes the real TEST 1 harness rather than the audit probe.
+## 2026-09-30 — BTC-LRA-002 deterministic set-order fix and TEST 1 validation
+
+- **change:** In `btc-lra-002.py`, changed only causally relevant set traversal to sorted order: active zones, the active/return zone union, active releases, and release persistence ordering. `btc-lra-001.py`, detector conditions, thresholds, battle/release semantics, and market output semantics were not changed.
+- **before:** TEST 1 first strict mismatch was sequence `938473` (`PULLBACK_OBSERVATION`, BUY, `1790301180000`) with different zone/release IDs; first semantic mismatch was sequence `1052032` (`OPPOSITE_CONTROL_CANDIDATE` BUY versus `PULLBACK_OBSERVATION` SELL).
+- **after / TEST 1 PASS:** Continuous and restarted branches both emitted `2,061,933` events. Strict digest matched at `c031b208f621db5e7d2d6c93bab9011cd20fb259bf5659b14506ea1a4896a9d5`; semantic digest matched at `365824597dacc345e5fce1bed4e1e3409d47895c356a253c5df58adedeadfc24`. No first strict or semantic divergence was found.
+- **decision:** The minimal fix is validated for TEST 1. Run late-split TEST 2 (`split=11000`, full `13810` bars) next. Keep generated diagnostic JSON/signature files out of git; commit the production fix separately only after TEST 2 validation.
+## 2026-09-30 — BTC-LRA-002 TEST 2 late-split validation
+
+- **validation:** After TEST 1 PASS, reran the late split at `11000` over all `13,810` bars with the deterministic set-order fix.
+- **result:** PASS. Continuous and restarted branches each emitted `5,452,655` events; strict digest matched at `c52cf931bccca84bbd6939e657ec0e0355214c214851f84186704da8dd46043b`; no first divergent event was reported. The earlier TEST 1 case also remained PASS with `2,061,933` events and matching digest `2c3e17691e3f3b94a33c1e696bda72c04fd931ffd6e2d721853adf0d87a570c2` in the compact parity harness.
+- **scope:** Battle/release creation counters remain continuous/restarted `43,252/17,356` and `39,552/16,544` in the compact harness because the restarted branch reports post-split active objects; they are not used as the event-stream parity verdict. No detector, threshold, market-semantic, or `btc-lra-001.py` changes were made.
+- **decision:** Long restart event-stream parity is validated for both requested splits. Population audit remains a separate analysis task. The production fix must be committed separately from documentation/memory changes.
