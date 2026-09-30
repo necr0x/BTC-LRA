@@ -55,3 +55,17 @@
 - **what remains unproven:** Full benchmark semantic parity against all historical reference timelines, exact native peak memory from in-process API before its correction, and live long-duration restart behavior remain research validation items. Full run is technical replay PASS, not trading validation.
 - **next research question:** Добавить targeted benchmark timeline comparison and long-running live restart test using the bounded snapshot/evidence architecture.
 - **commit SHA:** `0d137f7e43a9eac89674b3901b48005ac9f07863`
+
+## 2026-09-30 — BTC-LRA-002 finalization snapshot compaction
+
+- **task / research question:** Проверить остаточный размер restart STATE после устранения final audit materialization и подтвердить, что expected release context не удерживает лишнюю историческую структуру.
+- **working hypothesis:** Полные `expected_release_path` parent boundaries/references в active release snapshots увеличивают STATE, хотя causal event evidence уже записана в JSONL.
+- **what was inspected:** Full MASTER phase log, all-python process snapshots, STATE/ZONE_STATE sizes, `persistence_state`, `atomic_json`, streaming audit and final RSS/private counters.
+- **bugs / semantic problems found:** После streaming audit/full snapshot memory spike исчез, но STATE оставался ~462 MB; active release snapshots включали full parent boundary/reference arrays.
+- **changes made:** В persistence snapshot `expected_release_path` ограничен compact levels, bounded parent boundaries и bounded prior references. Live release object и emitted causal records не изменены.
+- **why those changes were chosen:** Эти fields нужны как restart/structural context, а полная historical evidence уже доступна в `BATTLE_RESOLUTION_HOLDING`/release JSONL records. Это storage-only change.
+- **alternatives rejected and why:** Не менялись detector conditions, thresholds, zone/battle/release lifecycle, event order или historical evidence.
+- **benchmark observations:** Full MASTER завершён после compaction: 13,810 bars; 5,452,655 machine events; peak RSS ~946 MB; peak private ~936 MB; `persistence_state` ~0.42s; STATE serialization ~25.0s; final STATE 444 MB; ZONE_STATE 4.64 MB; streaming audit future leakage 0. 3000-bar state ~38.9 MB; 300-bar parity tests PASS.
+- **what remains unproven:** STATE remains larger than ideal because all compact zone summaries and active causal context are retained; benchmark semantic comparison and long live restart remain separate validation tasks.
+- **next research question:** Reduce restart zone summaries further only after proving which historical references are required by live expected-path reconstruction.
+- **commit SHA:** `17df982e40060861e49b656f112007b22bdbc353`
