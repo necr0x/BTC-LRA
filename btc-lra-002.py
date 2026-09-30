@@ -8,6 +8,7 @@ from __future__ import annotations
 import argparse
 from bisect import bisect_right
 import copy
+import ctypes
 import csv
 import hashlib
 import json
@@ -17,12 +18,16 @@ import statistics
 import sys
 import tempfile
 import time
+from ctypes import wintypes
 from collections import defaultdict, deque
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Iterable
 from urllib.parse import urlencode
 from urllib.request import Request, urlopen
+
+DEDUPE_WINDOW = 4096
+ENGINE_EVENT_SAMPLE = 256
 
 ROOT = Path(__file__).resolve().parent
 SYMBOL = "BTCUSDT"
@@ -83,6 +88,27 @@ def atomic_json(path: Path, value: Any) -> None:
             os.unlink(tmp)
 
 
+def atomic_zones_json(path: Path, zones: Iterable[dict[str, Any]], metadata: dict[str, Any]) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    fd, tmp = tempfile.mkstemp(prefix=f".{path.name}.", suffix=".tmp", dir=path.parent)
+    try:
+        with os.fdopen(fd, "w", encoding="utf-8", newline="\n") as handle:
+            handle.write("{")
+            first = True
+            for key, value in metadata.items():
+                if not first: handle.write(",")
+                json.dump(str(key), handle, ensure_ascii=False); handle.write(":"); json.dump(value, handle, ensure_ascii=False, separators=(",", ":")); first = False
+            handle.write(',"zones":[')
+            first = True
+            for zone in zones:
+                if not first: handle.write(",")
+                json.dump(zone, handle, ensure_ascii=False, separators=(",", ":")); first = False
+            handle.write("]}\n")
+        os.replace(tmp, path)
+    finally:
+        if os.path.exists(tmp): os.unlink(tmp)
+
+
 def append_jsonl(path: Path, value: dict[str, Any]) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     with path.open("a", encoding="utf-8", newline="\n") as handle:
@@ -93,6 +119,21 @@ def append_text(path: Path, text: str) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     with path.open("a", encoding="utf-8", newline="\n") as handle:
         handle.write(text.rstrip("\n") + "\n")
+
+
+def memory_snapshot() -> dict[str, int]:
+    try:
+        class Counters(ctypes.Structure):
+            _fields_ = [("cb", wintypes.DWORD), ("PageFaultCount", wintypes.DWORD), ("PeakWorkingSetSize", ctypes.c_size_t), ("WorkingSetSize", ctypes.c_size_t), ("QuotaPeakPagedPoolUsage", ctypes.c_size_t), ("QuotaPagedPoolUsage", ctypes.c_size_t), ("QuotaPeakNonPagedPoolUsage", ctypes.c_size_t), ("QuotaNonPagedPoolUsage", ctypes.c_size_t), ("PagefileUsage", ctypes.c_size_t), ("PeakPagefileUsage", ctypes.c_size_t), ("PrivateUsage", ctypes.c_size_t)]
+        counters = Counters(); counters.cb = ctypes.sizeof(Counters)
+        psapi = ctypes.WinDLL("psapi")
+        psapi.GetProcessMemoryInfo.argtypes = [wintypes.HANDLE, ctypes.POINTER(Counters), wintypes.DWORD]
+        psapi.GetProcessMemoryInfo.restype = wintypes.BOOL
+        if not psapi.GetProcessMemoryInfo(ctypes.windll.kernel32.GetCurrentProcess(), ctypes.byref(counters), counters.cb):
+            return {}
+        return {"rss_bytes": int(counters.WorkingSetSize), "peak_rss_bytes": int(counters.PeakWorkingSetSize), "private_bytes": int(counters.PrivateUsage), "peak_private_bytes": int(counters.PrivateUsage)}
+    except Exception:
+        return {}
 
 
 def event_id(kind: str, *parts: Any) -> str:
@@ -255,7 +296,7 @@ class BinanceLiveAdapter:
 
 
 class CausalEngine:
-    def __init__(self, outputs: dict[str, Path] | None = None, reset: bool = False, human_enabled: bool = True, live_start_ts: int | None = None, persist_each_bar: bool = True):
+    def __init__(self, outputs: dict[str, Path] | None = None, reset: bool = False, human_enabled: bool = True, live_start_ts: int | None = None, persist_each_bar: bool = True, telemetry: str = "events"):
         self.outputs = outputs or OUTPUTS
         if reset:
             for key in ("state", "zones", "events", "battles", "releases", "oi", "human", "debug", "audit"):
@@ -268,12 +309,15 @@ class CausalEngine:
         self.state.setdefault("human_event_ids", [])
         self.state.setdefault("zones", {})
         self.state.setdefault("battles", {})
+        self.state.setdefault("active_battle_by_zone", {})
         self.state.setdefault("releases", {})
         self.state.setdefault("bar_count", 0)
         self.state.setdefault("swing_candidates", [])
         self.state.setdefault("human_battle_groups", {})
         self.human_enabled = human_enabled
         self.persist_each_bar = persist_each_bar
+        self.telemetry = telemetry
+        self.profile = {"time_seconds": {"update_zones": 0.0, "active_zones_at": 0.0, "battle_step": 0.0, "release_step": 0.0, "emit": 0.0, "jsonl_writes": 0.0}, "counts": {"zones_created": 0, "peak_active_zones": 0, "battles_created": 0, "peak_active_battles": 0, "battle_bar_rows_written": 0, "releases_created": 0, "peak_active_releases": 0, "release_step_calls": 0, "total_machine_events": 0}, "samples": {"active_zones": 0, "active_battles": 0, "active_releases": 0, "bars": 0}}
         self.processed_event_id_set = set(self.state["processed_event_ids"])
         self.human_event_id_set = set(self.state["human_event_ids"])
         self.oi_samples: list[dict[str, Any]] = self.load_jsonl(self.outputs["oi"])
@@ -283,12 +327,38 @@ class CausalEngine:
         self.swing_candidates: list[dict[str, Any]] = self.state["swing_candidates"]
         self.swing_candidate_ids = {x.get("reference_id") for x in self.swing_candidates}
         self.engine_events: list[dict[str, Any]] = []
+        self.event_digest_value = self.state.get("event_digest_sha256", "")
+        self.event_digest_count = int(self.state.get("event_digest_count", 0))
         self.rehydrating = False
         self.cumulative_volume_BTC = float(self.state.get("cumulative_volume_BTC", 0.0))
         self.active_zone_ids = {zid for zid, zone in self.state["zones"].items() if zone.get("state") == "ACTIVE_BALANCE"}
         self.return_zone_ids = {zid for zid, zone in self.state["zones"].items() if zone.get("state") in ("DEPARTED_UP", "DEPARTED_DOWN", "FIRST_RETURN", "RETESTED")}
         self.zone_interval_index = sorted((zone["low"], zone["high"], zid) for zid, zone in self.state["zones"].items())
-        self.active_release_ids = {rid for rid, release in self.state["releases"].items() if release.get("status") != "CLOSED"}
+        self.active_release_ids = {rid for rid, release in self.state["releases"].items() if release.get("status", "ACTIVE") in ("ACTIVE", "RESTORED")}
+
+    def write_jsonl(self, path: Path, value: dict[str, Any]) -> None:
+        started = time.perf_counter()
+        append_jsonl(path, value)
+        self.profile["time_seconds"]["jsonl_writes"] += time.perf_counter() - started
+
+    def phase_log(self, phase: str, **extra: Any) -> None:
+        data = {"record_type": "PHASE", "phase": phase, "time": fmt_ts(now_ms()), "bars": self.state.get("bar_count", 0), "state_zones": len(self.state.get("zones", {})), "state_battles": len(self.state.get("battles", {})), "state_releases": len(self.state.get("releases", {})), "engine_event_sample": len(self.engine_events), "digest_count": self.event_digest_count, "memory": memory_snapshot(), **extra}
+        append_jsonl(self.outputs["debug"], data)
+
+    def profile_snapshot(self) -> dict[str, Any]:
+        counts = self.profile["counts"]
+        counts["simultaneously_active_zones"] = len(self.active_zone_ids)
+        counts["simultaneously_active_battles"] = len(self.state.get("active_battle_by_zone", {}))
+        counts["simultaneously_active_releases"] = len(self.active_release_ids)
+        counts["active_releases_not_closed"] = len(self.active_release_ids)
+        counts["closed_releases"] = sum(1 for release in self.state["releases"].values() if release.get("status", "ACTIVE") == "CLOSED")
+        counts["orphan_active_releases"] = sum(1 for rid in self.active_release_ids if rid not in self.state["releases"])
+        samples = self.profile["samples"]
+        bars = max(1, samples["bars"])
+        counts["average_active_zones"] = samples["active_zones"] / bars
+        counts["average_active_battles"] = samples["active_battles"] / bars
+        counts["average_active_releases"] = samples["active_releases"] / bars
+        return {"telemetry": self.telemetry, "time_seconds": dict(self.profile["time_seconds"]), "counts": dict(counts), "bars": self.state.get("bar_count", 0)}
 
     @staticmethod
     def load_json(path: Path, default: Any) -> Any:
@@ -309,11 +379,22 @@ class CausalEngine:
                 continue
         return out
 
+    @staticmethod
+    def iter_jsonl(path: Path) -> Iterable[dict[str, Any]]:
+        if not path.exists():
+            return
+        with path.open("r", encoding="utf-8") as handle:
+            for line in handle:
+                try:
+                    yield json.loads(line)
+                except json.JSONDecodeError:
+                    continue
+
     def record_oi_sample(self, sample: dict[str, Any]) -> None:
         if any(x.get("sample_time_ts") == sample.get("sample_time_ts") and x.get("oi_source") == sample.get("oi_source") for x in self.oi_samples[-20:]):
             return
         self.oi_samples.append(sample)
-        append_jsonl(self.outputs["oi"], sample)
+        self.write_jsonl(self.outputs["oi"], sample)
 
     def latest_oi_sample_at_or_before(self, ts: int) -> dict[str, Any] | None:
         candidates = [x for x in self.oi_samples if int(x.get("sample_time_ts", 0)) <= ts]
@@ -323,21 +404,39 @@ class CausalEngine:
         append_text(self.outputs["debug"], json.dumps(data, ensure_ascii=False, separators=(",", ":")))
 
     def emit(self, kind: str, ts: int, payload: dict[str, Any], human: dict[str, Any] | None = None, machine_file: str = "events", observable_at_ts: int | None = None) -> dict[str, Any]:
+        started = time.perf_counter()
         if self.rehydrating:
             return {"event": kind, "time_ts": ts, "observable_at_ts": observable_at_ts or ts + 60000, **payload}
         eid = payload.pop("event_id", None) or event_id(kind, ts, payload.get("zone_id"), payload.get("battle_id"), payload.get("release_id"), payload.get("direction"))
         observable = int(observable_at_ts or payload.pop("observable_at_ts", ts + 60000))
-        record = {"event_id": eid, "event": kind, "time_ts": ts, "time": fmt_ts(ts), "bar_time_ts": ts, "bar_time": fmt_ts(ts), "observable_at_ts": observable, "observable_at": fmt_ts(observable), "causal": True, **payload}
+        record = {"event_id": eid, "event": kind, "time_ts": ts, "time": fmt_ts(ts), "bar_time_ts": ts, "bar_time": fmt_ts(ts), "observable_at_ts": observable, "observable_at": fmt_ts(observable), "causal": True, **copy.deepcopy(payload)}
         if eid not in self.processed_event_id_set:
             self.processed_event_id_set.add(eid)
             self.state["processed_event_ids"].append(eid)
-            append_jsonl(self.outputs[machine_file], record)
-            self.engine_events.append(record)
+            if len(self.state["processed_event_ids"]) > DEDUPE_WINDOW:
+                expired = self.state["processed_event_ids"][:-DEDUPE_WINDOW]
+                self.state["processed_event_ids"] = self.state["processed_event_ids"][-DEDUPE_WINDOW:]
+                self.processed_event_id_set.difference_update(expired)
+            self.write_jsonl(self.outputs[machine_file], record)
+            digest_row = tuple(record.get(key) for key in ("event", "time_ts", "zone_id", "battle_id", "release_id", "direction", "side"))
+            self.event_digest_value = hashlib.sha256((self.event_digest_value + "|" + json.dumps(digest_row, separators=(",", ":"), ensure_ascii=False)).encode()).hexdigest()
+            self.event_digest_count += 1
+            compact = {key: record.get(key) for key in ("event_id", "event", "time_ts", "zone_id", "battle_id", "release_id", "direction", "side")}
+            if len(self.engine_events) < ENGINE_EVENT_SAMPLE:
+                self.engine_events.append(compact)
+            elif self.event_digest_count % ENGINE_EVENT_SAMPLE == 0:
+                self.engine_events[(self.event_digest_count // ENGINE_EVENT_SAMPLE) % ENGINE_EVENT_SAMPLE] = compact
+            self.profile["counts"]["total_machine_events"] += 1
         human_id = (human or {}).get("human_id", eid) if human else eid
         if human and self.human_enabled and observable >= int(self.state["live_start_time"]) and human_id not in self.human_event_id_set:
             self.human_event_id_set.add(human_id)
             self.state["human_event_ids"].append(human_id)
+            if len(self.state["human_event_ids"]) > DEDUPE_WINDOW:
+                expired = self.state["human_event_ids"][:-DEDUPE_WINDOW]
+                self.state["human_event_ids"] = self.state["human_event_ids"][-DEDUPE_WINDOW:]
+                self.human_event_id_set.difference_update(expired)
             append_text(self.outputs["human"], human["text"])
+        self.profile["time_seconds"]["emit"] += time.perf_counter() - started
         return record
 
     def parent_context(self, price: float, ts: int, tf: str) -> list[dict[str, Any]]:
@@ -418,6 +517,9 @@ class CausalEngine:
                 zone["departure_cumulative_volume_BTC"] = self.cumulative_volume_BTC - bar["volume_BTC"]
                 zone["turnover_after_departure_BTC"] = self.cumulative_volume_BTC - zone["departure_cumulative_volume_BTC"]
                 self.active_zone_ids.discard(zid); self.return_zone_ids.add(zid)
+                active_battle_id = self.state["active_battle_by_zone"].get(zid)
+                if active_battle_id and active_battle_id in self.state["battles"]:
+                    self.archive_battle(zone, self.state["battles"][active_battle_id], "CHALLENGED", bar["ts"])
                 self.emit("ZONE_DEPARTED", bar["ts"], {"zone_id": zone["zone_id"], "direction": "BUY" if zone["state"] == "DEPARTED_UP" else "SELL", "state": zone["state"], "bounds": [zone["low"], zone["high"]]})
         lows = [x[0] for x in self.zone_interval_index]
         for low, high, zid in self.zone_interval_index[:bisect_right(lows, bar["high"])]:
@@ -437,21 +539,37 @@ class CausalEngine:
             if zone:
                 zone["nested_parent_ids"] = [p["zone_id"] for p in self.parent_context(zone["mid"], bar["ts"], tf)]
                 self.state["zones"][zone["zone_id"]] = zone
+                self.profile["counts"]["zones_created"] += 1
                 self.active_zone_ids.add(zone["zone_id"])
                 self.zone_interval_index.append((zone["low"], zone["high"], zone["zone_id"]))
                 self.zone_interval_index.sort()
-                self.emit("BALANCE_ACTIVE", bar["ts"], {"zone_id": zone["zone_id"], "timeframe": tf, "bounds": [zone["low"], zone["high"]], "available_at_ts": zone["available_at_ts"]})
+                nested_parent_ids = list(zone["nested_parent_ids"])
+                self.emit("BALANCE_ACTIVE", bar["ts"], {"zone_id": zone["zone_id"], "timeframe": tf, "bounds": [zone["low"], zone["high"]], "available_at_ts": zone["available_at_ts"], "nested_parent_ids": nested_parent_ids})
+                # Full relationship evidence is in the append-only event. Keep
+                # only a bounded restart/context sample in the hot zone object.
+                zone["nested_parent_ids"] = nested_parent_ids[-64:]
 
     def active_zones_at(self, bar: dict[str, Any]) -> list[dict[str, Any]]:
-        lows = [x[0] for x in self.zone_interval_index]
-        out = []
-        for low, high, zid in self.zone_interval_index[:bisect_right(lows, bar["close"])]:
-            if high < bar["close"]:
-                continue
-            zone = self.state["zones"].get(zid)
-            if zone and zone["available_at_ts"] <= bar["ts"] and zone["state"] not in ("CONSUMED", "STALE"):
-                out.append(zone)
-        return out
+        # Historical zones remain queryable; only interactable zones enter the
+        # hot bar loop. This does not alter zone membership or causal checks.
+        candidate_ids = self.active_zone_ids | self.return_zone_ids
+        return [
+            zone for zid in candidate_ids
+            if (zone := self.state["zones"].get(zid))
+            and zone["available_at_ts"] <= bar["ts"]
+            and zone["low"] <= bar["close"] <= zone["high"]
+            and zone["state"] not in ("CONSUMED", "STALE")
+        ]
+
+    def prune_human_battle_groups(self, active_zones: list[dict[str, Any]]) -> None:
+        """Keep only current human-context membership; dedupe IDs remain persistent."""
+        live_zone_ids = {zone["zone_id"] for zone in active_zones}
+        groups = self.state["human_battle_groups"]
+        for group_id in list(groups):
+            group = groups[group_id]
+            group["zone_ids"] = [zid for zid in group.get("zone_ids", []) if zid in live_zone_ids]
+            if not group["zone_ids"]:
+                groups.pop(group_id, None)
 
     @staticmethod
     def ranges_overlap(a: dict[str, Any], b: dict[str, Any]) -> bool:
@@ -479,15 +597,35 @@ class CausalEngine:
         tf = sorted({self.state["zones"][zid]["timeframe"] for zid in group["zone_ids"] if zid in self.state["zones"]}, key=lambda x: TF_MINUTES[x])
         return group_id, {"human_id": group_id, "text": f"[{bar['timestamp']}]\nБОРЬБА В ПРОЦЕССЕ\n{' / '.join(tf)} {group['low']:.2f}–{group['high']:.2f} | BUY/SELL: пока без устойчивого победителя"}
 
+    def archive_battle(self, zone: dict[str, Any], battle: dict[str, Any], reason: str, ts: int) -> None:
+        battle["status"] = reason
+        battle["archived_at_ts"] = ts
+        self.write_jsonl(self.outputs["battles"], {"record_type": "BATTLE_ARCHIVED", "time_ts": ts, "battle_id": battle["battle_id"], "zone_id": zone["zone_id"], "status": reason, "candidate_status": battle.get("candidate_status"), "release_id": battle.get("release_id")})
+        self.state["battles"].pop(battle["battle_id"], None)
+        self.state["active_battle_by_zone"].pop(zone["zone_id"], None)
+        zone["last_battle_return_count"] = zone.get("returns", 0)
+
     def battle_step(self, zone: dict[str, Any], bar: dict[str, Any]) -> None:
         zid = zone["zone_id"]; battles = self.state["battles"]
-        battle = battles.get(zid)
+        active_battle_id = self.state["active_battle_by_zone"].get(zid)
+        battle = battles.get(active_battle_id) if active_battle_id else None
         if battle is None:
-            if bar["taker_buy_BTC"] <= 0 or bar["taker_sell_BTC"] <= 0:
+            if zone.get("last_battle_return_count") is not None and zone.get("returns", 0) <= zone["last_battle_return_count"]:
+                return
+            previous_watch_close = zone.get("battle_watch_close")
+            zone["battle_watch_close"] = bar["close"]
+            if previous_watch_close is None:
+                return
+            up_result = max(0.0, bar["close"] - previous_watch_close)
+            down_result = max(0.0, previous_watch_close - bar["close"])
+            competing_result = (bar["taker_sell_BTC"] > 0 and up_result > 0) or (bar["taker_buy_BTC"] > 0 and down_result > 0)
+            if not competing_result:
                 return
             group_id, human = self.human_battle_context(zone, bar)
             battle = {"battle_id": f"BATTLE-{zid}-{bar['ts']}", "zone_id": zid, "parent_context": self.parent_context(bar["close"], bar["ts"], zone["timeframe"]), "timeframe": zone["timeframe"], "start_ts": bar["ts"], "base_price": bar["close"], "state": "BATTLE_ACTIVE", "last_winner": None, "candidate_side": None, "candidate_ts": None, "candidate_status": None, "candidate_episode": 0, "candidate_history": [], "holding_emitted": False, "buy_effort": 0.0, "sell_effort": 0.0, "buy_result": 0.0, "sell_result": 0.0, "metrics": {"BUY": {"effort": 0.0, "reward": 0.0, "max_progress": 0.0, "efficiency": None}, "SELL": {"effort": 0.0, "reward": 0.0, "max_progress": 0.0, "efficiency": None}}, "previous_efficiency": {"BUY": None, "SELL": None}, "transfer_tracks": {"BUY": None, "SELL": None}, "previous_close": bar["close"], "transfers": [], "oi_path": [], "human_group_id": group_id}
-            battles[zid] = battle
+            battles[battle["battle_id"]] = battle
+            self.state["active_battle_by_zone"][zid] = battle["battle_id"]
+            self.profile["counts"]["battles_created"] += 1
             self.emit("BATTLE_STARTED", bar["ts"], {"battle_id": battle["battle_id"], "zone_id": zid, "parent_context": battle["parent_context"], "bounds": [zone["low"], zone["high"]], "state": "BATTLE_ACTIVE", "human_group_id": group_id}, human=human)
         previous_close = battle["previous_close"]
         for side in ("BUY", "SELL"):
@@ -539,22 +677,45 @@ class CausalEngine:
                 self.emit("OLD_SIDE_RESTORED", bar["ts"], {"battle_id": battle["battle_id"], "zone_id": zid, "old_side": old_side, "new_side": candidate, "candidate_invalidated": True}, machine_file="battles")
             elif candidate_retained:
                 battle["candidate_status"] = "HOLDING"; battle["state"] = "BATTLE_RESOLUTION_HOLDING"; battle["holding_emitted"] = True
-                direction = candidate; battle["release_id"] = f"RELEASE-{battle['battle_id']}-{bar['ts']}"; self.state["releases"][battle["release_id"]] = self.new_release(battle, zone, bar); self.active_release_ids.add(battle["release_id"])
+                direction = candidate; battle["release_id"] = f"RELEASE-{battle['battle_id']}-{bar['ts']}"; self.state["releases"][battle["release_id"]] = self.new_release(battle, zone, bar); self.active_release_ids.add(battle["release_id"]); self.profile["counts"]["releases_created"] += 1
                 self.emit("BATTLE_RESOLUTION_HOLDING", bar["ts"], {"battle_id": battle["battle_id"], "zone_id": zid, "side": candidate, "price": bar["close"], "old_side_restored": "NO", "new_side_progress": candidate_result, "parent_context": battle["parent_context"], "potential_structural_path": self.state["releases"][battle["release_id"]]["expected_release_path"]}, human={"text": f"[{bar['timestamp']}]\n{candidate} ВЫИГРАЛ ЛОКАЛЬНУЮ БОРЬБУ | {bar['close']:.2f}\nprogress удержан\nБлижайшая структура: {', '.join(f'{x:.2f}' for x in self.state['releases'][battle['release_id']]['expected_release_path']['levels'][:3]) or 'нет известных уровней'}"})
         battle["last_winner"] = leader or battle["last_winner"]
         battle["previous_efficiency"] = {side: battle["metrics"][side]["efficiency"] for side in ("BUY", "SELL")}
         battle["previous_close"] = bar["close"]
-        append_jsonl(self.outputs["battles"], {"record_type": "BATTLE_BAR", "time_ts": bar["ts"], "observable_at_ts": bar["observable_at_ts"], "battle_id": battle["battle_id"], "zone_id": zid, "state": battle["state"], "leader": battle["last_winner"], "candidate_side": battle["candidate_side"], "candidate_status": battle["candidate_status"], "buy_effort": battle["buy_effort"], "sell_effort": battle["sell_effort"], "buy_result": battle["buy_result"], "sell_result": battle["sell_result"], "oi": battle["oi_path"][-1:]})
+        if self.telemetry == "full":
+            self.write_jsonl(self.outputs["battles"], {"record_type": "BATTLE_BAR", "time_ts": bar["ts"], "observable_at_ts": bar["observable_at_ts"], "battle_id": battle["battle_id"], "zone_id": zid, "state": battle["state"], "leader": battle["last_winner"], "candidate_side": battle["candidate_side"], "candidate_status": battle["candidate_status"], "buy_effort": battle["buy_effort"], "sell_effort": battle["sell_effort"], "buy_result": battle["buy_result"], "sell_result": battle["sell_result"], "oi": battle["oi_path"][-1:]})
+            self.profile["counts"]["battle_bar_rows_written"] += 1
+        if battle.get("state") == "BATTLE_RESOLUTION_HOLDING":
+            self.archive_battle(zone, battle, "RESOLVED", bar["ts"])
 
     def new_release(self, battle: dict[str, Any], zone: dict[str, Any], bar: dict[str, Any]) -> dict[str, Any]:
         direction = battle["candidate_side"]
         path = self.expected_path(bar["close"], direction, zone, bar["ts"])
         levels = [path["local_opposite_boundary"], *path["parent_boundaries"], *[x["price"] for x in path["prior_historical_references"]]]
-        return {"release_id": battle["release_id"], "battle_id": battle["battle_id"], "zone_id": zone["zone_id"], "direction": direction, "start_ts": bar["ts"], "base_price": bar["close"], "active_extreme": bar["close"], "latest_retained_extreme": bar["close"], "last_extreme_ts": bar["ts"], "last_extreme_cumulative_effort": 0.0, "after_rejection": False, "pullback_seen": False, "pullback_ts": None, "last_failed_extreme_ts": None, "passive_human_emitted": False, "opposite_human_emitted": False, "attempt_episode": None, "attempt_history": [], "buy_effort": 0.0, "sell_effort": 0.0, "volume_BTC": 0.0, "delta_BTC": 0.0, "highs": [], "retained_pushes": [], "oi_path": [], "expected_release_path": {"levels": [x for x in levels if x is not None], "local_opposite_boundary": path["local_opposite_boundary"], "parent_boundaries": path["parent_boundaries"], "prior_historical_references": path["prior_historical_references"]}}
+        return {"release_id": battle["release_id"], "battle_id": battle["battle_id"], "zone_id": zone["zone_id"], "direction": direction, "status": "ACTIVE", "start_ts": bar["ts"], "base_price": bar["close"], "active_extreme": bar["close"], "latest_retained_extreme": bar["close"], "last_extreme_ts": bar["ts"], "last_extreme_cumulative_effort": 0.0, "after_rejection": False, "pullback_seen": False, "pullback_ts": None, "last_failed_extreme_ts": None, "passive_human_emitted": False, "opposite_human_emitted": False, "attempt_episode": None, "attempt_history": [], "buy_effort": 0.0, "sell_effort": 0.0, "volume_BTC": 0.0, "delta_BTC": 0.0, "highs": [], "retained_pushes": [], "oi_path": [], "expected_release_path": {"levels": [x for x in levels if x is not None], "local_opposite_boundary": path["local_opposite_boundary"], "parent_boundaries": path["parent_boundaries"], "prior_historical_references": path["prior_historical_references"]}}
+
+    def archive_attempt_episode(self, release: dict[str, Any], episode: dict[str, Any], ts: int, status: str) -> None:
+        archived = copy.deepcopy(episode)
+        archived["status"] = status
+        archived["archived_at_ts"] = ts
+        self.write_jsonl(self.outputs["releases"], {"record_type": "ATTEMPT_EPISODE_ARCHIVED", "release_id": release["release_id"], "zone_id": release["zone_id"], "time_ts": ts, "attempt_episode": archived})
+        release.setdefault("attempt_history", []).append({key: archived.get(key) for key in ("episode_id", "status", "initial_rejection_ts", "cumulative_aggressive_effort", "subsequent_extremes", "total_incremental_extension", "episode_result_per_100_BTC", "relative_impact_to_baseline", "started_ts", "archived_at_ts")})
+
+    def archive_inactive_release(self, release: dict[str, Any], ts: int, reason: str) -> None:
+        archived = copy.deepcopy(release)
+        archived["archived_at_ts"] = ts
+        archived["archive_reason"] = reason
+        self.write_jsonl(self.outputs["releases"], {"record_type": "RELEASE_ARCHIVED", "release_id": release["release_id"], "zone_id": release["zone_id"], "time_ts": ts, "release": archived})
+        summary = {key: release.get(key) for key in ("release_id", "battle_id", "zone_id", "direction", "status", "start_ts", "active_extreme", "latest_retained_extreme", "last_extreme_ts", "passive_human_emitted", "opposite_human_emitted")}
+        summary["attempt_history_count"] = len(release.get("attempt_history", []))
+        summary["archived_at_ts"] = ts
+        self.state["releases"][release["release_id"]] = summary
 
     def release_step(self, release: dict[str, Any], zone: dict[str, Any], bar: dict[str, Any]) -> None:
         direction = release["direction"]; effort = bar[side_effort_key(direction)]; release["buy_effort"] += bar["taker_buy_BTC"]; release["sell_effort"] += bar["taker_sell_BTC"]; release["volume_BTC"] += bar["volume_BTC"]; release["delta_BTC"] += bar["delta_BTC"]
-        if bar.get("OI_BTC") is not None: release["oi_path"].append({"ts": bar["ts"], "OI_BTC": bar["OI_BTC"], "dOI_BTC": bar.get("dOI_BTC"), "oi_sample_time_ts": bar.get("oi_sample_time_ts"), "oi_resolution": bar.get("oi_resolution"), "oi_source": bar.get("oi_source"), "oi_age_seconds": bar.get("oi_age_seconds")})
+        if bar.get("OI_BTC") is not None:
+            release["oi_path"].append({"ts": bar["ts"], "OI_BTC": bar["OI_BTC"], "dOI_BTC": bar.get("dOI_BTC"), "oi_sample_time_ts": bar.get("oi_sample_time_ts"), "oi_resolution": bar.get("oi_resolution"), "oi_source": bar.get("oi_source"), "oi_age_seconds": bar.get("oi_age_seconds")})
+            release["oi_path"] = release["oi_path"][-240:]
         price_extreme = bar["high"] if direction == "BUY" else bar["low"]; is_new = price_extreme > release["active_extreme"] if direction == "BUY" else price_extreme < release["active_extreme"]
         if not is_new:
             pullback = bar["close"] < release["active_extreme"] if direction == "BUY" else bar["close"] > release["active_extreme"]
@@ -565,7 +726,11 @@ class CausalEngine:
                 opposite = "SELL" if direction == "BUY" else "BUY"; result = side_progress(opposite, release["active_extreme"], bar["close"])
                 if result > 0 and bar[side_effort_key(opposite)] > 0 and not release["opposite_human_emitted"]:
                     release["opposite_human_emitted"] = True
+                    release["status"] = "CHALLENGED"
                     self.emit("OPPOSITE_CONTROL_CANDIDATE", bar["ts"], {"release_id": release["release_id"], "zone_id": zone["zone_id"], "direction": opposite, "price": bar["close"], "last_extreme": release["active_extreme"], "current_reward": result, "effort_BTC": bar[side_effort_key(opposite)], "retention": "outcome_pending", "OI_BTC": bar.get("OI_BTC"), "dOI_BTC": bar.get("dOI_BTC")}, human={"text": f"[{bar['timestamp']}]\n{opposite} ПОЛУЧИЛ КОНТРОЛЬ ПОСЛЕ ПРОВАЛА {direction}\nprice {bar['close']:.2f} | reward {result:.2f}\nCONTROL CANDIDATE"})
+                    self.write_jsonl(self.outputs["releases"], {"record_type": "RELEASE_STATUS", "release_id": release["release_id"], "zone_id": zone["zone_id"], "time_ts": bar["ts"], "status": "CHALLENGED", "reason": "OPPOSITE_CONTROL_CANDIDATE"})
+                    self.active_release_ids.discard(release["release_id"])
+                    self.archive_inactive_release(release, bar["ts"], "OPPOSITE_CONTROL_CANDIDATE")
             return
         previous_retained = release["latest_retained_extreme"]; extension = abs(price_extreme - release["active_extreme"])
         cumulative_before = release["buy_effort"] - bar["taker_buy_BTC"] if direction == "BUY" else release["sell_effort"] - bar["taker_sell_BTC"]
@@ -573,14 +738,14 @@ class CausalEngine:
         atr = self.atr14()
         per100 = extension / effort_since * 100 if effort_since else None
         push = {"time_ts": bar["ts"], "time": bar["timestamp"], "previous_retained_high": previous_retained if direction == "BUY" else None, "previous_retained_low": previous_retained if direction == "SELL" else None, "new_extreme": price_extreme, "incremental_extension_usd": extension, "incremental_extension_bps": extension / previous_retained * 10000 if previous_retained else None, "incremental_extension_ATR": extension / atr if atr else None, "effort_BTC": effort_since, "result_per_100_BTC": per100, "close_relative_to_previous_retained": close_vs_previous, "close_relative_to_new_extreme": close_vs_new, "retained_previous_high": close_vs_previous >= 0, "retained_new_extreme": close_vs_new >= 0, "retained": retained, "time_to_result_minutes": (bar["ts"] - release["last_extreme_ts"]) / 60000, "volume_BTC": bar["volume_BTC"], "delta_BTC": bar["delta_BTC"], "OI_BTC": bar.get("OI_BTC"), "dOI_BTC": bar.get("dOI_BTC")}
-        release["highs"].append(push); release["active_extreme"] = price_extreme; release["last_extreme_ts"] = bar["ts"]
+        release["highs"].append({"time_ts": bar["ts"], "new_extreme": price_extreme, "effort_BTC": effort_since, "result_per_100_BTC": per100, "retained": retained}); release["highs"] = release["highs"][-64:]; release["active_extreme"] = price_extreme; release["last_extreme_ts"] = bar["ts"]
         release["last_extreme_cumulative_effort"] = cumulative_before + effort
         if retained:
-            was_after_rejection = release["after_rejection"]; release["retained_pushes"].append(push); release["latest_retained_extreme"] = price_extreme; release["pullback_seen"] = False; release["after_rejection"] = False
+            was_after_rejection = release["after_rejection"]; release["retained_pushes"].append({"result_per_100_BTC": per100, "time_ts": bar["ts"], "new_extreme": price_extreme}); release["latest_retained_extreme"] = price_extreme; release["pullback_seen"] = False; release["after_rejection"] = False
             if was_after_rejection:
                 if release.get("attempt_episode"):
-                    release["attempt_episode"]["status"] = "ORIGINAL_SIDE_RESTORED"
-                    release.setdefault("attempt_history", []).append(release["attempt_episode"])
+                    self.archive_attempt_episode(release, release["attempt_episode"], bar["ts"], "ORIGINAL_SIDE_RESTORED")
+                release["status"] = "RESTORED"
                 self.emit("ORIGINAL_SIDE_RESTORED", bar["ts"], {"release_id": release["release_id"], "zone_id": zone["zone_id"], "direction": direction, "push": push, "baseline": self.baseline(release)}, machine_file="releases")
                 release["attempt_episode"] = None
             else:
@@ -595,6 +760,7 @@ class CausalEngine:
             episode["subsequent_extremes"] += 1
             episode["total_incremental_extension"] += extension
             episode["retention_path"].append({"ts": bar["ts"], "new_extreme": price_extreme, "retained": False, "effort_BTC": effort_since, "extension_USD": extension, "relative_impact": relative})
+            episode["retention_path"] = episode["retention_path"][-64:]
             episode["episode_result_per_100_BTC"] = episode["total_incremental_extension"] / episode["cumulative_aggressive_effort"] * 100 if episode["cumulative_aggressive_effort"] else None
             episode["relative_impact_to_baseline"] = self.relative_impact(episode["episode_result_per_100_BTC"], baseline)
             release["last_failed_extreme_ts"] = bar["ts"]
@@ -629,28 +795,66 @@ class CausalEngine:
         self.cumulative_volume_BTC += bar["volume_BTC"]
         self.state["cumulative_volume_BTC"] = self.cumulative_volume_BTC
         self.update_swings(bar)
-        self.update_zones(bar)
+        started = time.perf_counter(); self.update_zones(bar); self.profile["time_seconds"]["update_zones"] += time.perf_counter() - started
         for tf in TF_MINUTES:
             self.update_tf(tf, self.completed_tf_bar(tf, bar), bar)
-        for zone in self.active_zones_at(bar):
-            self.battle_step(zone, bar)
+        started = time.perf_counter(); active_zones = self.active_zones_at(bar); self.profile["time_seconds"]["active_zones_at"] += time.perf_counter() - started
+        self.prune_human_battle_groups(active_zones)
+        for zone in active_zones:
+            started = time.perf_counter(); self.battle_step(zone, bar); self.profile["time_seconds"]["battle_step"] += time.perf_counter() - started
+        self.profile["counts"]["peak_active_zones"] = max(self.profile["counts"]["peak_active_zones"], len(active_zones))
         for release_id in list(self.active_release_ids):
             release = self.state["releases"].get(release_id)
             if release and bar["ts"] > release["start_ts"]:
-                self.release_step(release, self.state["zones"][release["zone_id"]], bar)
+                started = time.perf_counter(); self.release_step(release, self.state["zones"][release["zone_id"]], bar); self.profile["time_seconds"]["release_step"] += time.perf_counter() - started
+                self.profile["counts"]["release_step_calls"] += 1
+        self.profile["counts"]["peak_active_battles"] = max(self.profile["counts"]["peak_active_battles"], len(self.state.get("active_battle_by_zone", {})))
+        self.profile["counts"]["peak_active_releases"] = max(self.profile["counts"]["peak_active_releases"], len(self.active_release_ids))
         self.state["last_processed_bar_ts"] = bar["ts"]; self.state["bar_count"] += 1
+        samples = self.profile["samples"]
+        samples["active_zones"] += len(self.active_zone_ids)
+        samples["active_battles"] += len(self.state.get("active_battle_by_zone", {}))
+        samples["active_releases"] += len(self.active_release_ids)
+        samples["bars"] += 1
         if self.persist_each_bar:
             atomic_json(self.outputs["state"], self.persistence_state())
             atomic_json(self.outputs["zones"], {"generated_at": fmt_ts(now_ms()), "timezone": TZ_LABEL, "zones": list(self.state["zones"].values())})
 
     def persistence_state(self) -> dict[str, Any]:
-        """Persist active causal context; full bar telemetry remains in append-only logs."""
-        snapshot = copy.deepcopy(self.state)
-        for battle in snapshot.get("battles", {}).values():
-            battle["oi_path"] = battle.get("oi_path", [])[-240:]
-        for release in snapshot.get("releases", {}).values():
-            release["oi_path"] = release.get("oi_path", [])[-240:]
-            release["highs"] = release.get("highs", [])[-500:]
+        """Build restart state explicitly; never deepcopy historical evidence."""
+        started = time.perf_counter(); self.phase_log("persistence_state_start")
+        active_zone_ids = self.active_zone_ids | self.return_zone_ids
+        zones = {}
+        for zid, zone in self.state.get("zones", {}).items():
+            compact = dict(zone)
+            compact["nested_parent_ids"] = list(zone.get("nested_parent_ids", []))[-64:]
+            compact["events"] = list(zone.get("events", []))[-32:]
+            if zid not in active_zone_ids:
+                compact.pop("events", None)
+            zones[zid] = compact
+        battles = {bid: dict(battle) for bid, battle in self.state.get("battles", {}).items() if bid in self.state.get("active_battle_by_zone", {}).values()}
+        for battle in battles.values():
+            battle["oi_path"] = list(battle.get("oi_path", []))[-240:]
+            battle["transfers"] = list(battle.get("transfers", []))[-64:]
+            battle["candidate_history"] = list(battle.get("candidate_history", []))[-64:]
+        releases = {}
+        for rid in self.active_release_ids:
+            release = self.state.get("releases", {}).get(rid)
+            if not release:
+                continue
+            compact = dict(release)
+            compact["oi_path"] = list(release.get("oi_path", []))[-240:]
+            compact["highs"] = list(release.get("highs", []))[-64:]
+            compact["retained_pushes"] = list(release.get("retained_pushes", []))[-64:]
+            compact["attempt_history"] = list(release.get("attempt_history", []))[-32:]
+            if compact.get("attempt_episode"):
+                compact["attempt_episode"] = dict(compact["attempt_episode"])
+                compact["attempt_episode"]["retention_path"] = list(compact["attempt_episode"].get("retention_path", []))[-64:]
+            releases[rid] = compact
+        snapshot = {"schema_version": self.state.get("schema_version"), "live_start_time": self.state.get("live_start_time"), "last_processed_bar_ts": self.state.get("last_processed_bar_ts"), "processed_event_ids": list(self.state.get("processed_event_ids", []))[-DEDUPE_WINDOW:], "human_event_ids": list(self.state.get("human_event_ids", []))[-DEDUPE_WINDOW:], "zones": zones, "battles": battles, "active_battle_by_zone": dict(self.state.get("active_battle_by_zone", {})), "releases": releases, "bar_count": self.state.get("bar_count", 0), "recent_bars": list(self.state.get("recent_bars", []))[-5:], "swing_candidates": list(self.state.get("swing_candidates", []))[-512:], "human_battle_groups": dict(self.state.get("human_battle_groups", {})), "cumulative_volume_BTC": self.state.get("cumulative_volume_BTC", 0.0), "event_digest_sha256": self.event_digest_value, "event_digest_count": self.event_digest_count}
+        snapshot["event_digest_sha256"] = self.event_digest_value
+        snapshot["event_digest_count"] = self.event_digest_count
+        self.phase_log("persistence_state_end", elapsed=time.perf_counter() - started, snapshot_zones=len(zones), snapshot_battles=len(battles), snapshot_releases=len(releases))
         return snapshot
 
     def rehydrate_bar(self, bar: dict[str, Any]) -> None:
@@ -664,8 +868,8 @@ class CausalEngine:
         finally:
             self.rehydrating = previous
 
-    def digest(self) -> list[tuple[Any, ...]]:
-        return [(x.get("event"), x.get("time_ts"), x.get("zone_id"), x.get("battle_id"), x.get("release_id"), x.get("direction"), x.get("side")) for x in self.engine_events]
+    def digest(self) -> dict[str, Any]:
+        return {"count": self.event_digest_count, "sha256": self.event_digest_value}
 
 
 def replay_bars(csv_path: Path) -> list[dict[str, Any]]:
@@ -684,11 +888,25 @@ def benchmark_references() -> list[dict[str, Any]]:
 
 def run_replay(args: argparse.Namespace) -> dict[str, Any]:
     adapter = ReplayAdapter(args.csv); bars = adapter.bars()
-    engine = CausalEngine(reset=args.reset, human_enabled=False, live_start_ts=(bars[-1]["ts"] + 60000 if bars else now_ms()))
+    if args.max_bars:
+        bars = bars[:args.max_bars]
+    engine = CausalEngine(reset=args.reset, human_enabled=False, live_start_ts=(bars[-1]["ts"] + 60000 if bars else now_ms()), telemetry=args.telemetry, persist_each_bar=False)
     for sample in adapter.all_oi_samples:
         engine.record_oi_sample(sample)
+    started_at = time.perf_counter(); last_progress = started_at
     for bar in bars:
         engine.process_closed_bar(bar)
+        now = time.perf_counter()
+        if now - last_progress >= 2.0:
+            elapsed = now - started_at; rate = engine.state["bar_count"] / elapsed if elapsed else 0; remaining = max(0, len(bars) - engine.state["bar_count"]); eta = remaining / rate if rate else None
+            print(f"\r002 replay {engine.state['bar_count']}/{len(bars)} ({engine.state['bar_count'] / len(bars) * 100 if bars else 100:.1f}%) {rate:.2f} bars/s elapsed {elapsed:.0f}s ETA {eta:.0f}s RSS {memory_snapshot().get('rss_bytes', 0)} events {engine.event_digest_count} battles {len(engine.state.get('active_battle_by_zone', {}))} releases {len(engine.active_release_ids)}", end="", flush=True)
+            engine.phase_log("bar_loop_progress", elapsed=elapsed, rate=rate, eta=eta)
+            last_progress = now
+    print()
+    engine.phase_log("bar_loop_end", elapsed=time.perf_counter() - started_at, output_sizes={key: engine.outputs[key].stat().st_size if engine.outputs[key].exists() else 0 for key in ("events", "battles", "releases")})
+    phase_started = time.perf_counter(); snapshot = engine.persistence_state(); engine.phase_log("snapshot_materialized", elapsed=time.perf_counter() - phase_started, snapshot_bytes_estimate=len(json.dumps({"bar_count": snapshot.get("bar_count"), "zones": len(snapshot.get("zones", {})), "releases": len(snapshot.get("releases", {}))})))
+    phase_started = time.perf_counter(); atomic_json(engine.outputs["state"], snapshot); engine.phase_log("state_atomic_json_end", elapsed=time.perf_counter() - phase_started, state_size=engine.outputs["state"].stat().st_size)
+    phase_started = time.perf_counter(); atomic_zones_json(engine.outputs["zones"], engine.state["zones"].values(), {"generated_at": fmt_ts(now_ms()), "timezone": TZ_LABEL}); engine.phase_log("zones_atomic_json_end", elapsed=time.perf_counter() - phase_started, zones_size=engine.outputs["zones"].stat().st_size)
     future_leakage = []
     def inspect(value: Any, event_ts: int, event_id_value: str) -> None:
         if isinstance(value, dict):
@@ -700,21 +918,31 @@ def run_replay(args: argparse.Namespace) -> dict[str, Any]:
         elif isinstance(value, list):
             for child in value:
                 inspect(child, event_ts, event_id_value)
-    for event in engine.engine_events:
-        inspect(event, event.get("observable_at_ts", event["time_ts"]), event["event_id"])
     human_kinds = {"BATTLE_STARTED", "BATTLE_RESOLUTION_CANDIDATE", "BATTLE_RESOLUTION_HOLDING", "PASSIVE_REJECTION_EXIT_WARNING", "OPPOSITE_CONTROL_CANDIDATE"}
-    human_eligible = [x for x in engine.engine_events if x["event"] in human_kinds]
+    human_counts = {kind: 0 for kind in human_kinds}
+    human_sample = []
+    for key in ("events", "battles", "releases"):
+        for event in CausalEngine.iter_jsonl(engine.outputs[key]):
+            if "event_id" in event and "time_ts" in event:
+                inspect(event, event.get("observable_at_ts", event["time_ts"]), event["event_id"])
+            if event.get("event") in human_counts:
+                human_counts[event["event"]] += 1
+                if len(human_sample) < 200:
+                    human_sample.append({"time": event.get("time"), "event": event.get("event")})
+    engine.phase_log("streaming_audit_end", elapsed=time.perf_counter() - started_at, future_leakage=len(set(future_leakage)), human_counts=human_counts)
     audit = {
         "mode": "replay",
         "bars": len(bars),
-        "events": len(engine.engine_events),
+        "events": engine.profile["counts"]["total_machine_events"],
         "human_lines_emitted": 0,
-        "human_eligible_event_count": len(human_eligible),
-        "human_timeline": [{"time": x["time"], "event": x["event"]} for x in human_eligible],
+        "human_eligible_event_count": sum(human_counts.values()),
+        "human_event_counts": human_counts,
+        "human_timeline_sample": human_sample,
         "future_leakage_errors": len(set(future_leakage)),
         "oi_resolution_note": "historical OI remains 5m/source resolution; nearest prior metadata is preserved",
         "existing_reference_benchmarks": benchmark_references(),
         "engine_digest_sha256": hashlib.sha256(json.dumps(engine.digest(), sort_keys=True).encode()).hexdigest(),
+        "profile": engine.profile_snapshot(),
     }
     audit["human_suppression_pass"] = True
     OUTPUTS["audit"].write_text("# BTC-LRA-002 replay audit\n\n```json\n" + json.dumps(audit, ensure_ascii=False, indent=2) + "\n```\n", encoding="utf-8")
@@ -728,8 +956,12 @@ def run_self_test(args: argparse.Namespace) -> dict[str, Any]:
     def temp_outputs() -> dict[str, Path]:
         root = Path(tempfile.mkdtemp(prefix="btc-lra-002-test-"))
         return {key: root / path.name for key, path in OUTPUTS.items()}
-    one = CausalEngine(outputs=temp_outputs(), reset=True, human_enabled=False, live_start_ts=bars[-1]["ts"] + 60000, persist_each_bar=False)
-    for bar in bars: one.process_closed_bar(bar)
+    telemetry_engines = {}
+    for mode in ("none", "events", "full"):
+        candidate = CausalEngine(outputs=temp_outputs(), reset=True, human_enabled=False, live_start_ts=bars[-1]["ts"] + 60000, persist_each_bar=False, telemetry=mode)
+        for bar in bars: candidate.process_closed_bar(dict(bar))
+        telemetry_engines[mode] = candidate
+    one = telemetry_engines["events"]
     two_outputs = temp_outputs()
     two = CausalEngine(outputs=two_outputs, reset=True, human_enabled=False, live_start_ts=bars[-1]["ts"] + 60000, persist_each_bar=False)
     split = max(1, len(bars) // 2)
@@ -740,7 +972,9 @@ def run_self_test(args: argparse.Namespace) -> dict[str, Any]:
     rehydrate_start = max(0, split - BOOTSTRAP_MINUTES - 1)
     for bar in bars[rehydrate_start:split]: restarted.rehydrate_bar(dict(bar))
     for bar in bars[split:]: restarted.process_closed_bar(dict(bar))
-    digest_equal = one.digest() == (two.digest() + restarted.digest())
+    digest_equal = one.digest() == restarted.digest()
+    expected_digest = one.digest(); observed_digest = restarted.digest()
+    digest_mismatch = None if digest_equal else {"expected": expected_digest, "observed": observed_digest}
     leakage_errors = []
     def inspect(value: Any, observable: int, event_id_value: str) -> None:
         if isinstance(value, dict):
@@ -752,12 +986,18 @@ def run_self_test(args: argparse.Namespace) -> dict[str, Any]:
         elif isinstance(value, list):
             for child in value:
                 inspect(child, observable, event_id_value)
-    for event in one.engine_events:
-        inspect(event, event["observable_at_ts"], event["event_id"])
+    one_records = []
+    for key in ("events", "battles", "releases"):
+        one_records.extend(CausalEngine.load_jsonl(one.outputs[key]))
+    for event in one_records:
+        if "event_id" in event and "time_ts" in event:
+            inspect(event, event.get("observable_at_ts", event["time_ts"] + 60000), event["event_id"])
     human_kinds = {"BATTLE_STARTED", "BATTLE_RESOLUTION_CANDIDATE", "BATTLE_RESOLUTION_HOLDING", "PASSIVE_REJECTION_EXIT_WARNING", "OPPOSITE_CONTROL_CANDIDATE"}
-    human_eligible = [x for x in one.engine_events if x["event"] in human_kinds]
+    human_eligible = [x for x in one_records if x.get("event") in human_kinds]
     multi_tf = {tf: any(z["timeframe"] == tf for z in one.state["zones"].values()) for tf in TF_MINUTES}
-    result = {"replay_restart_parity": "PASS" if digest_equal else "FAIL", "future_leakage": "PASS" if not leakage_errors else "FAIL", "human_suppression": "PASS" if not two_outputs["human"].exists() or not two_outputs["human"].read_text(encoding="utf-8").strip() else "FAIL", "human_eligible_event_count": len(human_eligible), "human_timeline": [{"time": x["time"], "event": x["event"]} for x in human_eligible], "oi_metadata": "PASS", "multi_tf_context": multi_tf, "bar_count": len(bars), "errors": sorted(set(leakage_errors))[:20]}
+    telemetry_digest = {mode: hashlib.sha256(json.dumps(engine.digest(), sort_keys=True).encode()).hexdigest() for mode, engine in telemetry_engines.items()}
+    telemetry_parity = len(set(telemetry_digest.values())) == 1
+    result = {"replay_restart_parity": "PASS" if digest_equal else "FAIL", "restart_digest_mismatch": digest_mismatch, "telemetry_digest_parity": "PASS" if telemetry_parity else "FAIL", "telemetry_digests": telemetry_digest, "profiles": {mode: engine.profile_snapshot() for mode, engine in telemetry_engines.items()}, "future_leakage": "PASS" if not leakage_errors else "FAIL", "human_suppression": "PASS" if not two_outputs["human"].exists() or not two_outputs["human"].read_text(encoding="utf-8").strip() else "FAIL", "human_eligible_event_count": len(human_eligible), "human_event_counts": {kind: sum(1 for x in human_eligible if x["event"] == kind) for kind in sorted(human_kinds)}, "human_timeline_sample": [{"time": fmt_ts(x["time_ts"]), "event": x["event"]} for x in human_eligible[:200]], "oi_metadata": "PASS", "multi_tf_context": multi_tf, "bar_count": len(bars), "errors": sorted(set(leakage_errors))[:20]}
     print(json.dumps(result, ensure_ascii=False, indent=2)); return result
 
 
@@ -768,13 +1008,14 @@ def main() -> None:
     parser.add_argument("--reset", action="store_true")
     parser.add_argument("--poll-seconds", type=int, default=5)
     parser.add_argument("--self-test", action="store_true")
-    parser.add_argument("--max-bars", type=int, default=0, help="test-only replay cap; production replay remains uncapped")
+    parser.add_argument("--max-bars", type=int, default=0, help="debug/replay cap; zero means all bars")
+    parser.add_argument("--telemetry", choices=("none", "events", "full"), default="events")
     args = parser.parse_args()
     if args.self_test:
         run_self_test(args); return
     if args.mode == "replay":
         print(json.dumps(run_replay(args), ensure_ascii=False, indent=2)); return
-    engine = CausalEngine(reset=args.reset, human_enabled=False, live_start_ts=now_ms())
+    engine = CausalEngine(reset=args.reset, human_enabled=False, live_start_ts=now_ms(), telemetry=args.telemetry)
     adapter = BinanceLiveAdapter(engine, args.poll_seconds)
     try:
         adapter.bootstrap()
