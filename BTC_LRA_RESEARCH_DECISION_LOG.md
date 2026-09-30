@@ -41,3 +41,17 @@
 - **what remains unproven:** Full 4h startup parity, exact historical benchmark event timestamps, full persistent dedupe over complete MASTER, Binance live connectivity и performance на полном dataset. Human clustering требует проверки на полном overlapping-zone sample.
 - **next research question:** Оптимизировать/профилировать полный replay без изменения semantics, затем выполнить 2880+ bar multi-TF, benchmark timeline и live adapter smoke test.
 - **commit SHA:** `3ad49bc9ca22177fd8db0e224d4af4e25dadded0`
+
+## 2026-09-29/30 — BTC-LRA-002 memory spike and finalization hardening
+
+- **task / research question:** Устранить state explosion на длинном replay и определить фазу скачка памяти без изменения market semantics.
+- **working hypothesis:** Основной рост может происходить из-за полного `engine_events`, dedupe history, inactive release objects, human groups, nested parent references или final audit materialization.
+- **what was inspected:** Process snapshots for all `python.exe`, 300/1000/3000-bar profiles, full MASTER progress, STATE/EVENTS/RELEASES sizes, phase timings, restart/telemetry/leakage tests.
+- **bugs / semantic problems found:** Первый full run достиг ~15.6 GB RSS; финальный snapshot показал ~23.6 GB private memory. Причины: unbounded event/dedupe retention, historical human group membership, full nested parent IDs in hot zones, и full JSONL audit readback. `persistence_state()` использовал full `deepcopy`, а final audit материализовал все JSONL records.
+- **changes made:** Введены incremental causal digest и bounded event sample; dedupe lists ограничены restart window; inactive releases архивируются компактным summary; human groups pruning оставляет только current interactable context; nested parent evidence пишется в `BALANCE_ACTIVE`, hot zone хранит bounded IDs; restart snapshot собирается явно без full deepcopy; ZONE_STATE и audit используют streaming; добавлены phase logs и progress output.
+- **why those changes were chosen:** Полная evidence остаётся append-only JSONL, а hot memory содержит только active/restart context. Порядок и условия causal events не менялись.
+- **alternatives rejected and why:** Не менялись thresholds, zone/battle/release conditions, volume filters, cooldowns, bar skipping или новые research mechanics. Полный event payload не оставлен в RAM ради audit.
+- **benchmark observations:** 300 bars: restart/telemetry/leakage/suppression PASS. 1000 bars: STATE ~8.65 MB, 15,552 events. 3000 bars: STATE ~38.9 MB, 103,484 events. Full MASTER завершён: 13,810 bars, 5,452,655 machine events, 43,252 battles, 39,552 releases, 216,164 human-eligible events, future leakage 0. Peak sampled process private memory около 0.93 GB; bar loop и finalization не повторили десятки-GB spike. `persistence_state` 0.37s; STATE serialization 26.3s; ZONE_STATE 0.28s; streaming audit завершён без materialization.
+- **what remains unproven:** Full benchmark semantic parity against all historical reference timelines, exact native peak memory from in-process API before its correction, and live long-duration restart behavior remain research validation items. Full run is technical replay PASS, not trading validation.
+- **next research question:** Добавить targeted benchmark timeline comparison and long-running live restart test using the bounded snapshot/evidence architecture.
+- **commit SHA:** `0d137f7e43a9eac89674b3901b48005ac9f07863`
