@@ -54,7 +54,7 @@ def clock(value: Any = None) -> str:
     stamp = ts_ms(value) if value is not None else int(time.time() * 1000)
     if stamp is None:
         return "??:??:??"
-    return datetime.fromtimestamp(stamp / 1000, tz=PANAMA).strftime("%H:%M:%S")
+    return datetime.fromtimestamp(stamp / 1000, tz=PANAMA).strftime("%H.%M.%S / %d.%m.%y -5")
 
 
 def direction(record: dict[str, Any]) -> str | None:
@@ -101,6 +101,13 @@ def price_of(record: dict[str, Any]) -> float | None:
             if result is not None:
                 return result
     return None
+
+
+def event_header(record: dict[str, Any], kind: str, fallback_price: float | None = None) -> str:
+    price = record.get("new_extreme") if isinstance(record.get("new_extreme"), (int, float)) else price_of(record)
+    price = price if isinstance(price, (int, float)) else fallback_price
+    context = "HIGH" if kind in {"NEW_EXTREME_WITHOUT_RETENTION", "PASSIVE_REJECTION_EXIT_WARNING"} and direction(record) == "BUY" else "LOW" if kind in {"NEW_EXTREME_WITHOUT_RETENTION", "PASSIVE_REJECTION_EXIT_WARNING"} and direction(record) == "SELL" else "PRICE"
+    return f"{context} {number(price, 2)} / {clock(record_ts(record))}"
 
 
 class TailFile:
@@ -266,7 +273,7 @@ class LiveMonitor:
         if not kind:
             return
         self.latest_price = price_of(record) or self.latest_price
-        stamp = clock(record_ts(record))
+        stamp = event_header(record, kind, self.latest_price)
         if kind == "BATTLE_BAR":
             battle_id = str(record.get("battle_id", ""))
             signature = tuple(record.get(key) for key in ("leader", "candidate_side", "candidate_status", "state"))
@@ -275,6 +282,7 @@ class LiveMonitor:
             self.battle_latest[battle_id] = record
             if quiet or previous is None or previous == signature:
                 return
+            print()
             if previous[0] != signature[0]:
                 print(f"{stamp} | ЛИДЕР СМЕНИЛСЯ: {previous[0] or '—'} → {signature[0] or '—'}")
             elif previous[1:] != signature[1:]:
@@ -287,6 +295,7 @@ class LiveMonitor:
                 release_id = str(record.get("release_id", ""))
                 self.release_view[release_id] = record.get("status") or record.get("new_status") or "—"
             return
+        print()
         if kind == "BATTLE_STARTED":
             print(f"{stamp} | НАЧАЛАСЬ БОРЬБА {display_direction(record)}")
             self.print_battle_metrics(record)

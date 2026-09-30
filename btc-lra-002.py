@@ -20,7 +20,7 @@ import tempfile
 import time
 from ctypes import wintypes
 from collections import defaultdict, deque
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any, Iterable
 from urllib.parse import urlencode
@@ -59,6 +59,47 @@ def fmt_ts(ts: int | None) -> str | None:
     if ts is None:
         return None
     return datetime.fromtimestamp(ts / 1000, tz=timezone.utc).isoformat().replace("+00:00", "Z")
+
+
+PANAMA_TZ = timezone(timedelta(hours=-5))
+
+
+def human_time_panama(ts: int | None) -> str | None:
+    if ts is None:
+        return None
+    return datetime.fromtimestamp(ts / 1000, tz=PANAMA_TZ).strftime("%H.%M.%S / %d.%m.%y -5")
+
+
+def human_event_block(ts: int, price: float, *lines: str, context: str = "PRICE") -> str:
+    return "\n" + "\n".join([f"{context} {price:.2f} / {human_time_panama(ts)}", *lines])
+
+
+def human_efficiency_text(per100: float | None, baseline: dict[str, Any], relative: dict[str, Any]) -> str:
+    if per100 is None:
+        return "Эффективность пока недоступна"
+    baseline_value = baseline.get("median_all")
+    relative_value = relative.get("median_all")
+    if baseline_value is None or relative_value is None:
+        return f"Эффективность {per100:.2f} USDT / 100 BTC (сравнение с прошлой пока недоступно)"
+    return f"Эффективность {relative_value:.1f}% ({per100:.2f} USDT от {baseline_value:.2f} USDT / 100 BTC)"
+
+
+def human_passive_rejection_block(ts: int, direction: str, price: float, effort: float, extension: float,
+                                  per100: float | None, baseline: dict[str, Any], relative: dict[str, Any]) -> str:
+    extreme = "HIGH" if direction == "BUY" else "LOW"
+    opposite = "SHORT" if direction == "BUY" else "LONG"
+    risk_side = "LONG" if direction == "BUY" else "SHORT"
+    signed_extension = extension if direction == "BUY" else -extension
+    return human_event_block(
+        ts,
+        price,
+        f"{direction} УПЁРСЯ / ВОЗМОЖНОЕ ПОГЛОЩЕНИЕ",
+        f"Усилие {direction} {effort:.2f} BTC → ценовой сдвиг {signed_extension:+.2f} USDT",
+        human_efficiency_text(per100, baseline, relative),
+        f"Новый {extreme} не удержан, {opposite} ещё НЕ подтверждён",
+        f"Возможный риск для открытых {risk_side} позиций",
+        context=extreme,
+    )
 
 
 def num(value: Any) -> float | None:
@@ -597,7 +638,7 @@ class CausalEngine:
             return group_id, None
         group["human_emitted"] = True
         tf = sorted({self.state["zones"][zid]["timeframe"] for zid in group["zone_ids"] if zid in self.state["zones"]}, key=lambda x: TF_MINUTES[x])
-        return group_id, {"human_id": group_id, "text": f"[{bar['timestamp']}]\nБОРЬБА В ПРОЦЕССЕ\n{' / '.join(tf)} {group['low']:.2f}–{group['high']:.2f} | BUY/SELL: пока без устойчивого победителя"}
+        return group_id, {"human_id": group_id, "text": human_event_block(bar["ts"], bar["close"], "БОРЬБА В ПРОЦЕССЕ", f"{' / '.join(tf)} {group['low']:.2f}–{group['high']:.2f} | BUY/SELL: пока без устойчивого победителя")}
 
     def archive_battle(self, zone: dict[str, Any], battle: dict[str, Any], reason: str, ts: int) -> None:
         battle["status"] = reason
@@ -663,7 +704,7 @@ class CausalEngine:
                     transfer = {"time_ts": bar["ts"], "side": opposite, "side_a": side, "side_b": opposite, "side_a_efficiency": metrics["efficiency"], "side_b_efficiency": battle["metrics"][opposite]["efficiency"], "side_a_deterioration_time": track["deterioration_time"], "side_b_first_reward_time": track["first_opposite_reward_time"], "side_b_reward_bars": track["opposite_reward_bars"]}
                     battle["transfers"].append(transfer)
                     self.emit("TRANSFER_CANDIDATE", bar["ts"], {"battle_id": battle["battle_id"], "zone_id": zid, "side_a": side, "side_b": opposite, "evidence": transfer}, machine_file="battles")
-                    self.emit("BATTLE_RESOLUTION_CANDIDATE", bar["ts"], {"battle_id": battle["battle_id"], "zone_id": zid, "side": opposite, "price": bar["close"], "old_side": side, "new_side_progress": side_progress(opposite, battle["base_price"], bar["close"]), "new_side_efficiency": battle["metrics"][opposite]["efficiency"], "retention": "not_confirmed", "parent_context": battle["parent_context"]}, human={"text": f"[{bar['timestamp']}]\nПОЯВИЛСЯ ПЕРЕВЕС {opposite}\n{zone['timeframe']} {zone['low']:.2f}–{zone['high']:.2f} | price {bar['close']:.2f}\nretention пока не подтверждён"})
+                    self.emit("BATTLE_RESOLUTION_CANDIDATE", bar["ts"], {"battle_id": battle["battle_id"], "zone_id": zid, "side": opposite, "price": bar["close"], "old_side": side, "new_side_progress": side_progress(opposite, battle["base_price"], bar["close"]), "new_side_efficiency": battle["metrics"][opposite]["efficiency"], "retention": "not_confirmed", "parent_context": battle["parent_context"]}, human={"text": human_event_block(bar["ts"], bar["close"], f"ПОЯВИЛСЯ ПЕРЕВЕС {opposite}", f"{zone['timeframe']} {zone['low']:.2f}–{zone['high']:.2f}", "retention пока не подтверждён")})
                     battle["transfer_tracks"][side] = None
         candidate = battle["candidate_side"]
         if candidate and battle["candidate_status"] == "CANDIDATE_ACTIVE" and bar["ts"] > battle["candidate_ts"]:
@@ -680,7 +721,7 @@ class CausalEngine:
             elif candidate_retained:
                 battle["candidate_status"] = "HOLDING"; battle["state"] = "BATTLE_RESOLUTION_HOLDING"; battle["holding_emitted"] = True
                 direction = candidate; battle["release_id"] = f"RELEASE-{battle['battle_id']}-{bar['ts']}"; self.state["releases"][battle["release_id"]] = self.new_release(battle, zone, bar); self.active_release_ids.add(battle["release_id"]); self.profile["counts"]["releases_created"] += 1
-                self.emit("BATTLE_RESOLUTION_HOLDING", bar["ts"], {"battle_id": battle["battle_id"], "zone_id": zid, "side": candidate, "price": bar["close"], "old_side_restored": "NO", "new_side_progress": candidate_result, "parent_context": battle["parent_context"], "potential_structural_path": self.state["releases"][battle["release_id"]]["expected_release_path"]}, human={"text": f"[{bar['timestamp']}]\n{candidate} ВЫИГРАЛ ЛОКАЛЬНУЮ БОРЬБУ | {bar['close']:.2f}\nprogress удержан\nБлижайшая структура: {', '.join(f'{x:.2f}' for x in self.state['releases'][battle['release_id']]['expected_release_path']['levels'][:3]) or 'нет известных уровней'}"})
+                self.emit("BATTLE_RESOLUTION_HOLDING", bar["ts"], {"battle_id": battle["battle_id"], "zone_id": zid, "side": candidate, "price": bar["close"], "old_side_restored": "NO", "new_side_progress": candidate_result, "parent_context": battle["parent_context"], "potential_structural_path": self.state["releases"][battle["release_id"]]["expected_release_path"]}, human={"text": human_event_block(bar["ts"], bar["close"], f"{candidate} ВЫИГРАЛ ЛОКАЛЬНУЮ БОРЬБУ", "progress удержан", f"Ближайшая структура: {', '.join(f'{x:.2f}' for x in self.state['releases'][battle['release_id']]['expected_release_path']['levels'][:3]) or 'нет известных уровней'}")})
         battle["last_winner"] = leader or battle["last_winner"]
         battle["previous_efficiency"] = {side: battle["metrics"][side]["efficiency"] for side in ("BUY", "SELL")}
         battle["previous_close"] = bar["close"]
@@ -729,7 +770,7 @@ class CausalEngine:
                 if result > 0 and bar[side_effort_key(opposite)] > 0 and not release["opposite_human_emitted"]:
                     release["opposite_human_emitted"] = True
                     release["status"] = "CHALLENGED"
-                    self.emit("OPPOSITE_CONTROL_CANDIDATE", bar["ts"], {"release_id": release["release_id"], "zone_id": zone["zone_id"], "direction": opposite, "price": bar["close"], "last_extreme": release["active_extreme"], "current_reward": result, "effort_BTC": bar[side_effort_key(opposite)], "retention": "outcome_pending", "OI_BTC": bar.get("OI_BTC"), "dOI_BTC": bar.get("dOI_BTC")}, human={"text": f"[{bar['timestamp']}]\n{opposite} ПОЛУЧИЛ КОНТРОЛЬ ПОСЛЕ ПРОВАЛА {direction}\nprice {bar['close']:.2f} | reward {result:.2f}\nCONTROL CANDIDATE"})
+                    self.emit("OPPOSITE_CONTROL_CANDIDATE", bar["ts"], {"release_id": release["release_id"], "zone_id": zone["zone_id"], "direction": opposite, "price": bar["close"], "last_extreme": release["active_extreme"], "current_reward": result, "effort_BTC": bar[side_effort_key(opposite)], "retention": "outcome_pending", "OI_BTC": bar.get("OI_BTC"), "dOI_BTC": bar.get("dOI_BTC")}, human={"text": human_event_block(bar["ts"], bar["close"], f"{opposite} ПОЛУЧИЛ КОНТРОЛЬ ПОСЛЕ ПРОВАЛА {direction}", f"price {bar['close']:.2f} | reward {result:.2f}", "CONTROL CANDIDATE")})
                     self.write_jsonl(self.outputs["releases"], {"record_type": "RELEASE_STATUS", "release_id": release["release_id"], "zone_id": zone["zone_id"], "time_ts": bar["ts"], "status": "CHALLENGED", "reason": "OPPOSITE_CONTROL_CANDIDATE"})
                     self.active_release_ids.discard(release["release_id"])
                     self.archive_inactive_release(release, bar["ts"], "OPPOSITE_CONTROL_CANDIDATE")
@@ -768,12 +809,8 @@ class CausalEngine:
             release["last_failed_extreme_ts"] = bar["ts"]
             self.emit("NEW_EXTREME_WITHOUT_RETENTION", bar["ts"], {"release_id": release["release_id"], "zone_id": zone["zone_id"], "direction": direction, "previous_retained_extreme": previous_retained, "new_extreme": price_extreme, "push": push, "baseline": baseline, "relative_impact": relative, "attempt_episode": episode, "observation_basis": "closed candle only"}, machine_file="releases")
             if not release["passive_human_emitted"]:
-                release["passive_human_emitted"] = True; label = "BUY УПЁРСЯ / ВОЗМОЖНОЕ ПОГЛОЩЕНИЕ" if direction == "BUY" else "SELL УПЁРСЯ / ВОЗМОЖНОЕ ПОГЛОЩЕНИЕ"; opposite = "SHORT" if direction == "BUY" else "LONG"
-                eff_text = f"{per100:.2f} USD/100 BTC" if per100 is not None else "raw result"
-                base_text = f"baseline {baseline['median_all']:.2f}" if baseline.get("median_all") is not None else f"baseline {baseline['status']}"
-                relative_text = f"relative impact {relative['median_all']:.1f}%" if relative.get("median_all") is not None else "relative impact unavailable"
-                exit_text = "LONG EXIT WARNING" if direction == "BUY" else "SHORT EXIT WARNING"
-                self.emit("PASSIVE_REJECTION_EXIT_WARNING", bar["ts"], {"release_id": release["release_id"], "zone_id": zone["zone_id"], "direction": direction, "last_retained_extreme": previous_retained, "new_extreme": price_extreme, "effort_BTC": effort_since, "result_USD": extension, "efficiency": per100, "baseline": baseline, "relative_impact": relative, "new_extreme_retained": False, "baseline_status": baseline["status"], "not_a_trading_signal": True}, human={"text": f"[{bar['timestamp']}]\n{label} | {price_extreme:.2f}\neffort {effort_since:.2f} BTC → +{extension:.2f} USD\nimpact {eff_text}\n{base_text}\n{relative_text}\n{('новый HIGH' if direction == 'BUY' else 'новый LOW')} не удержан\n{exit_text} | {opposite} ещё НЕ подтверждён"})
+                release["passive_human_emitted"] = True
+                self.emit("PASSIVE_REJECTION_EXIT_WARNING", bar["ts"], {"release_id": release["release_id"], "zone_id": zone["zone_id"], "direction": direction, "last_retained_extreme": previous_retained, "new_extreme": price_extreme, "effort_BTC": effort_since, "result_USD": extension, "efficiency": per100, "baseline": baseline, "relative_impact": relative, "new_extreme_retained": False, "baseline_status": baseline["status"], "not_a_trading_signal": True}, human={"text": human_passive_rejection_block(bar["ts"], direction, price_extreme, effort_since, extension, per100, baseline, relative)})
 
     def baseline(self, release: dict[str, Any]) -> dict[str, Any]:
         values = [x.get("result_per_100_BTC") for x in release["retained_pushes"] if x.get("result_per_100_BTC") is not None]
