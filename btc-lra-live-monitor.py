@@ -54,7 +54,7 @@ def clock(value: Any = None) -> str:
     stamp = ts_ms(value) if value is not None else int(time.time() * 1000)
     if stamp is None:
         return "??:??:??"
-    return datetime.fromtimestamp(stamp / 1000, tz=PANAMA).strftime("%H.%M.%S / %d.%m.%y -5")
+    return datetime.fromtimestamp(stamp / 1000, tz=PANAMA).strftime("%H:%M:%S / %d.%m.%y -5")
 
 
 def direction(record: dict[str, Any]) -> str | None:
@@ -108,6 +108,10 @@ def event_header(record: dict[str, Any], kind: str, fallback_price: float | None
     price = price if isinstance(price, (int, float)) else fallback_price
     context = "HIGH" if kind in {"NEW_EXTREME_WITHOUT_RETENTION", "PASSIVE_REJECTION_EXIT_WARNING"} and direction(record) == "BUY" else "LOW" if kind in {"NEW_EXTREME_WITHOUT_RETENTION", "PASSIVE_REJECTION_EXIT_WARNING"} and direction(record) == "SELL" else "PRICE"
     return f"{context} {number(price, 2)} / {clock(record_ts(record))}"
+
+
+def current_header(price: float | None, ts: int | None = None) -> str:
+    return f"{number(price, 1)} / {clock(ts)}"
 
 
 class TailFile:
@@ -187,6 +191,9 @@ class LiveMonitor:
             self.state = state
             self.battles = {str(k): v for k, v in state.get("battles", {}).items() if isinstance(v, dict)}
             self.releases = {str(k): v for k, v in state.get("releases", {}).items() if isinstance(v, dict)}
+            recent_bars = state.get("recent_bars", [])
+            if recent_bars:
+                self.latest_price = price_of(recent_bars[-1])
         if zone_state is not None:
             self.zones = {str(z.get("zone_id")): z for z in zone_state.get("zones", []) if isinstance(z, dict) and z.get("zone_id")}
         for key, value in self.state.get("zones", {}).items():
@@ -240,33 +247,35 @@ class LiveMonitor:
             return "нет данных"
         rounded = round(delta, 1)
         if rounded == 0:
-            return "БЕЗ СУЩЕСТВЕННОГО ИЗМЕНЕНИЯ"
+            return "СТАБИЛЕН"
         return "НАРАСТАЕТ" if rounded > 0 else "СОКРАЩАЕТСЯ"
 
     def oi_text(self, start_ts: int | None = None) -> list[str]:
         since_start, last_60, trend = self.oi_delta(start_ts)
-        return ["ОИ:", f"от начала battle: {since_start:+.1f} BTC" if since_start is not None else "от начала battle: нет данных", f"последние 60с: {last_60:+.1f} BTC" if last_60 is not None else "последние 60с: нет данных", f"ОИ {trend}"]
+        lines = []
+        if start_ts is not None:
+            lines.append(f"ОИ от начала борьбы {since_start:+.1f} BTC" if since_start is not None else "ОИ от начала борьбы нет данных")
+        lines.append(f"ОИ за последние 60 сек {last_60:+.1f} BTC" if last_60 is not None else "ОИ за последние 60 сек нет данных")
+        lines.append(f"ОИ {trend}")
+        return lines
 
-    def print_battle_metrics(self, record: dict[str, Any]) -> None:
+    def print_battle_metrics(self, record: dict[str, Any], current_price: float | None = None) -> None:
         battle_id = record.get("battle_id")
         battle = self.battles.get(str(battle_id), record)
         if battle_id and str(battle_id) in self.battle_latest:
             merged = dict(battle)
             merged.update(self.battle_latest[str(battle_id)])
             battle = merged
-        print(f"Цена: {number(price_of(record) or price_of(battle), 1)}")
-        print(*self.zone_text(record if record.get("zone_id") else battle, price_of(record) or price_of(battle)), sep="\n")
-        print(f"BUY effort:  {number(battle.get('buy_effort'), 1)} BTC")
-        print(f"SELL effort: {number(battle.get('sell_effort'), 1)} BTC")
-        print(f"BUY result:  {number(battle.get('buy_result'), 1)} USD")
-        print(f"SELL result: {number(battle.get('sell_result'), 1)} USD")
+        display_price = current_price if isinstance(current_price, (int, float)) else price_of(record) or price_of(battle)
+        print(f"Цена: {number(display_price, 1)}")
+        print(*self.zone_text(record if record.get("zone_id") else battle, display_price), sep="\n")
+        print(f"Усилие BUY:  {number(battle.get('buy_effort'), 1)} BTC")
+        print(f"Усилие SELL: {number(battle.get('sell_effort'), 1)} BTC")
+        print(f"Результат BUY:  {number(battle.get('buy_result'), 1)} USD")
+        print(f"Результат SELL: {number(battle.get('sell_result'), 1)} USD")
         print(f"Лидер: {battle.get('leader') or record.get('leader') or '—'}")
         print(f"Кандидат: {battle.get('candidate_side') or record.get('candidate_side') or '—'} ({battle.get('candidate_status') or record.get('candidate_status') or '—'})")
         print(*self.oi_text(ts_ms(battle.get("start_ts"))), sep="\n")
-        if battle_id:
-            print(f"Battle: {battle_id}")
-        if record.get("release_id") or battle.get("release_id"):
-            print(f"Release: {record.get('release_id') or battle.get('release_id')}")
 
     def emit(self, record: dict[str, Any], historical: bool = False, quiet: bool = False) -> None:
         kind = record.get("event") or record.get("record_type")
@@ -351,24 +360,44 @@ class LiveMonitor:
         self.oi.append(record)
         after = self.oi_delta()[2]
         if before != after and before != "нет данных":
-            print(f"{clock(record_ts(record))} | ОИ ИЗМЕНИЛ ДИНАМИКУ")
-            print(f"Было: {before}\nТеперь: {after}")
-            print(*self.oi_text(), sep="\n")
-            print(f"Цена: {number(self.latest_price, 1)}\n" + "─" * 56)
+            delta = self.oi_delta()[1]
+            if delta is None:
+                return
+            if after == "СТАБИЛЕН":
+                label = f"ОИ СТАБИЛЕН / изменение за 60 сек {delta:+.1f} BTC"
+            else:
+                label = f"ОИ {after} {delta:+.1f} BTC / 60 сек"
+            print()
+            print(f"{current_header(self.latest_price, record_ts(record))}\n{label}")
+            print("─" * 56)
+
+    def current_context_battle(self, active_battles: list[dict[str, Any]]) -> dict[str, Any] | None:
+        if not isinstance(self.latest_price, (int, float)):
+            return None
+        candidates = []
+        for battle in active_battles:
+            zone = self.zones.get(str(battle.get("zone_id")))
+            low, high = (zone or {}).get("low"), (zone or {}).get("high")
+            if not isinstance(low, (int, float)) or not isinstance(high, (int, float)):
+                continue
+            if low <= self.latest_price <= high:
+                width = max(float(high - low), 0.0)
+                candidates.append((width, -(battle.get("start_ts") or 0), battle))
+        return min(candidates, key=lambda item: (item[0], item[1]))[2] if candidates else None
 
     def current_snapshot(self) -> None:
         active_ids = {str(value) for value in self.state.get("active_battle_by_zone", {}).values() if value}
         active_battles = [self.battles[key] for key in active_ids if key in self.battles]
         active_releases = [x for x in self.releases.values() if x.get("status") in ACTIVE_RELEASE_STATUSES]
-        print(f"{clock()} | ТЕКУЩЕЕ СОСТОЯНИЕ")
-        print(f"Активных battles: {len(active_battles)}")
-        print(f"Активных releases: {len(active_releases)}")
-        if active_battles:
-            battle = max(active_battles, key=lambda x: x.get("start_ts") or 0)
-            print("Основной текущий battle:")
-            self.print_battle_metrics(battle)
+        print(f"{current_header(self.latest_price)}\nТЕКУЩЕЕ СОСТОЯНИЕ")
+        print(f"Активных представлений борьбы: {len(active_ids)}")
+        print(f"Активных release-представлений: {len(active_releases)}")
+        battle = self.current_context_battle(active_battles)
+        if battle is not None:
+            print("Текущая борьба")
+            self.print_battle_metrics(battle, self.latest_price)
         else:
-            print("Активной борьбы/release сейчас нет — наблюдение продолжается")
+            print("Явной текущей борьбы у цены сейчас нет")
         print("─" * 56)
 
     def startup(self) -> None:
