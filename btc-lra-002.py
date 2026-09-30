@@ -850,6 +850,9 @@ class CausalEngine:
             if compact.get("attempt_episode"):
                 compact["attempt_episode"] = dict(compact["attempt_episode"])
                 compact["attempt_episode"]["retention_path"] = list(compact["attempt_episode"].get("retention_path", []))[-64:]
+            path = compact.get("expected_release_path")
+            if isinstance(path, dict):
+                compact["expected_release_path"] = {"levels": list(path.get("levels", []))[-64:], "local_opposite_boundary": path.get("local_opposite_boundary"), "parent_boundaries": list(path.get("parent_boundaries", []))[-64:], "prior_historical_references": list(path.get("prior_historical_references", []))[-8:]}
             releases[rid] = compact
         snapshot = {"schema_version": self.state.get("schema_version"), "live_start_time": self.state.get("live_start_time"), "last_processed_bar_ts": self.state.get("last_processed_bar_ts"), "processed_event_ids": list(self.state.get("processed_event_ids", []))[-DEDUPE_WINDOW:], "human_event_ids": list(self.state.get("human_event_ids", []))[-DEDUPE_WINDOW:], "zones": zones, "battles": battles, "active_battle_by_zone": dict(self.state.get("active_battle_by_zone", {})), "releases": releases, "bar_count": self.state.get("bar_count", 0), "recent_bars": list(self.state.get("recent_bars", []))[-5:], "swing_candidates": list(self.state.get("swing_candidates", []))[-512:], "human_battle_groups": dict(self.state.get("human_battle_groups", {})), "cumulative_volume_BTC": self.state.get("cumulative_volume_BTC", 0.0), "event_digest_sha256": self.event_digest_value, "event_digest_count": self.event_digest_count}
         snapshot["event_digest_sha256"] = self.event_digest_value
