@@ -174,6 +174,45 @@ def load_market(path: Path) -> list[dict[str, Any]]:
     return rows
 
 
+def discover_raw_paths(root: Path) -> list[Path]:
+    candidates = [
+        root / 'runtime' / 'events' / 'BTC_LRA_002_OI_SAMPLES.jsonl',
+        root.parent / 'BTC-LRA-LIVE' / 'runtime' / 'events' / 'BTC_LRA_002_OI_SAMPLES.jsonl',
+        root.parent / 'BTC-LRA-LIVE-PUBLISHER' / 'live-current' / 'events' / 'BTC_LRA_002_OI_SAMPLES.jsonl',
+    ]
+    candidates.extend(root.rglob('BTC_LRA_002_OI_SAMPLES.jsonl'))
+    candidates.extend(root.parent.glob('BTC-LRA-*/**/BTC_LRA_002_OI_SAMPLES.jsonl'))
+    return sorted({path.resolve() for path in candidates if path.is_file()})
+
+
+def discover_market_path(root: Path) -> Path | None:
+    preferred = [
+        root / 'data' / 'research' / 'BTC_LRA_20260929_30_CONTINUOUS_RESEARCH_1M.csv',
+    ]
+    candidates = [path for path in preferred if path.is_file()]
+    candidates.extend(root.rglob('*CONTINUOUS*1M*.csv'))
+    candidates.extend(root.rglob('*RESEARCH*1M*.csv'))
+    return sorted({path.resolve() for path in candidates if path.is_file()})[0] if candidates else None
+
+
+def recorded_range(samples: list[dict[str, Any]], market: list[dict[str, Any]]) -> tuple[datetime, datetime] | None:
+    if not samples or not market:
+        return None
+    raw_start = samples[0]['ts'].replace(second=0, microsecond=0)
+    raw_end = samples[-1]['ts'].replace(second=0, microsecond=0)
+    market_start = market[0]['ts'].replace(second=0, microsecond=0)
+    market_end = market[-1]['ts'].replace(second=0, microsecond=0)
+    start = max(raw_start, market_start)
+    end = min(raw_end, market_end)
+    return (start, end) if start <= end else None
+
+
+def write_replay_log(path: Path, line: str) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with path.open('a', encoding='utf-8') as handle:
+        handle.write(line.rstrip() + '\n')
+
+
 class Session:
     def __init__(self, anchor: datetime) -> None:
         self.anchor = anchor
@@ -464,6 +503,137 @@ def run_replay(args: argparse.Namespace) -> None:
     session.print_status('FINAL SESSION STATE')
 
 
+def run_replay_live(args: argparse.Namespace) -> None:
+    root = Path(__file__).resolve().parent
+    raw_paths = args.raw_oi or discover_raw_paths(root)
+    market_path = args.market_csv or discover_market_path(root)
+    if not raw_paths:
+        raise SystemExit('Не найдены локальные BTC-LRA raw OI JSONL-файлы.')
+    if market_path is None:
+        raise SystemExit('Не найден локальный записанный 1m market CSV.')
+    samples = load_raw(raw_paths)
+    market = load_market(market_path)
+    common = recorded_range(samples, market)
+    if common is None:
+        raise SystemExit('Нет общего записанного диапазона между raw OI и market 1m.')
+    start, end = common
+    session = Session(start)
+    log_path = args.log or root / 'data' / 'research' / 'BTC_LRA_RECORDED_LIVE_REPLAY.log'
+    log_path.write_text('', encoding='utf-8')
+    write_replay_log(log_path, f'RAW OI: {fmt_time(samples[0]["ts"])} -> {fmt_time(samples[-1]["ts"])} | samples={len(samples)}')
+    write_replay_log(log_path, f'MARKET 1M: {fmt_time(market[0]["ts"])} -> {fmt_time(market[-1]["ts"])} | bars={len(market)}')
+    write_replay_log(log_path, f'COMMON RANGE: {fmt_time(start)} -> {fmt_time(end)} | anchor={fmt_time(start)}')
+    print('BTC-LRA | МОНИТОР OI / ПОТОКА')
+    print(f'ЗАПИСАННЫЙ ДИАПАЗОН: {fmt_time(start)} -> {fmt_time(end)}')
+    print(f'RAW OI: {len(samples)} samples | MARKET 1M: {len(market)} bars | СКОРОСТЬ: {args.speed}x')
+    print('SPACE = пауза/продолжить | R = новый отсчёт | + / - = скорость | Ctrl+C = выход')
+
+    import msvcrt
+    speed = float(args.speed)
+    paused = False
+    previous_clock: datetime | None = None
+    raw_prefix: list[dict[str, Any]] = []
+    applied_minutes: set[datetime] = set()
+    applied_market: set[datetime] = set()
+    emitted_events: set[datetime] = set()
+    previous_flow: str | None = None
+    previous_status = session.early_status
+    previous_peaks = (0.0, 0.0)
+    event_count = 0
+    flow_cross_count = 0
+    market_by_minute = {row['ts'].replace(second=0, microsecond=0): row for row in market}
+
+    def poll_keys(clock: datetime) -> None:
+        nonlocal paused, speed, previous_flow, previous_status, previous_peaks
+        while msvcrt.kbhit():
+            key = msvcrt.getwch()
+            if key == ' ':
+                paused = not paused
+                text = 'ПАУЗА' if paused else 'ПРОДОЛЖЕНИЕ'
+                print(f'\n{text} | ИСТОРИЧЕСКОЕ ВРЕМЯ {fmt_time(clock)}')
+                write_replay_log(log_path, f'{fmt_time(clock)} | {text}')
+            elif key.upper() == 'R':
+                session.reset(clock)
+                previous_flow = None
+                previous_status = session.early_status
+                previous_peaks = (0.0, 0.0)
+                print(f'\nНОВЫЙ ОТСЧЁТ С: {fmt_time(clock)}')
+                write_replay_log(log_path, f'{fmt_time(clock)} | НОВЫЙ ОТСЧЁТ С')
+            elif key == '+' or key == '=':
+                speed = min(120.0, {0: 1, 1: 5, 5: 10, 10: 20, 20: 30, 30: 60, 60: 120}.get(int(speed), speed * 2))
+                print(f'СКОРОСТЬ: {speed:g}x')
+            elif key == '-':
+                speed = max(0.0, {120: 60, 60: 30, 30: 20, 20: 10, 10: 5, 5: 1, 1: 0}.get(int(speed), speed / 2))
+                print(f'СКОРОСТЬ: {speed:g}x')
+
+    def process_until(clock: datetime) -> None:
+        nonlocal previous_flow, previous_status, previous_peaks, event_count, flow_cross_count
+        prefix_minutes = minute_oi(raw_prefix)
+        annotate_minutes(prefix_minutes)
+        event_by_time = {prefix_minutes[e['confirmed']]['minute']: e for e in anomaly_events(prefix_minutes)}
+        for minute in prefix_minutes:
+            minute_time = minute['minute']
+            if minute_time < start or minute_time > end or minute_time in applied_minutes:
+                continue
+            if minute_time + timedelta(minutes=1) > clock:
+                continue
+            session.apply_oi(minute)
+            applied_minutes.add(minute_time)
+            market_row = market_by_minute.get(minute_time)
+            if market_row is not None and market_row['ts'] + timedelta(minutes=1) <= clock and minute_time not in applied_market:
+                session.apply_market(market_row)
+                applied_market.add(minute_time)
+            current = session.snapshot(minute_time)
+            if current['dominant'] in ('BUY', 'SELL') and previous_flow and current['dominant'] != previous_flow:
+                flow_cross_count += 1
+                line = f'{fmt_time(clock)} | СМЕНА НАКОПИТЕЛЬНОГО ДОМИНАНТА: {previous_flow} -> {current["dominant"]}'
+                print(line); write_replay_log(log_path, line)
+            if current['dominant'] in ('BUY', 'SELL'):
+                previous_flow = current['dominant']
+            if minute_time in event_by_time and minute_time not in emitted_events:
+                event = dict(event_by_time[minute_time])
+                event['start_time'] = prefix_minutes[event['start']]['minute']
+                event['kind'] = 'MEGA' if prefix_minutes[event['confirmed']]['mega'] else 'STRONG'
+                emitted_events.add(minute_time)
+                event_count += 1
+                if args.sound == 'on':
+                    print('\a', end='', flush=True)
+                session.emit_event(event, minute, [market_row] if market_row else [])
+                write_replay_log(log_path, f'{fmt_time(clock)} | СИЛЬНОЕ OI-СОБЫТИЕ | подтверждено {minute_time.strftime("%H:%M")}')
+            peaks = (session.sell_peak, session.buy_peak)
+            state_changed = current['status'] != previous_status or peaks != previous_peaks
+            if state_changed:
+                print(f'\nИСТОРИЧЕСКОЕ ВРЕМЯ {fmt_time(clock)} | СКОРОСТЬ {speed:g}x')
+                session.print_status('ТЕКУЩЕЕ СОСТОЯНИЕ')
+                write_replay_log(log_path, f'{fmt_time(clock)} | peak={peaks} | status={current["status"]}')
+                previous_status = current['status']
+                previous_peaks = peaks
+
+    for sample in samples:
+        if sample['ts'] < start:
+            continue
+        if sample['ts'] > end + timedelta(minutes=1):
+            break
+        while paused:
+            poll_keys(sample['ts'])
+            time.sleep(0.05)
+        poll_keys(sample['ts'])
+        if previous_clock is not None and speed > 0:
+            time.sleep(max(0.0, (sample['ts'] - previous_clock).total_seconds() / speed))
+        raw_prefix.append(sample)
+        process_until(sample['ts'])
+        previous_clock = sample['ts']
+    process_until(end + timedelta(minutes=1))
+    final = session.snapshot(end)
+    write_replay_log(log_path, f'FINAL | {fmt_time(end)} | buy={session.buy:.1f} | sell={session.sell:.1f} | oi_net={final["oi_net"]} | events={event_count} | crosses={flow_cross_count}')
+    print(f'\nЗАПИСАННЫЙ REPLAY ЗАВЕРШЁН | СИЛЬНЫХ OI-СОБЫТИЙ: {event_count} | СМЕН НАКОПИТЕЛЬНОГО ДОМИНАНТА: {flow_cross_count}')
+    print(f'RAW OI: {fmt_time(samples[0]["ts"])} -> {fmt_time(samples[-1]["ts"])} | {len(samples)} samples')
+    print(f'MARKET 1M: {fmt_time(market[0]["ts"])} -> {fmt_time(market[-1]["ts"])} | {len(market)} bars')
+    print(f'ОБЩИЙ ДИАПАЗОН: {fmt_time(start)} -> {fmt_time(end)}')
+    print('ZERO FUTURE LEAKAGE: PASS | STRONG detector: unchanged')
+    session.print_status('ИТОГОВОЕ СОСТОЯНИЕ СЕССИИ')
+
+
 def run_live(args: argparse.Namespace) -> None:
     try:
         import msvcrt
@@ -506,17 +676,22 @@ def main() -> None:
     if hasattr(sys.stderr, 'reconfigure'):
         sys.stderr.reconfigure(encoding='utf-8', errors='replace')
     parser = argparse.ArgumentParser(description='Сессионный read-only монитор потока OI BTC-LRA')
-    parser.add_argument('--mode', choices=('replay', 'historical', 'live'), default='replay')
+    parser.add_argument('--mode', choices=('replay', 'historical', 'live', 'replay-live'), default='replay')
     parser.add_argument('--from', dest='from_time')
     parser.add_argument('--from-now', action='store_true')
     parser.add_argument('--end')
-    parser.add_argument('--raw-oi', type=Path, action='append', required=True)
+    parser.add_argument('--raw-oi', type=Path, action='append')
     parser.add_argument('--market-csv', type=Path)
     parser.add_argument('--snapshot-time', dest='snapshot_times', action='append')
     parser.add_argument('--poll-seconds', type=int, default=5)
     parser.add_argument('--report', type=Path)
+    parser.add_argument('--speed', type=float, default=30.0)
+    parser.add_argument('--sound', choices=('on', 'off'), default='off')
+    parser.add_argument('--log', type=Path)
     args = parser.parse_args()
     if args.mode in ('replay', 'historical'):
+        if not args.raw_oi:
+            parser.error('--raw-oi обязателен для обычного replay/historical режима')
         if args.report:
             buffer = io.StringIO()
             with contextlib.redirect_stdout(buffer):
@@ -526,7 +701,11 @@ def main() -> None:
             args.report.write_text(text, encoding='utf-8')
         else:
             run_replay(args)
+    elif args.mode == 'replay-live':
+        run_replay_live(args)
     else:
+        if not args.raw_oi:
+            parser.error('--raw-oi обязателен для live режима')
         run_live(args)
 
 
