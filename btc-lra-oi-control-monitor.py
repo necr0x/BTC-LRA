@@ -529,6 +529,7 @@ def run_replay_live(args: argparse.Namespace) -> None:
     print(f'RAW OI: {len(samples)} samples | MARKET 1M: {len(market)} bars | СКОРОСТЬ: {args.speed}x')
     print('SPACE = пауза/продолжить | R = новый отсчёт | + / - = скорость | Ctrl+C = выход')
 
+    print('T = выбрать исторический отсчёт и пересчитать состояние до текущего времени')
     import msvcrt
     speed = float(args.speed)
     paused = False
