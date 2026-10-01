@@ -181,6 +181,8 @@ class LiveMonitor:
         self.release_view: dict[str, Any] = {}
         self.oi: deque[dict[str, Any]] = deque(maxlen=900)
         self.latest_price: float | None = None
+        self.price_by_ts: dict[int, float] = {}
+        self.pending_transfer_groups: dict[tuple[Any, ...], dict[str, Any]] = {}
         self.last_state_check = 0.0
         self.last_heartbeat = 0.0
 
@@ -277,6 +279,55 @@ class LiveMonitor:
         print(f"Кандидат: {battle.get('candidate_side') or record.get('candidate_side') or '—'} ({battle.get('candidate_status') or record.get('candidate_status') or '—'})")
         print(*self.oi_text(ts_ms(battle.get("start_ts"))), sep="\n")
 
+    @staticmethod
+    def transfer_sides(record: dict[str, Any]) -> tuple[Any, Any]:
+        evidence = record.get("evidence") if isinstance(record.get("evidence"), dict) else {}
+        return record.get("side_a", evidence.get("side_a")), record.get("side_b", evidence.get("side_b"))
+
+    def queue_transfer_candidate(self, record: dict[str, Any]) -> None:
+        side_a, side_b = self.transfer_sides(record)
+        timestamp = record_ts(record)
+        explicit_price = price_of(record)
+        price = explicit_price if explicit_price is not None else self.price_by_ts.get(timestamp, self.latest_price)
+        if timestamp not in self.price_by_ts and isinstance(price, (int, float)):
+            self.price_by_ts[timestamp] = float(price)
+        price_key = round(float(price), 8) if isinstance(price, (int, float)) else None
+        key = (timestamp, side_a, side_b, price_key)
+        group = self.pending_transfer_groups.setdefault(key, {"time_ts": timestamp, "price": price, "side_a": side_a, "side_b": side_b, "records": []})
+        group["records"].append(record)
+
+    def flush_transfer_candidates(self) -> None:
+        for group in self.pending_transfer_groups.values():
+            records = group["records"]
+            if not records:
+                continue
+            price = group["price"]
+            print()
+            print(f"{current_header(price, group['time_ts'])}")
+            print(f"ВОЗМОЖНАЯ ПЕРЕДАЧА КОНТРОЛЯ {group['side_a']} → {group['side_b']}")
+            if len(records) > 1:
+                tf_counts: dict[str, int] = {}
+                lows: list[float] = []
+                highs: list[float] = []
+                for record in records:
+                    zone = self.zones.get(str(record.get("zone_id")), {})
+                    timeframe = zone.get("timeframe")
+                    if timeframe:
+                        tf_counts[timeframe] = tf_counts.get(timeframe, 0) + 1
+                    if isinstance(zone.get("low"), (int, float)):
+                        lows.append(float(zone["low"]))
+                    if isinstance(zone.get("high"), (int, float)):
+                        highs.append(float(zone["high"]))
+                order = {"5m": 0, "15m": 1, "1h": 2, "4h": 3}
+                tf_text = " / ".join(f"{tf} ×{count}" for tf, count in sorted(tf_counts.items(), key=lambda item: order.get(item[0], 99)))
+                print(f"Представлений {len(records)}")
+                if tf_text:
+                    print(f"TF {tf_text}")
+                if lows and highs:
+                    print(f"Охват зон {min(lows):.1f}–{max(highs):.1f}")
+            print("─" * 56)
+        self.pending_transfer_groups.clear()
+
     def emit(self, record: dict[str, Any], historical: bool = False, quiet: bool = False) -> None:
         kind = record.get("event") or record.get("record_type")
         if not kind:
@@ -299,6 +350,10 @@ class LiveMonitor:
             self.print_battle_metrics(record)
             print("─" * 56)
             return
+        if kind == "TRANSFER_CANDIDATE":
+            if not quiet:
+                self.queue_transfer_candidate(record)
+            return
         if quiet:
             if kind == "RELEASE_STATUS":
                 release_id = str(record.get("release_id", ""))
@@ -311,9 +366,6 @@ class LiveMonitor:
         elif kind == "BATTLE_RESOLUTION_CANDIDATE":
             print(f"{stamp} | ПОЯВИЛСЯ ПЕРЕВЕС {display_direction(record)}")
             self.print_battle_metrics(record)
-        elif kind == "TRANSFER_CANDIDATE":
-            old_side, new_side = record.get("old_side", "?"), record.get("new_side") or direction(record) or "?"
-            print(f"{stamp} | ВОЗМОЖНАЯ ПЕРЕДАЧА КОНТРОЛЯ {old_side} → {new_side}")
         elif kind == "TRANSFER_CHALLENGED":
             print(f"{stamp} | ПЕРЕДАЧА КОНТРОЛЯ ОСПОРЕНА")
         elif kind == "OLD_SIDE_RESTORED":
@@ -429,6 +481,7 @@ class LiveMonitor:
                 else:
                     for row in rows:
                         self.emit(row)
+            self.flush_transfer_candidates()
             now = time.monotonic()
             if now - self.last_state_check >= 10:
                 self.load_state()
