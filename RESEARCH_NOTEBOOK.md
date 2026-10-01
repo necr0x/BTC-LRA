@@ -116,3 +116,5 @@ The 1m engine derives 5m, 15m, 1h, and 4h context. Higher-timeframe context is a
 ## Decision history
 
 Historical decisions are preserved in `archive/docs/BTC_LRA_RESEARCH_DECISION_LOG.md`. The current parity decision is: deterministic ordering is the minimal restart parity fix; TEST 1 and TEST 2 passed; no detector or threshold changes were made. The pre-result risk-transfer theory and benchmark agenda are preserved in this notebook from the former canonical hypothesis document.
+
+2026-09-30 implementation note: `btc-lra-002.py` now has an isolated active risk/pressure path based on 1m market flow, local OI build, aggression-plus-result pressure, push efficiency, decay, counter-result, and descriptive OI stall/unwind. The legacy zone/battle/release class remains historical source code but is not selected by replay, self-test, or live entry points. Full local MASTER validation passed deterministic replay, restart parity, and future-leakage checks; the requested 2026-09-30 control window remains unvalidated because the local MASTER ends on 2026-09-29 and the running live runtime has no raw 1m OHLCV file.

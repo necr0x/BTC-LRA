@@ -11,6 +11,7 @@ Complete repository reorganization without changing detector logic, thresholds, 
 - TEST 2 (`0→13810`, split `11000`): PASS; `5,452,655` events; strict parity PASS; no first divergent event.
 - No replay/live writer processes are currently running; stability check passed before migration.
 - Production fix in `btc-lra-002.py` and audit tooling changes remain separate from this layout work until validation/commit review.
+- A new risk/pressure implementation is validated on the available local MASTER; the requested 2026-09-30 control window is still open because no raw 1m OHLCV source for that window is present locally.
 
 ## Frozen rules
 
@@ -33,9 +34,9 @@ Complete repository reorganization without changing detector logic, thresholds, 
 
 ## Current blockers / next tasks
 
-1. Complete the focused cleanup commits and push `origin/main`.
+1. Obtain or expose raw 1m OHLCV for 2026-09-30 14:45–15:05 Panama and run the risk/pressure control scan.
 2. Preserve local generated runtime/dump/replay evidence while keeping those artifacts out of Git.
-3. Continue the blind event-population audit only after the repository layout is stable.
+3. Continue the blind event-population audit only after the risk/pressure control window is validated.
 
 ## Migration audit result
 

@@ -50,6 +50,33 @@ OUTPUTS = {
     "audit": RUNTIME_ROOT / "debug" / "BTC_LRA_002_REPLAY_AUDIT.md",
 }
 
+# The risk/pressure observer deliberately has a separate output contract.  The
+# legacy zone engine and its files remain readable as historical evidence, but
+# this map is the only one used by the active engine below.
+RISK_OUTPUTS = {
+    "state": RUNTIME_ROOT / "state" / "BTC_LRA_002_STATE.json",
+    "events": RUNTIME_ROOT / "events" / "BTC_LRA_002_EVENTS.jsonl",
+    "oi": RUNTIME_ROOT / "events" / "BTC_LRA_002_OI_SAMPLES.jsonl",
+    "market_1m": RUNTIME_ROOT / "events" / "BTC_LRA_002_MARKET_1M.jsonl",
+    "human": RUNTIME_ROOT / "logs" / "BTC_LRA_002_HUMAN.log",
+    "debug": RUNTIME_ROOT / "debug" / "BTC_LRA_002_DEBUG.log",
+    "audit": RUNTIME_ROOT / "debug" / "BTC_LRA_002_REPLAY_AUDIT.md",
+}
+
+RISK_CONFIG = {
+    "oi_window_bars": 5,
+    "oi_build_min_btc": 25.0,
+    "oi_build_local_multiplier": 3.0,
+    "pressure_min_effort_btc": 25.0,
+    "pressure_min_result_usd": 1.0,
+    "decay_min_effort_btc": 25.0,
+    "decay_max_relative_pct": 35.0,
+    "episode_expiry_bars": 60,
+    "recent_bars_limit": 240,
+    "recent_oi_limit": 900,
+    "push_history_limit": 64,
+}
+
 
 def now_ms() -> int:
     return int(time.time() * 1000)
@@ -1043,6 +1070,354 @@ def run_self_test(args: argparse.Namespace) -> dict[str, Any]:
     print(json.dumps(result, ensure_ascii=False, indent=2)); return result
 
 
+class RiskPressureEngine:
+    """Causal 1m OI-risk and effort/result observer.
+
+    This class is intentionally independent of the legacy zone/battle/release
+    implementation above.  It never creates or reads those objects.
+    """
+
+    def __init__(self, outputs: dict[str, Path] | None = None, reset: bool = False,
+                 human_enabled: bool = True, live_start_ts: int | None = None,
+                 persist_each_bar: bool = True, telemetry: str = "events"):
+        self.outputs = outputs or RISK_OUTPUTS
+        if reset:
+            for key in self.outputs:
+                self.outputs[key].unlink(missing_ok=True)
+        loaded = self.load_json(self.outputs["state"], {})
+        self.state = loaded if loaded.get("schema_version") == "BTC-LRA-002-risk-pressure-v1" else {}
+        self.state.setdefault("schema_version", "BTC-LRA-002-risk-pressure-v1")
+        self.state.setdefault("live_start_time", live_start_ts if live_start_ts is not None else now_ms())
+        self.state.setdefault("last_processed_bar_ts", None)
+        self.state.setdefault("recent_bars", [])
+        self.state.setdefault("recent_oi_samples", [])
+        self.state.setdefault("current_episode", None)
+        self.state.setdefault("buy_tracker", self.new_tracker("BUY"))
+        self.state.setdefault("sell_tracker", self.new_tracker("SELL"))
+        self.state.setdefault("effort_result_history", [])
+        self.state.setdefault("processed_event_ids", [])
+        self.state.setdefault("human_event_ids", [])
+        self.state.setdefault("event_digest_sha256", "")
+        self.state.setdefault("event_digest_count", 0)
+        self.state.setdefault("bar_count", 0)
+        self.human_enabled = human_enabled
+        self.persist_each_bar = persist_each_bar
+        self.telemetry = telemetry
+        self.processed_event_id_set = set(self.state["processed_event_ids"])
+        self.human_event_id_set = set(self.state["human_event_ids"])
+        self.event_digest_value = self.state.get("event_digest_sha256", "")
+        self.event_digest_count = int(self.state.get("event_digest_count", 0))
+        self.oi_samples = list(self.state.get("recent_oi_samples", []))
+        self.oi_last_value = self.oi_samples[-1].get("OI_BTC") if self.oi_samples else None
+        self.rehydrating = False
+        self.profile = {"counts": {"bars": 0, "risk_episodes": 0, "pushes": 0, "total_machine_events": 0},
+                        "time_seconds": {"process_closed_bar": 0.0}}
+
+    @staticmethod
+    def load_json(path: Path, default: Any) -> Any:
+        try:
+            return json.loads(path.read_text(encoding="utf-8"))
+        except (FileNotFoundError, json.JSONDecodeError):
+            return default
+
+    @staticmethod
+    def load_jsonl(path: Path, default: Any = None) -> list[dict[str, Any]]:
+        rows: list[dict[str, Any]] = []
+        if not path.exists():
+            return rows if default is None else default
+        with path.open("r", encoding="utf-8") as handle:
+            for line in handle:
+                try:
+                    value = json.loads(line)
+                except json.JSONDecodeError:
+                    continue
+                if isinstance(value, dict):
+                    rows.append(value)
+        return rows
+
+    @staticmethod
+    def new_tracker(side: str) -> dict[str, Any]:
+        return {"side": side, "extreme": None, "extreme_ts": None,
+                "effort_since_extreme": 0.0, "pushes": [], "last_push": None}
+
+    def write_jsonl(self, path: Path, value: dict[str, Any]) -> None:
+        append_jsonl(path, value)
+
+    def debug(self, data: dict[str, Any]) -> None:
+        append_text(self.outputs["debug"], json.dumps(data, ensure_ascii=False, separators=(",", ":")))
+
+    def record_oi_sample(self, sample: dict[str, Any]) -> None:
+        sample = dict(sample)
+        sample_id = (sample.get("sample_time_ts"), sample.get("oi_source"))
+        if any((x.get("sample_time_ts"), x.get("oi_source")) == sample_id for x in self.oi_samples[-32:]):
+            return
+        self.oi_samples.append(sample)
+        self.oi_samples = self.oi_samples[-RISK_CONFIG["recent_oi_limit"]:]
+        self.state["recent_oi_samples"] = self.oi_samples
+        if not self.rehydrating:
+            self.write_jsonl(self.outputs["oi"], sample)
+        self.oi_last_value = sample.get("OI_BTC")
+
+    def latest_oi_sample_at_or_before(self, ts: int) -> dict[str, Any] | None:
+        candidates = [x for x in self.oi_samples if int(x.get("sample_time_ts", 0)) <= ts]
+        return candidates[-1] if candidates else None
+
+    def persistence_state(self) -> dict[str, Any]:
+        snapshot = copy.deepcopy(self.state)
+        snapshot["recent_bars"] = snapshot.get("recent_bars", [])[-RISK_CONFIG["recent_bars_limit"]:]
+        snapshot["recent_oi_samples"] = snapshot.get("recent_oi_samples", [])[-RISK_CONFIG["recent_oi_limit"]:]
+        snapshot["processed_event_ids"] = snapshot.get("processed_event_ids", [])[-DEDUPE_WINDOW:]
+        snapshot["human_event_ids"] = snapshot.get("human_event_ids", [])[-DEDUPE_WINDOW:]
+        snapshot["effort_result_history"] = snapshot.get("effort_result_history", [])[-RISK_CONFIG["push_history_limit"]:]
+        for key in ("buy_tracker", "sell_tracker"):
+            snapshot[key]["pushes"] = snapshot[key].get("pushes", [])[-RISK_CONFIG["push_history_limit"]:]
+        snapshot["event_digest_sha256"] = self.event_digest_value
+        snapshot["event_digest_count"] = self.event_digest_count
+        return snapshot
+
+    def rehydrate_bar(self, bar: dict[str, Any]) -> None:
+        previous = self.rehydrating
+        self.rehydrating = True
+        try:
+            self._remember_bar(normalize_bar(bar))
+        finally:
+            self.rehydrating = previous
+
+    def _remember_bar(self, bar: dict[str, Any]) -> None:
+        self.state["recent_bars"] = (self.state.get("recent_bars", []) + [bar])[-RISK_CONFIG["recent_bars_limit"]:]
+        if bar.get("OI_BTC") is not None:
+            sample = {"sample_time_ts": bar.get("oi_sample_time_ts") or bar["observable_at_ts"],
+                      "sample_time": bar.get("oi_sample_time") or fmt_ts(bar["observable_at_ts"]),
+                      "OI_BTC": bar["OI_BTC"], "dOI_BTC": bar.get("dOI_BTC"),
+                      "oi_source": bar.get("oi_source") or "bar-attached OI", "oi_resolution": bar.get("oi_resolution")}
+            if not self.oi_samples or sample["sample_time_ts"] != self.oi_samples[-1].get("sample_time_ts"):
+                self.oi_samples.append(sample)
+                self.oi_samples = self.oi_samples[-RISK_CONFIG["recent_oi_limit"]:]
+                self.state["recent_oi_samples"] = self.oi_samples
+                self.oi_last_value = sample["OI_BTC"]
+
+    def emit(self, kind: str, ts: int, payload: dict[str, Any], human: str | None = None,
+             observable_at_ts: int | None = None) -> dict[str, Any]:
+        record = {"event": kind, "time_ts": ts, "time": fmt_ts(ts),
+                  "observable_at_ts": observable_at_ts or ts + 60000, **payload}
+        eid = record.get("event_id") or event_id(kind, ts, payload.get("episode_id"), payload.get("side"), payload.get("pressure_side"))
+        record["event_id"] = eid
+        if eid in self.processed_event_id_set:
+            return record
+        self.processed_event_id_set.add(eid)
+        self.state["processed_event_ids"] = (self.state.get("processed_event_ids", []) + [eid])[-DEDUPE_WINDOW:]
+        if not self.rehydrating:
+            self.write_jsonl(self.outputs["events"], record)
+            canonical = json.dumps(record, ensure_ascii=False, sort_keys=True, separators=(",", ":"))
+            self.event_digest_value = hashlib.sha256((self.event_digest_value + canonical).encode("utf-8")).hexdigest()
+            self.event_digest_count += 1
+            self.profile["counts"]["total_machine_events"] += 1
+            if human and self.human_enabled and eid not in self.human_event_ids_set:
+                self.human_event_ids_set.add(eid)
+                self.state["human_event_ids"] = (self.state.get("human_event_ids", []) + [eid])[-DEDUPE_WINDOW:]
+                append_text(self.outputs["human"], human)
+        return record
+
+    @staticmethod
+    def _directional_result(side: str, bar: dict[str, Any]) -> float:
+        if side == "BUY":
+            return max(0.0, float(bar.get("close") or 0.0) - float(bar.get("open") or 0.0))
+        return max(0.0, float(bar.get("open") or 0.0) - float(bar.get("close") or 0.0))
+
+    def _local_oi_build(self, bar: dict[str, Any]) -> tuple[bool, float]:
+        current = bar.get("OI_BTC")
+        if current is None:
+            return False, 0.0
+        history = [float(x.get("OI_BTC")) for x in self.state.get("recent_bars", []) if x.get("OI_BTC") is not None]
+        if len(history) < RISK_CONFIG["oi_window_bars"]:
+            return False, 0.0
+        baseline = history[-RISK_CONFIG["oi_window_bars"]]
+        change = float(current) - baseline
+        increments = [abs(float(history[i]) - float(history[i - 1])) for i in range(1, len(history))]
+        local_step = median(increments[-RISK_CONFIG["oi_window_bars"]:]) or 0.0
+        threshold = max(RISK_CONFIG["oi_build_min_btc"], local_step * RISK_CONFIG["oi_build_local_multiplier"])
+        return change >= threshold, change
+
+    def _update_tracker(self, side: str, bar: dict[str, Any]) -> dict[str, Any] | None:
+        tracker = self.state["buy_tracker" if side == "BUY" else "sell_tracker"]
+        effort_key = side_effort_key(side)
+        effort = float(bar.get(effort_key) or 0.0)
+        tracker["effort_since_extreme"] += effort
+        extreme = float(bar["high"] if side == "BUY" else bar["low"])
+        is_new = tracker["extreme"] is None or (extreme > tracker["extreme"] if side == "BUY" else extreme < tracker["extreme"])
+        if tracker["extreme"] is None:
+            tracker["extreme"] = extreme; tracker["extreme_ts"] = bar["ts"]
+            return None
+        if not is_new:
+            return None
+        previous = float(tracker["extreme"])
+        extension = extreme - previous if side == "BUY" else previous - extreme
+        push = {"side": side, "from_extreme": previous, "to_extreme": extreme,
+                "start_ts": tracker["extreme_ts"], "end_ts": bar["ts"],
+                "effort_BTC": tracker["effort_since_extreme"], "extension_USD": extension,
+                "result_per_100_BTC": extension / tracker["effort_since_extreme"] * 100 if tracker["effort_since_extreme"] else None}
+        tracker["pushes"] = (tracker.get("pushes", []) + [push])[-RISK_CONFIG["push_history_limit"]:]
+        tracker["last_push"] = push; tracker["extreme"] = extreme; tracker["extreme_ts"] = bar["ts"]
+        tracker["effort_since_extreme"] = 0.0
+        self.state["effort_result_history"] = (self.state.get("effort_result_history", []) + [push])[-RISK_CONFIG["push_history_limit"]:]
+        self.profile["counts"]["pushes"] += 1
+        return push
+
+    def _human(self, ts: int, title: str, *details: str) -> str:
+        return "\n" + "\n".join([f"{human_time_panama(ts)}", title, *details])
+
+    def _risk_step(self, bar: dict[str, Any]) -> None:
+        episode = self.state.get("current_episode")
+        risk_build, change = self._local_oi_build(bar)
+        if episode is None and risk_build:
+            episode = {"episode_id": event_id("RISK", bar["ts"]), "state": "RISK_BUILD",
+                       "start_ts": bar["ts"], "current_ts": bar["ts"],
+                       "oi_start": float(bar["OI_BTC"]), "oi_current": float(bar["OI_BTC"]),
+                       "oi_peak": float(bar["OI_BTC"]), "oi_change_BTC": change,
+                       "volume_since_start": 0.0, "buy_since_start": 0.0,
+                       "sell_since_start": 0.0, "delta_since_start": 0.0,
+                       "bars": 0, "pressure_side": "NONE", "decay_emitted": False,
+                       "counter_emitted": False, "oi_trend": None}
+            self.state["current_episode"] = episode
+            self.profile["counts"]["risk_episodes"] += 1
+            self.emit("RISK_BUILD", bar["ts"], {"episode_id": episode["episode_id"], "oi_change_BTC": change,
+                      "window_bars": RISK_CONFIG["oi_window_bars"], "state": "RISK_BUILD"},
+                      self._human(bar["ts"], "РИСК БЫСТРО НАРАСТАЕТ", f"OI +{change:.2f} BTC", "окно: локальная предшествующая история"), bar["observable_at_ts"])
+        if episode is None:
+            return
+        episode["current_ts"] = bar["ts"]; episode["bars"] += 1
+        episode["volume_since_start"] += bar["volume_BTC"]
+        episode["buy_since_start"] += bar["taker_buy_BTC"]; episode["sell_since_start"] += bar["taker_sell_BTC"]
+        episode["delta_since_start"] += bar["delta_BTC"]
+        if bar.get("OI_BTC") is not None:
+            episode["oi_current"] = float(bar["OI_BTC"]); episode["oi_peak"] = max(episode["oi_peak"], episode["oi_current"])
+            episode["oi_change_BTC"] = episode["oi_current"] - episode["oi_start"]
+        previous_oi = self.state.get("recent_bars", [])[-1].get("OI_BTC") if self.state.get("recent_bars") else None
+        if previous_oi is not None and bar.get("OI_BTC") is not None:
+            doi = float(bar["OI_BTC"]) - float(previous_oi)
+            trend = "BUILDING" if doi > 0 else "UNWINDING" if doi < 0 else "STALLED"
+            if trend != episode.get("oi_trend"):
+                episode["oi_trend"] = trend
+                kind = {"BUILDING": "OI_BUILD_CONTINUES", "STALLED": "OI_BUILD_STALLED", "UNWINDING": "OI_UNWIND"}[trend]
+                self.emit(kind, bar["ts"], {"episode_id": episode["episode_id"], "dOI_BTC": doi, "oi_trend": trend},
+                          self._human(bar["ts"], {"BUILDING": "OI BUILD ПРОДОЛЖАЕТСЯ", "STALLED": "OI BUILD ОСТАНОВИЛСЯ", "UNWINDING": "OI СОКРАЩАЕТСЯ"}[trend], f"изменение OI: {doi:+.2f} BTC"), bar["observable_at_ts"])
+        buy_result = self._directional_result("BUY", bar); sell_result = self._directional_result("SELL", bar)
+        candidates = [("BUY", bar["taker_buy_BTC"], buy_result), ("SELL", bar["taker_sell_BTC"], sell_result)]
+        candidates = [(side, effort, result) for side, effort, result in candidates if effort >= RISK_CONFIG["pressure_min_effort_btc"] and result >= RISK_CONFIG["pressure_min_result_usd"]]
+        if candidates and episode["pressure_side"] == "NONE":
+            side, effort, result = max(candidates, key=lambda x: x[1] * x[2])
+            episode["pressure_side"] = side; episode["state"] = "PRESSURE"
+            self.emit("PRESSURE", bar["ts"], {"episode_id": episode["episode_id"], "pressure_side": side, "effort_BTC": effort, "result_USD": result},
+                      self._human(bar["ts"], f"{side} ДАВИТ", f"Усилие {side} {effort:.2f} BTC → результат {result:+.2f} USD"), bar["observable_at_ts"])
+        pressure = episode.get("pressure_side")
+        if pressure:
+            tracker = self.state["buy_tracker" if pressure == "BUY" else "sell_tracker"]
+            pushes = tracker.get("pushes", [])
+            baseline = next((p["result_per_100_BTC"] for p in reversed(pushes) if p.get("result_per_100_BTC") and p["result_per_100_BTC"] > 0), None)
+            current_effort = tracker.get("effort_since_extreme", 0.0)
+            current_result = 0.0
+            if baseline is not None and current_effort >= RISK_CONFIG["decay_min_effort_btc"]:
+                relative = current_result / baseline * 100
+                if relative <= RISK_CONFIG["decay_max_relative_pct"] and not episode["decay_emitted"]:
+                    episode["decay_emitted"] = True; episode["state"] = "EFFORT_DECAY"
+                    self.emit("EFFORT_DECAY", bar["ts"], {"episode_id": episode["episode_id"], "side": pressure, "baseline_efficiency": baseline, "current_efficiency": current_result, "relative_efficiency_pct": relative, "effort_since_extreme": current_effort, "extension_since_extreme": 0.0},
+                              self._human(bar["ts"], f"{pressure} ЭФФЕКТИВНОСТЬ РЕЗКО ПАДАЕТ", f"Усилие {current_effort:.2f} BTC", f"эффективность {relative:.1f}% от предыдущего push"), bar["observable_at_ts"])
+        if episode.get("decay_emitted") and not episode.get("counter_emitted"):
+            opposite = "SELL" if pressure == "BUY" else "BUY"
+            result = self._directional_result(opposite, bar); effort = bar[side_effort_key(opposite)]
+            if effort >= RISK_CONFIG["pressure_min_effort_btc"] and result >= RISK_CONFIG["pressure_min_result_usd"]:
+                episode["counter_emitted"] = True; episode["state"] = "COUNTER_RESULT"
+                self.emit("COUNTER_RESULT", bar["ts"], {"episode_id": episode["episode_id"], "side": opposite, "effort_BTC": effort, "result_USD": result},
+                          self._human(bar["ts"], f"{opposite} ПОЛУЧИЛ РЕЗУЛЬТАТ ПОСЛЕ ПРОВАЛА {pressure}", f"Усилие {opposite} {effort:.2f} BTC → результат {result:+.2f} USD"), bar["observable_at_ts"])
+                episode["state"] = "RESOLVED"
+                self.emit("REVERSAL_CANDIDATE", bar["ts"], {"episode_id": episode["episode_id"], "failed_side": pressure, "counter_side": opposite},
+                          self._human(bar["ts"], "REVERSAL CANDIDATE", f"наблюдаемый counter-result: {opposite}"), bar["observable_at_ts"])
+        if episode["bars"] >= RISK_CONFIG["episode_expiry_bars"] and episode["state"] not in ("RESOLVED", "EXPIRED"):
+            episode["state"] = "EXPIRED"
+            self.emit("EPISODE_EXPIRED", bar["ts"], {"episode_id": episode["episode_id"], "reason": "parameterized bar lifetime"}, None, bar["observable_at_ts"])
+
+    def process_closed_bar(self, bar: dict[str, Any]) -> None:
+        started = time.perf_counter(); bar = normalize_bar(bar)
+        if self.state["last_processed_bar_ts"] is not None and bar["ts"] <= self.state["last_processed_bar_ts"]:
+            return
+        market = {"record_type": "MARKET_1M", "causal": True, **bar}
+        if not self.rehydrating:
+            self.write_jsonl(self.outputs["market_1m"], market)
+        self._risk_step(bar)
+        self._update_tracker("BUY", bar); self._update_tracker("SELL", bar)
+        self._remember_bar(bar)
+        self.state["last_processed_bar_ts"] = bar["ts"]; self.state["bar_count"] += 1
+        self.profile["counts"]["bars"] += 1
+        self.profile["time_seconds"]["process_closed_bar"] += time.perf_counter() - started
+        if self.persist_each_bar and not self.rehydrating:
+            atomic_json(self.outputs["state"], self.persistence_state())
+
+    def digest(self) -> dict[str, Any]:
+        return {"count": self.event_digest_count, "sha256": self.event_digest_value}
+
+    def profile_snapshot(self) -> dict[str, Any]:
+        return {"telemetry": self.telemetry, "counts": dict(self.profile["counts"]), "time_seconds": dict(self.profile["time_seconds"]), "bars": self.state.get("bar_count", 0)}
+
+
+def _risk_temp_outputs() -> dict[str, Path]:
+    root = Path(tempfile.mkdtemp(prefix="btc-lra-002-risk-"))
+    return {key: root / path.name for key, path in RISK_OUTPUTS.items()}
+
+
+def _risk_future_leakage(path: Path) -> int:
+    errors = 0
+    for row in RiskPressureEngine.load_jsonl(path, []):
+        observable = row.get("observable_at_ts", row.get("time_ts", 0))
+        def inspect(value: Any) -> None:
+            nonlocal errors
+            if isinstance(value, dict):
+                for key, child in value.items():
+                    if key.endswith("_ts") and isinstance(child, (int, float)) and child > observable and key != "available_at_ts": errors += 1
+                    else: inspect(child)
+            elif isinstance(value, list):
+                for child in value: inspect(child)
+        inspect(row)
+    return errors
+
+
+def run_risk_replay(args: argparse.Namespace) -> dict[str, Any]:
+    adapter = ReplayAdapter(args.csv); bars = adapter.bars()[:args.max_bars or None]
+    engine = RiskPressureEngine(reset=args.reset, human_enabled=False, live_start_ts=(bars[-1]["ts"] + 60000 if bars else now_ms()), telemetry=args.telemetry, persist_each_bar=False)
+    for sample in adapter.all_oi_samples: engine.record_oi_sample(sample)
+    started = time.perf_counter()
+    for bar in bars: engine.process_closed_bar(bar)
+    snapshot = engine.persistence_state(); atomic_json(engine.outputs["state"], snapshot)
+    audit = {"mode": "risk-pressure-replay", "bars": len(bars), "events": engine.event_digest_count,
+             "risk_episodes": engine.profile["counts"]["risk_episodes"], "pushes": engine.profile["counts"]["pushes"],
+             "elapsed_seconds": time.perf_counter() - started, "future_leakage": _risk_future_leakage(engine.outputs["events"]),
+             "digest": engine.digest(), "profile": engine.profile_snapshot(),
+             "config": RISK_CONFIG, "zones_generated": 0, "battles_generated": 0, "releases_generated": 0}
+    engine.outputs["audit"].parent.mkdir(parents=True, exist_ok=True)
+    engine.outputs["audit"].write_text("# BTC-LRA-002 risk-pressure replay audit\n\n```json\n" + json.dumps(audit, ensure_ascii=False, indent=2) + "\n```\n", encoding="utf-8")
+    return audit
+
+
+def run_risk_self_test(args: argparse.Namespace) -> dict[str, Any]:
+    adapter = ReplayAdapter(args.csv); bars = adapter.bars()[:args.max_bars or None]
+    def run(seq: list[dict[str, Any]], outputs: dict[str, Path], split: int | None = None) -> RiskPressureEngine:
+        engine = RiskPressureEngine(outputs=outputs, reset=True, human_enabled=False, persist_each_bar=False)
+        for sample in adapter.all_oi_samples: engine.record_oi_sample(sample)
+        for bar in seq[:split] if split is not None else seq: engine.process_closed_bar(dict(bar))
+        return engine
+    continuous = run(bars, _risk_temp_outputs())
+    split = max(1, len(bars) // 2); out = _risk_temp_outputs(); pre = run(bars, out, split); atomic_json(out["state"], pre.persistence_state())
+    restarted = RiskPressureEngine(outputs=out, human_enabled=False, persist_each_bar=False)
+    for bar in bars[max(0, split - RISK_CONFIG["oi_window_bars"] - 1):split]: restarted.rehydrate_bar(dict(bar))
+    for bar in bars[split:]: restarted.process_closed_bar(dict(bar))
+    result = {"deterministic_digest": "PASS" if continuous.digest() == run(bars, _risk_temp_outputs()).digest() else "FAIL",
+              "restart_parity": "PASS" if continuous.digest() == restarted.digest() else "FAIL",
+              "future_leakage": "PASS" if _risk_future_leakage(continuous.outputs["events"]) == 0 else "FAIL",
+              "bar_count": len(bars), "continuous": continuous.digest(), "restarted": restarted.digest(),
+              "zones_generated": 0, "battles_generated": 0, "releases_generated": 0,
+              "config": RISK_CONFIG}
+    print(json.dumps(result, ensure_ascii=False, indent=2)); return result
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description="BTC-LRA-002 causal realtime research observer")
     parser.add_argument("--mode", choices=("replay", "live"), default="replay")
@@ -1054,10 +1429,10 @@ def main() -> None:
     parser.add_argument("--telemetry", choices=("none", "events", "full"), default="events")
     args = parser.parse_args()
     if args.self_test:
-        run_self_test(args); return
+        run_risk_self_test(args); return
     if args.mode == "replay":
-        print(json.dumps(run_replay(args), ensure_ascii=False, indent=2)); return
-    engine = CausalEngine(reset=args.reset, human_enabled=False, live_start_ts=now_ms(), telemetry=args.telemetry)
+        print(json.dumps(run_risk_replay(args), ensure_ascii=False, indent=2)); return
+    engine = RiskPressureEngine(reset=args.reset, human_enabled=False, live_start_ts=now_ms(), telemetry=args.telemetry)
     adapter = BinanceLiveAdapter(engine, args.poll_seconds)
     try:
         adapter.bootstrap()
