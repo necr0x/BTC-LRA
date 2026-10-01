@@ -12,6 +12,7 @@ import contextlib
 import io
 import json
 import os
+import re
 import sys
 import time
 from collections import defaultdict, deque
@@ -543,8 +544,30 @@ def run_replay_live(args: argparse.Namespace) -> None:
     flow_cross_count = 0
     market_by_minute = {row['ts'].replace(second=0, microsecond=0): row for row in market}
 
+    def rebuild_session(new_anchor: datetime, clock: datetime) -> Session:
+        rebuilt = Session(new_anchor)
+        prefix_minutes = minute_oi(raw_prefix)
+        annotate_minutes(prefix_minutes)
+        event_by_time = {prefix_minutes[e['confirmed']]['minute']: e for e in anomaly_events(prefix_minutes)}
+        for minute in prefix_minutes:
+            minute_time = minute['minute']
+            if minute_time < new_anchor or minute_time > end or minute_time + timedelta(minutes=1) > clock:
+                continue
+            rebuilt.apply_oi(minute)
+            market_row = market_by_minute.get(minute_time)
+            if market_row is not None and market_row['ts'] + timedelta(minutes=1) <= clock:
+                rebuilt.apply_market(market_row)
+            if minute_time in event_by_time:
+                event = dict(event_by_time[minute_time])
+                event['start_time'] = prefix_minutes[event['start']]['minute']
+                event['kind'] = 'MEGA' if prefix_minutes[event['confirmed']]['mega'] else 'STRONG'
+                with contextlib.redirect_stdout(io.StringIO()):
+                    rebuilt.emit_event(event, minute, [market_row] if market_row else [])
+            rebuilt.snapshot(minute_time)
+        return rebuilt
+
     def poll_keys(clock: datetime) -> None:
-        nonlocal paused, speed, previous_flow, previous_status, previous_peaks
+        nonlocal paused, speed, previous_flow, previous_status, previous_peaks, session
         while msvcrt.kbhit():
             key = msvcrt.getwch()
             if key == ' ':
@@ -559,6 +582,29 @@ def run_replay_live(args: argparse.Namespace) -> None:
                 previous_peaks = (0.0, 0.0)
                 print(f'\nНОВЫЙ ОТСЧЁТ С: {fmt_time(clock)}')
                 write_replay_log(log_path, f'{fmt_time(clock)} | НОВЫЙ ОТСЧЁТ С')
+            elif key.upper() == 'T':
+                paused = True
+                print('\nНОВЫЙ ОТСЧЁТ')
+                print('Введите HH:MM или YYYY-MM-DD HH:MM')
+                try:
+                    value = input('> ').strip()
+                    if re.fullmatch(r'\d{1,2}:\d{2}', value):
+                        requested = datetime.strptime(value, '%H:%M').replace(year=clock.year, month=clock.month, day=clock.day, tzinfo=PANAMA)
+                    else:
+                        requested = parse_time(value)
+                    if requested < start or requested > clock:
+                        raise ValueError('anchor вне доступного диапазона или позже текущего времени')
+                    session = rebuild_session(requested, clock)
+                    previous_flow = session.snapshot(clock).get('dominant')
+                    previous_status = session.early_status
+                    previous_peaks = (session.sell_peak, session.buy_peak)
+                    print(f'ОТСЧЁТ ИЗМЕНЁН: {requested.strftime("%H:%M")}')
+                    print(f'СОСТОЯНИЕ ПЕРЕСЧИТАНО ДО: {clock.strftime("%H:%M")}')
+                    write_replay_log(log_path, f'{fmt_time(clock)} | ОТСЧЁТ ИЗМЕНЁН: {fmt_time(requested)} | пересчитано до {fmt_time(clock)}')
+                    paused = False
+                except (ValueError, TypeError) as exc:
+                    print(f'ОШИБКА ОТСЧЁТА: {exc}')
+                    print('Replay остаётся на паузе. Нажмите T для новой попытки или SPACE для продолжения.')
             elif key == '+' or key == '=':
                 speed = min(120.0, {0: 1, 1: 5, 5: 10, 10: 20, 20: 30, 30: 60, 60: 120}.get(int(speed), speed * 2))
                 print(f'СКОРОСТЬ: {speed:g}x')
