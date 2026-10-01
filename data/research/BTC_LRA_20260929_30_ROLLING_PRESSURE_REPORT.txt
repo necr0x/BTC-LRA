@@ -1,0 +1,200 @@
+BTC-LRA ROLLING PRESSURE VISUAL RESEARCH PASS
+Continuous input: MASTER 1M + 2026-09-30 fixture
+Display: 2026-09-29 00:00 through 2026-09-30 23:10 Panama. Gap preserved; no missing bars/OI invented.
+3-bar filter: relative 3-bar pressure >= 200% and rolling efficiency <= 0 or <=50% of prior successful rolling baseline.
+One episode: trigger, clear result, regime reset, or 10-bar expiry.
+
+## 1M
+CURRENT WATCH=143 | 3-BAR FILTER WATCH=107 | 3-BAR TRIGGER=49
+FILTER WATCH SHORT WATCH | 2026-09-29 00:10 | BUY 40.4 BTC | 1bar 894.7% | 3bar 204.6% | 3bar result +28.9 | 3bar eff 101.9
+FILTER WATCH SHORT WATCH | 2026-09-29 00:12 | BUY 5.7 BTC | 1bar 124.5% | 3bar 340.7% | 3bar result +49.9 | 3bar eff 95.0
+FILTER WATCH LONG WATCH | 2026-09-29 00:44 | SELL 11.8 BTC | 1bar 76.7% | 3bar 343.1% | 3bar result +111.4 | 3bar eff 90.5
+FILTER WATCH SHORT WATCH | 2026-09-29 00:54 | BUY 71.6 BTC | 1bar 434.3% | 3bar 228.1% | 3bar result +76.2 | 3bar eff 66.0
+FILTER WATCH SHORT WATCH | 2026-09-29 01:00 | BUY 143.3 BTC | 1bar 925.6% | 3bar 334.0% | 3bar result +18.6 | 3bar eff 10.6
+FILTER WATCH SHORT WATCH | 2026-09-29 01:05 | BUY 137.9 BTC | 1bar 1015.3% | 3bar 385.3% | 3bar result +53.8 | 3bar eff 25.2
+FILTER WATCH SHORT WATCH | 2026-09-29 01:07 | BUY 214.5 BTC | 1bar 1385.7% | 3bar 589.2% | 3bar result +113.6 | 3bar eff 29.1
+FILTER WATCH LONG WATCH | 2026-09-29 01:17 | SELL 27.3 BTC | 1bar 100.5% | 3bar 275.1% | 3bar result +154.1 | 3bar eff 72.8
+FILTER TRIGGER LONG TRIGGER | 2026-09-29 01:19 | 2 bar(s) after watch
+FILTER WATCH SHORT WATCH | 2026-09-29 01:51 | BUY 271.1 BTC | 1bar 1534.7% | 3bar 601.3% | 3bar result +69.1 | 3bar eff 25.9
+FILTER TRIGGER SHORT TRIGGER | 2026-09-29 01:52 | 1 bar(s) after watch
+FILTER WATCH SHORT WATCH | 2026-09-29 01:53 | BUY 12.4 BTC | 1bar 70.3% | 3bar 613.9% | 3bar result +73.9 | 3bar eff 27.1
+FILTER WATCH SHORT WATCH | 2026-09-29 02:10 | BUY 125.1 BTC | 1bar 817.7% | 3bar 358.2% | 3bar result +20.5 | 3bar eff 13.8
+FILTER WATCH LONG WATCH | 2026-09-29 02:12 | SELL 1.0 BTC | 1bar 4.4% | 3bar 222.0% | 3bar result -21.3 | 3bar eff -21.8
+FILTER WATCH SHORT WATCH | 2026-09-29 02:39 | BUY 169.1 BTC | 1bar 635.9% | 3bar 287.1% | 3bar result +75.6 | 3bar eff 28.1
+FILTER TRIGGER SHORT TRIGGER | 2026-09-29 02:40 | 1 bar(s) after watch
+FILTER WATCH SHORT WATCH | 2026-09-29 03:20 | BUY 83.4 BTC | 1bar 576.6% | 3bar 315.3% | 3bar result +60.8 | 3bar eff 71.6
+FILTER WATCH SHORT WATCH | 2026-09-29 03:22 | BUY 85.1 BTC | 1bar 578.8% | 3bar 1255.7% | 3bar result +217.6 | 3bar eff 56.9
+FILTER TRIGGER SHORT TRIGGER | 2026-09-29 03:23 | 1 bar(s) after watch
+FILTER WATCH LONG WATCH | 2026-09-29 03:32 | SELL 83.5 BTC | 1bar 686.9% | 3bar 601.9% | 3bar result +97.9 | 3bar eff 45.8
+FILTER WATCH SHORT WATCH | 2026-09-29 03:34 | BUY 7.2 BTC | 1bar 53.4% | 3bar 549.6% | 3bar result +77.0 | 3bar eff 38.2
+FILTER TRIGGER SHORT TRIGGER | 2026-09-29 03:36 | 2 bar(s) after watch
+FILTER WATCH LONG WATCH | 2026-09-29 03:39 | SELL 8.8 BTC | 1bar 72.6% | 3bar 237.3% | 3bar result +5.2 | 3bar eff 5.3
+FILTER WATCH SHORT WATCH | 2026-09-29 04:20 | BUY 77.7 BTC | 1bar 536.5% | 3bar 206.3% | 3bar result +16.1 | 3bar eff 18.1
+FILTER TRIGGER SHORT TRIGGER | 2026-09-29 04:22 | 2 bar(s) after watch
+FILTER WATCH LONG WATCH | 2026-09-29 04:28 | SELL 3.2 BTC | 1bar 21.8% | 3bar 536.1% | 3bar result +21.6 | 3bar eff 9.0
+FILTER TRIGGER LONG TRIGGER | 2026-09-29 04:31 | 3 bar(s) after watch
+FILTER WATCH LONG WATCH | 2026-09-29 04:51 | SELL 81.9 BTC | 1bar 638.0% | 3bar 455.3% | 3bar result +76.0 | 3bar eff 27.8
+FILTER TRIGGER LONG TRIGGER | 2026-09-29 04:53 | 2 bar(s) after watch
+FILTER WATCH LONG WATCH | 2026-09-29 05:44 | SELL 9.7 BTC | 1bar 63.9% | 3bar 200.5% | 3bar result +22.6 | 3bar eff 30.8
+FILTER TRIGGER LONG TRIGGER | 2026-09-29 05:46 | 2 bar(s) after watch
+FILTER WATCH LONG WATCH | 2026-09-29 06:09 | SELL 82.7 BTC | 1bar 658.3% | 3bar 280.0% | 3bar result +11.2 | 3bar eff 15.1
+FILTER WATCH LONG WATCH | 2026-09-29 06:12 | SELL 9.3 BTC | 1bar 82.6% | 3bar 203.0% | 3bar result +3.0 | 3bar eff 4.7
+FILTER WATCH SHORT WATCH | 2026-09-29 06:36 | BUY 0.5 BTC | 1bar 5.1% | 3bar 202.6% | 3bar result -20.0 | 3bar eff -50.7
+FILTER TRIGGER SHORT TRIGGER | 2026-09-29 06:37 | 1 bar(s) after watch
+FILTER WATCH SHORT WATCH | 2026-09-29 06:38 | BUY 21.2 BTC | 1bar 206.2% | 3bar 416.4% | 3bar result -1.8 | 3bar eff -1.9
+FILTER TRIGGER SHORT TRIGGER | 2026-09-29 06:39 | 1 bar(s) after watch
+FILTER WATCH SHORT WATCH | 2026-09-29 06:44 | BUY 23.3 BTC | 1bar 247.1% | 3bar 262.4% | 3bar result +48.6 | 3bar eff 103.1
+FILTER WATCH LONG WATCH | 2026-09-29 06:47 | SELL 4.2 BTC | 1bar 40.8% | 3bar 360.0% | 3bar result +55.0 | 3bar eff 85.0
+FILTER TRIGGER LONG TRIGGER | 2026-09-29 06:49 | 2 bar(s) after watch
+FILTER WATCH SHORT WATCH | 2026-09-29 06:50 | BUY 52.9 BTC | 1bar 514.2% | 3bar 2091.2% | 3bar result +143.0 | 3bar eff 33.2
+FILTER TRIGGER SHORT TRIGGER | 2026-09-29 06:51 | 1 bar(s) after watch
+FILTER WATCH LONG WATCH | 2026-09-29 07:06 | SELL 65.6 BTC | 1bar 241.7% | 3bar 203.4% | 3bar result +43.1 | 3bar eff 47.4
+FILTER WATCH SHORT WATCH | 2026-09-29 07:26 | BUY 16.5 BTC | 1bar 74.1% | 3bar 287.9% | 3bar result +40.3 | 3bar eff 35.7
+FILTER WATCH SHORT WATCH | 2026-09-29 07:56 | BUY 102.4 BTC | 1bar 618.9% | 3bar 326.1% | 3bar result +86.9 | 3bar eff 56.2
+FILTER TRIGGER SHORT TRIGGER | 2026-09-29 07:57 | 1 bar(s) after watch
+FILTER WATCH SHORT WATCH | 2026-09-29 08:24 | BUY 118.6 BTC | 1bar 930.6% | 3bar 385.3% | 3bar result +48.8 | 3bar eff 41.3
+FILTER TRIGGER SHORT TRIGGER | 2026-09-29 08:25 | 1 bar(s) after watch
+FILTER WATCH LONG WATCH | 2026-09-29 08:26 | SELL 16.3 BTC | 1bar 112.6% | 3bar 541.7% | 3bar result -33.0 | 3bar eff -19.9
+FILTER TRIGGER LONG TRIGGER | 2026-09-29 08:27 | 1 bar(s) after watch
+FILTER WATCH LONG WATCH | 2026-09-29 08:28 | SELL 100.6 BTC | 1bar 697.0% | 3bar 349.9% | 3bar result +44.7 | 3bar eff 41.7
+FILTER WATCH LONG WATCH | 2026-09-29 08:34 | SELL 185.1 BTC | 1bar 925.9% | 3bar 784.2% | 3bar result +80.1 | 3bar eff 22.0
+FILTER WATCH SHORT WATCH | 2026-09-29 08:36 | BUY 38.7 BTC | 1bar 177.3% | 3bar 507.2% | 3bar result -24.3 | 3bar eff -10.0
+FILTER WATCH SHORT WATCH | 2026-09-29 09:05 | BUY 137.6 BTC | 1bar 388.9% | 3bar 362.0% | 3bar result +0.1 | 3bar eff 0.0
+FILTER TRIGGER SHORT TRIGGER | 2026-09-29 09:06 | 1 bar(s) after watch
+FILTER WATCH SHORT WATCH | 2026-09-29 09:08 | BUY 26.4 BTC | 1bar 82.8% | 3bar 204.2% | 3bar result +32.8 | 3bar eff 29.6
+FILTER TRIGGER SHORT TRIGGER | 2026-09-29 09:09 | 1 bar(s) after watch
+FILTER WATCH LONG WATCH | 2026-09-29 09:28 | SELL 4.8 BTC | 1bar 15.2% | 3bar 203.4% | 3bar result -9.9 | 3bar eff -11.5
+FILTER WATCH LONG WATCH | 2026-09-29 09:35 | SELL 88.9 BTC | 1bar 365.1% | 3bar 332.2% | 3bar result +82.0 | 3bar eff 68.3
+FILTER WATCH LONG WATCH | 2026-09-29 09:37 | SELL 18.8 BTC | 1bar 77.3% | 3bar 429.2% | 3bar result +98.2 | 3bar eff 56.7
+FILTER TRIGGER LONG TRIGGER | 2026-09-29 09:38 | 1 bar(s) after watch
+FILTER WATCH SHORT WATCH | 2026-09-29 09:46 | BUY 45.7 BTC | 1bar 187.7% | 3bar 274.7% | 3bar result +67.7 | 3bar eff 60.1
+FILTER TRIGGER SHORT TRIGGER | 2026-09-29 09:47 | 1 bar(s) after watch
+FILTER WATCH LONG WATCH | 2026-09-29 09:50 | SELL 241.7 BTC | 1bar 1286.0% | 3bar 588.3% | 3bar result +154.4 | 3bar eff 64.0
+FILTER TRIGGER LONG TRIGGER | 2026-09-29 09:51 | 1 bar(s) after watch
+FILTER WATCH LONG WATCH | 2026-09-29 09:52 | SELL 3.8 BTC | 1bar 20.4% | 3bar 318.0% | 3bar result -29.3 | 3bar eff -20.0
+FILTER TRIGGER LONG TRIGGER | 2026-09-29 09:55 | 3 bar(s) after watch
+FILTER WATCH LONG WATCH | 2026-09-29 10:01 | SELL 67.2 BTC | 1bar 357.7% | 3bar 322.0% | 3bar result +145.1 | 3bar eff 59.3
+FILTER WATCH SHORT WATCH | 2026-09-29 10:08 | BUY 47.6 BTC | 1bar 257.6% | 3bar 391.4% | 3bar result +49.0 | 3bar eff 16.5
+FILTER WATCH SHORT WATCH | 2026-09-29 10:10 | BUY 32.8 BTC | 1bar 166.9% | 3bar 304.4% | 3bar result +72.5 | 3bar eff 25.8
+FILTER TRIGGER SHORT TRIGGER | 2026-09-29 10:12 | 2 bar(s) after watch
+FILTER WATCH LONG WATCH | 2026-09-29 11:55 | SELL 40.0 BTC | 1bar 170.6% | 3bar 243.0% | 3bar result +81.6 | 3bar eff 65.2
+FILTER TRIGGER LONG TRIGGER | 2026-09-29 11:57 | 2 bar(s) after watch
+FILTER WATCH SHORT WATCH | 2026-09-29 11:59 | BUY 40.2 BTC | 1bar 156.2% | 3bar 444.0% | 3bar result +127.7 | 3bar eff 55.9
+FILTER TRIGGER SHORT TRIGGER | 2026-09-29 12:00 | 1 bar(s) after watch
+FILTER WATCH SHORT WATCH | 2026-09-29 12:01 | BUY 83.0 BTC | 1bar 322.2% | 3bar 224.4% | 3bar result -15.8 | 3bar eff -12.7
+FILTER WATCH SHORT WATCH | 2026-09-29 12:18 | BUY 109.7 BTC | 1bar 388.8% | 3bar 342.3% | 3bar result -39.5 | 3bar eff -17.1
+FILTER WATCH LONG WATCH | 2026-09-29 12:20 | SELL 4.3 BTC | 1bar 13.3% | 3bar 245.6% | 3bar result +23.8 | 3bar eff 14.0
+FILTER WATCH LONG WATCH | 2026-09-29 12:35 | SELL 95.1 BTC | 1bar 598.6% | 3bar 379.4% | 3bar result +75.5 | 3bar eff 55.8
+FILTER WATCH LONG WATCH | 2026-09-29 12:58 | SELL 50.3 BTC | 1bar 349.5% | 3bar 208.9% | 3bar result +18.3 | 3bar eff 28.8
+FILTER TRIGGER LONG TRIGGER | 2026-09-29 12:59 | 1 bar(s) after watch
+FILTER WATCH SHORT WATCH | 2026-09-29 13:05 | BUY 248.5 BTC | 1bar 1568.5% | 3bar 819.5% | 3bar result +67.9 | 3bar eff 24.5
+FILTER WATCH SHORT WATCH | 2026-09-29 13:07 | BUY 28.7 BTC | 1bar 176.0% | 3bar 1304.6% | 3bar result +46.6 | 3bar eff 10.6
+FILTER TRIGGER SHORT TRIGGER | 2026-09-29 13:09 | 2 bar(s) after watch
+FILTER WATCH SHORT WATCH | 2026-09-29 13:16 | BUY 128.3 BTC | 1bar 728.7% | 3bar 552.3% | 3bar result +54.6 | 3bar eff 27.1
+FILTER TRIGGER SHORT TRIGGER | 2026-09-29 13:17 | 1 bar(s) after watch
+FILTER WATCH LONG WATCH | 2026-09-29 13:18 | SELL 0.8 BTC | 1bar 4.3% | 3bar 271.4% | 3bar result -37.2 | 3bar eff -33.0
+FILTER TRIGGER LONG TRIGGER | 2026-09-29 13:20 | 2 bar(s) after watch
+FILTER WATCH SHORT WATCH | 2026-09-29 13:38 | BUY 48.2 BTC | 1bar 229.9% | 3bar 379.2% | 3bar result +30.5 | 3bar eff 27.0
+FILTER WATCH LONG WATCH | 2026-09-29 13:43 | SELL 88.5 BTC | 1bar 349.1% | 3bar 219.2% | 3bar result -37.7 | 3bar eff -45.7
+FILTER WATCH SHORT WATCH | 2026-09-29 13:45 | BUY 23.4 BTC | 1bar 86.2% | 3bar 201.1% | 3bar result +37.5 | 3bar eff 45.2
+FILTER TRIGGER SHORT TRIGGER | 2026-09-29 13:47 | 2 bar(s) after watch
+FILTER WATCH SHORT WATCH | 2026-09-30 14:54 | BUY 62.6 BTC | 1bar 489.1% | 3bar 310.8% | 3bar result -46.2 | 3bar eff -46.5
+FILTER WATCH SHORT WATCH | 2026-09-30 14:59 | BUY 59.7 BTC | 1bar 431.4% | 3bar 263.3% | 3bar result +30.6 | 3bar eff 32.1
+FILTER WATCH LONG WATCH | 2026-09-30 15:01 | SELL 8.4 BTC | 1bar 60.7% | 3bar 341.8% | 3bar result +13.0 | 3bar eff 10.2
+FILTER WATCH LONG WATCH | 2026-09-30 15:28 | SELL 4.3 BTC | 1bar 29.3% | 3bar 250.3% | 3bar result +6.1 | 3bar eff 7.6
+FILTER WATCH SHORT WATCH | 2026-09-30 15:45 | BUY 40.4 BTC | 1bar 656.9% | 3bar 219.5% | 3bar result +0.0 | 3bar eff 0.0
+FILTER TRIGGER SHORT TRIGGER | 2026-09-30 15:46 | 1 bar(s) after watch
+FILTER WATCH SHORT WATCH | 2026-09-30 16:02 | BUY 24.3 BTC | 1bar 415.4% | 3bar 222.8% | 3bar result +45.4 | 3bar eff 116.1
+FILTER WATCH SHORT WATCH | 2026-09-30 16:04 | BUY 3.0 BTC | 1bar 48.4% | 3bar 217.3% | 3bar result +54.7 | 3bar eff 128.1
+FILTER TRIGGER SHORT TRIGGER | 2026-09-30 16:05 | 1 bar(s) after watch
+FILTER WATCH SHORT WATCH | 2026-09-30 16:37 | BUY 4.0 BTC | 1bar 52.3% | 3bar 259.7% | 3bar result -7.0 | 3bar eff -25.5
+FILTER TRIGGER SHORT TRIGGER | 2026-09-30 16:39 | 2 bar(s) after watch
+FILTER WATCH LONG WATCH | 2026-09-30 17:07 | SELL 114.7 BTC | 1bar 2466.7% | 3bar 1625.8% | 3bar result +124.2 | 3bar eff 93.7
+FILTER TRIGGER LONG TRIGGER | 2026-09-30 17:08 | 1 bar(s) after watch
+FILTER WATCH LONG WATCH | 2026-09-30 17:09 | SELL 22.5 BTC | 1bar 445.5% | 3bar 1966.9% | 3bar result +46.1 | 3bar eff 28.8
+FILTER TRIGGER LONG TRIGGER | 2026-09-30 17:10 | 1 bar(s) after watch
+FILTER WATCH SHORT WATCH | 2026-09-30 17:27 | BUY 4.1 BTC | 1bar 67.2% | 3bar 551.2% | 3bar result +37.8 | 3bar eff 85.7
+FILTER WATCH SHORT WATCH | 2026-09-30 17:30 | BUY 2.2 BTC | 1bar 32.8% | 3bar 235.3% | 3bar result +19.8 | 3bar eff 90.0
+FILTER TRIGGER SHORT TRIGGER | 2026-09-30 17:32 | 2 bar(s) after watch
+FILTER WATCH SHORT WATCH | 2026-09-30 17:42 | BUY 13.7 BTC | 1bar 212.4% | 3bar 335.1% | 3bar result +23.6 | 3bar eff 91.5
+FILTER TRIGGER SHORT TRIGGER | 2026-09-30 17:43 | 1 bar(s) after watch
+FILTER WATCH SHORT WATCH | 2026-09-30 17:44 | BUY 9.6 BTC | 1bar 145.5% | 3bar 250.5% | 3bar result -21.5 | 3bar eff -80.2
+FILTER TRIGGER SHORT TRIGGER | 2026-09-30 17:46 | 2 bar(s) after watch
+FILTER WATCH SHORT WATCH | 2026-09-30 18:09 | BUY 17.6 BTC | 1bar 163.7% | 3bar 219.2% | 3bar result -28.3 | 3bar eff -75.1
+FILTER TRIGGER SHORT TRIGGER | 2026-09-30 18:11 | 2 bar(s) after watch
+FILTER WATCH SHORT WATCH | 2026-09-30 18:21 | BUY 59.7 BTC | 1bar 579.6% | 3bar 495.4% | 3bar result +30.9 | 3bar eff 38.6
+FILTER WATCH LONG WATCH | 2026-09-30 18:28 | SELL 90.6 BTC | 1bar 835.0% | 3bar 452.7% | 3bar result +73.4 | 3bar eff 91.9
+FILTER WATCH LONG WATCH | 2026-09-30 18:30 | SELL 3.6 BTC | 1bar 33.2% | 3bar 330.3% | 3bar result +70.8 | 3bar eff 88.9
+FILTER WATCH SHORT WATCH | 2026-09-30 18:34 | BUY 25.6 BTC | 1bar 249.8% | 3bar 546.9% | 3bar result +32.7 | 3bar eff 24.3
+FILTER WATCH SHORT WATCH | 2026-09-30 18:51 | BUY 60.7 BTC | 1bar 1428.2% | 3bar 224.6% | 3bar result +13.2 | 3bar eff 20.7
+FILTER WATCH LONG WATCH | 2026-09-30 19:09 | SELL 73.5 BTC | 1bar 1729.4% | 3bar 593.7% | 3bar result +40.1 | 3bar eff 60.8
+FILTER TRIGGER LONG TRIGGER | 2026-09-30 19:11 | 2 bar(s) after watch
+FILTER WATCH LONG WATCH | 2026-09-30 19:14 | SELL 22.2 BTC | 1bar 253.7% | 3bar 352.1% | 3bar result +31.9 | 3bar eff 58.6
+FILTER WATCH SHORT WATCH | 2026-09-30 19:16 | BUY 32.5 BTC | 1bar 308.1% | 3bar 337.2% | 3bar result -78.8 | 3bar eff -151.2
+FILTER WATCH LONG WATCH | 2026-09-30 19:24 | SELL 3.4 BTC | 1bar 23.9% | 3bar 246.7% | 3bar result -13.5 | 3bar eff -31.5
+FILTER TRIGGER LONG TRIGGER | 2026-09-30 19:25 | 1 bar(s) after watch
+FILTER WATCH LONG WATCH | 2026-09-30 19:26 | SELL 48.8 BTC | 1bar 365.5% | 3bar 310.9% | 3bar result -6.3 | 3bar eff -9.6
+FILTER WATCH LONG WATCH | 2026-09-30 19:41 | SELL 41.3 BTC | 1bar 268.2% | 3bar 243.1% | 3bar result -2.4 | 3bar eff -3.1
+FILTER TRIGGER LONG TRIGGER | 2026-09-30 19:42 | 1 bar(s) after watch
+FILTER WATCH SHORT WATCH | 2026-09-30 20:03 | BUY 35.0 BTC | 1bar 434.8% | 3bar 231.7% | 3bar result -11.2 | 3bar eff -28.9
+FILTER WATCH SHORT WATCH | 2026-09-30 20:07 | BUY 21.7 BTC | 1bar 222.6% | 3bar 460.1% | 3bar result +62.3 | 3bar eff 63.1
+FILTER WATCH LONG WATCH | 2026-09-30 20:33 | SELL 32.9 BTC | 1bar 325.7% | 3bar 418.2% | 3bar result -3.5 | 3bar eff -3.0
+FILTER WATCH SHORT WATCH | 2026-09-30 20:55 | BUY 6.2 BTC | 1bar 69.3% | 3bar 276.0% | 3bar result +29.6 | 3bar eff 107.2
+FILTER TRIGGER SHORT TRIGGER | 2026-09-30 20:57 | 2 bar(s) after watch
+FILTER WATCH SHORT WATCH | 2026-09-30 21:11 | BUY 32.1 BTC | 1bar 755.3% | 3bar 352.2% | 3bar result +14.3 | 3bar eff 58.8
+FILTER TRIGGER SHORT TRIGGER | 2026-09-30 21:12 | 1 bar(s) after watch
+FILTER WATCH LONG WATCH | 2026-09-30 21:13 | SELL 15.1 BTC | 1bar 355.3% | 3bar 289.2% | 3bar result -5.5 | 3bar eff -25.7
+FILTER WATCH LONG WATCH | 2026-09-30 21:15 | SELL 5.1 BTC | 1bar 96.2% | 3bar 390.8% | 3bar result +53.2 | 3bar eff 177.9
+FILTER WATCH SHORT WATCH | 2026-09-30 21:24 | BUY 2.7 BTC | 1bar 62.1% | 3bar 306.9% | 3bar result +54.7 | 3bar eff 188.6
+FILTER TRIGGER SHORT TRIGGER | 2026-09-30 21:25 | 1 bar(s) after watch
+FILTER WATCH LONG WATCH | 2026-09-30 21:26 | SELL 20.4 BTC | 1bar 469.0% | 3bar 525.4% | 3bar result +73.6 | 3bar eff 139.4
+FILTER WATCH SHORT WATCH | 2026-09-30 21:33 | BUY 0.3 BTC | 1bar 3.2% | 3bar 206.2% | 3bar result +5.6 | 3bar eff 21.1
+FILTER WATCH LONG WATCH | 2026-09-30 21:44 | SELL 17.3 BTC | 1bar 192.2% | 3bar 238.2% | 3bar result +7.0 | 3bar eff 15.0
+FILTER WATCH LONG WATCH | 2026-09-30 21:46 | SELL 15.5 BTC | 1bar 152.0% | 3bar 274.6% | 3bar result +32.0 | 3bar eff 58.7
+FILTER WATCH SHORT WATCH | 2026-09-30 22:09 | BUY 8.5 BTC | 1bar 95.5% | 3bar 224.9% | 3bar result +49.8 | 3bar eff 110.4
+FILTER WATCH LONG WATCH | 2026-09-30 22:12 | SELL 17.2 BTC | 1bar 157.8% | 3bar 231.8% | 3bar result -15.1 | 3bar eff -26.6
+FILTER WATCH SHORT WATCH | 2026-09-30 22:17 | BUY 41.1 BTC | 1bar 461.8% | 3bar 253.5% | 3bar result +23.8 | 3bar eff 48.8
+FILTER TRIGGER SHORT TRIGGER | 2026-09-30 22:18 | 1 bar(s) after watch
+FILTER WATCH SHORT WATCH | 2026-09-30 22:19 | BUY 2.5 BTC | 1bar 28.1% | 3bar 217.7% | 3bar result -29.5 | 3bar eff -70.4
+FILTER TRIGGER SHORT TRIGGER | 2026-09-30 22:20 | 1 bar(s) after watch
+FILTER WATCH LONG WATCH | 2026-09-30 22:45 | SELL 11.8 BTC | 1bar 191.9% | 3bar 232.2% | 3bar result -14.7 | 3bar eff -33.9
+FILTER TRIGGER LONG TRIGGER | 2026-09-30 22:46 | 1 bar(s) after watch
+FILTER WATCH LONG WATCH | 2026-09-30 22:49 | SELL 0.6 BTC | 1bar 7.1% | 3bar 202.5% | 3bar result +36.3 | 3bar eff 88.5
+FILTER TRIGGER LONG TRIGGER | 2026-09-30 22:50 | 1 bar(s) after watch
+FILTER WATCH SHORT WATCH | 2026-09-30 23:09 | BUY 167.1 BTC | 1bar 1041.1% | 3bar 414.6% | 3bar result +43.5 | 3bar eff 28.3
+
+## 5M
+CURRENT WATCH=32 | 3-BAR FILTER WATCH=19 | 3-BAR TRIGGER=8
+FILTER WATCH SHORT WATCH | 2026-09-29 00:40–00:45 | BUY 156.9 BTC | 1bar 379.9% | 3bar 214.9% | 3bar result -26.2 | 3bar eff -24.4
+FILTER WATCH SHORT WATCH | 2026-09-29 00:50–00:55 | BUY 144.2 BTC | 1bar 349.1% | 3bar 591.1% | 3bar result +309.0 | 3bar eff 91.5
+FILTER WATCH SHORT WATCH | 2026-09-29 01:05–01:10 | BUY 540.5 BTC | 1bar 1347.6% | 3bar 1442.6% | 3bar result +350.9 | 3bar eff 42.6
+FILTER WATCH SHORT WATCH | 2026-09-29 01:20–01:25 | BUY 43.9 BTC | 1bar 109.4% | 3bar 224.1% | 3bar result -60.5 | 3bar eff -47.3
+FILTER WATCH LONG WATCH | 2026-09-29 01:45–01:50 | SELL 53.4 BTC | 1bar 124.2% | 3bar 296.1% | 3bar result +44.4 | 3bar eff 18.6
+FILTER TRIGGER LONG TRIGGER | 2026-09-29 01:50–01:55 | 1 bar(s) after watch
+FILTER WATCH SHORT WATCH | 2026-09-29 01:55–02:00 | BUY 15.0 BTC | 1bar 34.9% | 3bar 234.1% | 3bar result +96.9 | 3bar eff 39.9
+FILTER TRIGGER SHORT TRIGGER | 2026-09-29 02:00–02:05 | 1 bar(s) after watch
+FILTER WATCH LONG WATCH | 2026-09-29 02:20–02:25 | SELL 90.7 BTC | 1bar 170.2% | 3bar 241.5% | 3bar result +42.4 | 3bar eff 14.9
+FILTER TRIGGER LONG TRIGGER | 2026-09-29 02:30–02:35 | 2 bar(s) after watch
+FILTER WATCH SHORT WATCH | 2026-09-29 04:25–04:30 | BUY 274.8 BTC | 1bar 422.8% | 3bar 320.6% | 3bar result +60.1 | 3bar eff 16.9
+FILTER WATCH SHORT WATCH | 2026-09-29 05:25–05:30 | BUY 11.9 BTC | 1bar 16.9% | 3bar 211.0% | 3bar result +49.8 | 3bar eff 20.4
+FILTER TRIGGER SHORT TRIGGER | 2026-09-29 05:30–05:35 | 1 bar(s) after watch
+FILTER WATCH SHORT WATCH | 2026-09-29 06:45–06:50 | BUY 442.6 BTC | 1bar 836.1% | 3bar 475.3% | 3bar result +190.4 | 3bar eff 33.1
+FILTER TRIGGER SHORT TRIGGER | 2026-09-29 06:55–07:00 | 2 bar(s) after watch
+FILTER WATCH LONG WATCH | 2026-09-29 08:40–08:45 | SELL 31.4 BTC | 1bar 85.6% | 3bar 699.8% | 3bar result +163.3 | 3bar eff 28.4
+FILTER TRIGGER LONG TRIGGER | 2026-09-29 08:50–08:55 | 2 bar(s) after watch
+FILTER WATCH LONG WATCH | 2026-09-29 08:55–09:00 | SELL 118.3 BTC | 1bar 230.4% | 3bar 214.7% | 3bar result -9.9 | 3bar eff -4.5
+FILTER WATCH SHORT WATCH | 2026-09-29 10:05–10:10 | BUY 269.1 BTC | 1bar 631.6% | 3bar 247.4% | 3bar result -198.5 | 3bar eff -152.5
+FILTER TRIGGER SHORT TRIGGER | 2026-09-29 10:10–10:15 | 1 bar(s) after watch
+FILTER WATCH SHORT WATCH | 2026-09-29 10:35–10:40 | BUY 224.4 BTC | 1bar 268.7% | 3bar 1193.7% | 3bar result +168.1 | 3bar eff 22.8
+FILTER TRIGGER SHORT TRIGGER | 2026-09-29 10:50–10:55 | 3 bar(s) after watch
+FILTER WATCH LONG WATCH | 2026-09-29 11:00–11:05 | SELL 313.2 BTC | 1bar 294.9% | 3bar 596.6% | 3bar result +203.4 | 3bar eff 29.8
+FILTER WATCH SHORT WATCH | 2026-09-29 13:15–13:20 | BUY 202.0 BTC | 1bar 298.0% | 3bar 298.9% | 3bar result +126.9 | 3bar eff 19.3
+FILTER WATCH SHORT WATCH | 2026-09-30 17:10–17:15 | BUY 12.1 BTC | 1bar 46.6% | 3bar 315.0% | 3bar result +28.9 | 3bar eff 17.8
+FILTER WATCH SHORT WATCH | 2026-09-30 18:05–18:10 | BUY 55.3 BTC | 1bar 390.8% | 3bar 265.2% | 3bar result -62.2 | 3bar eff -69.5
+FILTER WATCH SHORT WATCH | 2026-09-30 22:25–22:30 | BUY 98.9 BTC | 1bar 320.6% | 3bar 238.2% | 3bar result +43.9 | 3bar eff 33.9
+
+## 1H
+CURRENT WATCH=1 | 3-BAR FILTER WATCH=0 | 3-BAR TRIGGER=0
+
+## 4H
+CURRENT WATCH=0 | 3-BAR FILTER WATCH=0 | 3-BAR TRIGGER=0

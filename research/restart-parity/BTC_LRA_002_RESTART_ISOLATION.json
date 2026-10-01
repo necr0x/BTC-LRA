@@ -1,0 +1,86 @@
+[
+  {
+    "label": "SET_ORDER_ONLY",
+    "split": 7000,
+    "bars": 9000,
+    "temp_root": "C:\\Users\\miscp\\AppData\\Local\\Temp\\btc002-isolation-t3pb14pn",
+    "continuous": {
+      "digest": {
+        "count": 2061933,
+        "sha256": "2c3e17691e3f3b94a33c1e696bda72c04fd931ffd6e2d721853adf0d87a570c2"
+      },
+      "semantic_digest": "365824597dacc345e5fce1bed4e1e3409d47895c356a253c5df58adedeadfc24",
+      "battles": 17469,
+      "releases": 15168
+    },
+    "restarted": {
+      "digest": {
+        "count": 2061933,
+        "sha256": "2c3e17691e3f3b94a33c1e696bda72c04fd931ffd6e2d721853adf0d87a570c2"
+      },
+      "semantic_digest": "365824597dacc345e5fce1bed4e1e3409d47895c356a253c5df58adedeadfc24",
+      "battles": 7211,
+      "releases": 6590
+    },
+    "strict_parity": true,
+    "semantic_parity": true,
+    "battle_parity": false,
+    "release_parity": false
+  },
+  {
+    "label": "SWING_REHYDRATION_ONLY",
+    "split": 7000,
+    "bars": 9000,
+    "temp_root": "C:\\Users\\miscp\\AppData\\Local\\Temp\\btc002-isolation-7vslyagi",
+    "continuous": {
+      "digest": {
+        "count": 2061933,
+        "sha256": "32cfb6eb732d7ef9cdaf5cce8e9e8621ce6e288827f9afc8f8ed2742e64141e3"
+      },
+      "semantic_digest": "912ddd4ef90dcd6dfea5e8173aebcbbe3719d61252dda00f2cdf082993e276d3",
+      "battles": 17469,
+      "releases": 15168
+    },
+    "restarted": {
+      "digest": {
+        "count": 2061933,
+        "sha256": "b92ea075b3f5d246c23c2a58a9608d1fa16a4fc8a2f832eb3ad870bbb621c24f"
+      },
+      "semantic_digest": "8d0b3c377156e6ccb4130f8609a536c428001b7e3cdf089fc8e42963977f46b9",
+      "battles": 7211,
+      "releases": 6590
+    },
+    "strict_parity": false,
+    "semantic_parity": false,
+    "battle_parity": false,
+    "release_parity": false
+  },
+  {
+    "label": "BOTH",
+    "split": 7000,
+    "bars": 9000,
+    "temp_root": "C:\\Users\\miscp\\AppData\\Local\\Temp\\btc002-isolation-f9unflif",
+    "continuous": {
+      "digest": {
+        "count": 2061933,
+        "sha256": "2c3e17691e3f3b94a33c1e696bda72c04fd931ffd6e2d721853adf0d87a570c2"
+      },
+      "semantic_digest": "365824597dacc345e5fce1bed4e1e3409d47895c356a253c5df58adedeadfc24",
+      "battles": 17469,
+      "releases": 15168
+    },
+    "restarted": {
+      "digest": {
+        "count": 2061933,
+        "sha256": "2c3e17691e3f3b94a33c1e696bda72c04fd931ffd6e2d721853adf0d87a570c2"
+      },
+      "semantic_digest": "365824597dacc345e5fce1bed4e1e3409d47895c356a253c5df58adedeadfc24",
+      "battles": 7211,
+      "releases": 6590
+    },
+    "strict_parity": true,
+    "semantic_parity": true,
+    "battle_parity": false,
+    "release_parity": false
+  }
+]

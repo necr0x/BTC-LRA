@@ -1,0 +1,24 @@
+{
+  "label": "0-9000 split 7000",
+  "split": 7000,
+  "bars": 9000,
+  "temp_root": "C:\\Users\\miscp\\AppData\\Local\\Temp\\btc002-divergence-bxfopt3s",
+  "continuous_signatures": "C:\\Users\\miscp\\AppData\\Local\\Temp\\btc002-divergence-bxfopt3s\\continuous_signatures.jsonl",
+  "restart_signatures": "C:\\Users\\miscp\\AppData\\Local\\Temp\\btc002-divergence-bxfopt3s\\restart_signatures.jsonl",
+  "continuous": {
+    "strict_digest": "c031b208f621db5e7d2d6c93bab9011cd20fb259bf5659b14506ea1a4896a9d5",
+    "semantic_digest": "365824597dacc345e5fce1bed4e1e3409d47895c356a253c5df58adedeadfc24",
+    "captured": false
+  },
+  "restart": {
+    "strict_digest": "c031b208f621db5e7d2d6c93bab9011cd20fb259bf5659b14506ea1a4896a9d5",
+    "semantic_digest": "365824597dacc345e5fce1bed4e1e3409d47895c356a253c5df58adedeadfc24",
+    "captured": false
+  },
+  "continuous_event_count": 2061933,
+  "comparison": {
+    "compared_until_first_both": 2061933,
+    "first_strict_divergence": null,
+    "first_semantic_divergence": null
+  }
+}

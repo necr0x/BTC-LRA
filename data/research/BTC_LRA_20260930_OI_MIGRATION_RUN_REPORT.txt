@@ -1,0 +1,23 @@
+BTC-LRA OI MIGRATION RUN MAP
+Source: continuous MASTER 1M + 2026-09-30 fixture; actual OI samples only.
+Grouping: two consecutive same-sign dOI samples start a run; one opposite sample is tolerated; two opposite samples or 50% accumulated retrace terminates/reverses. No isolated-spike anomaly detector.
+Display/report range: 2026-09-30 12:00 Panama through latest available fixture.
+2026-09-30 14:45–2026-09-30 15:20 | OI BUILD | samples 8 | net +768.0 BTC | gross add 798.9 | gross exit 30.9 | rate +21.94/min | BUY 2552.3 | SELL 2367.0 | dominance BUY 185.3 | price -174.0 | volume 4919.1
+2026-09-30 15:15–2026-09-30 15:45 | OI UNWIND | samples 7 | net -77.1 BTC | gross add 27.9 | gross exit 105.0 | rate -2.57/min | BUY 594.7 | SELL 526.0 | dominance BUY 68.7 | price +29.3 | volume 1120.6
+2026-09-30 15:40–2026-09-30 15:50 | OI BUILD | samples 3 | net +26.9 BTC | gross add 26.9 | gross exit 0.0 | rate +2.69/min | BUY 119.2 | SELL 93.9 | dominance BUY 25.3 | price -57.1 | volume 212.8
+2026-09-30 15:50–2026-09-30 16:45 | OI UNWIND | samples 12 | net -154.6 BTC | gross add 21.6 | gross exit 176.3 | rate -2.81/min | BUY 732.1 | SELL 604.7 | dominance BUY 127.4 | price +33.6 | volume 1336.3
+2026-09-30 16:40–2026-09-30 17:25 | OI BUILD | samples 10 | net +53.7 BTC | gross add 59.1 | gross exit 5.4 | rate +1.19/min | BUY 436.8 | SELL 578.3 | dominance SELL 141.5 | price +19.3 | volume 1015.3
+2026-09-30 17:20–2026-09-30 17:35 | OI UNWIND | samples 4 | net -46.0 BTC | gross add 0.0 | gross exit 46.0 | rate -3.06/min | BUY 221.9 | SELL 154.5 | dominance BUY 67.4 | price +100.1 | volume 376.1
+2026-09-30 17:45–2026-09-30 18:25 | OI BUILD | samples 9 | net +95.3 BTC | gross add 110.4 | gross exit 15.2 | rate +2.38/min | BUY 729.9 | SELL 630.5 | dominance BUY 99.4 | price -51.9 | volume 1360.1
+2026-09-30 18:20–2026-09-30 18:35 | OI UNWIND | samples 4 | net -32.2 BTC | gross add 0.0 | gross exit 32.2 | rate -2.15/min | BUY 446.4 | SELL 592.5 | dominance SELL 146.1 | price -126.7 | volume 1038.9
+2026-09-30 18:35–2026-09-30 18:50 | OI BUILD | samples 4 | net +26.1 BTC | gross add 26.1 | gross exit 0.0 | rate +1.74/min | BUY 272.7 | SELL 202.8 | dominance BUY 69.9 | price -29.2 | volume 475.8
+2026-09-30 18:50–2026-09-30 19:05 | OI UNWIND | samples 4 | net -35.4 BTC | gross add 21.1 | gross exit 56.5 | rate -2.36/min | BUY 716.6 | SELL 705.3 | dominance BUY 11.3 | price -44.9 | volume 1422.0
+2026-09-30 19:00–2026-09-30 19:40 | OI BUILD | samples 9 | net +203.1 BTC | gross add 276.2 | gross exit 73.0 | rate +5.08/min | BUY 1162.0 | SELL 1288.6 | dominance SELL 126.6 | price -102.7 | volume 2450.7
+2026-09-30 19:35–2026-09-30 20:00 | OI UNWIND | samples 6 | net -88.1 BTC | gross add 16.3 | gross exit 104.4 | rate -3.52/min | BUY 411.6 | SELL 535.7 | dominance SELL 124.1 | price +40.4 | volume 947.0
+2026-09-30 19:55–2026-09-30 20:20 | OI BUILD | samples 6 | net +99.5 BTC | gross add 134.1 | gross exit 34.6 | rate +3.98/min | BUY 600.1 | SELL 518.5 | dominance BUY 81.6 | price +146.3 | volume 1118.1
+2026-09-30 20:15–2026-09-30 20:50 | OI UNWIND | samples 8 | net -147.3 BTC | gross add 33.3 | gross exit 180.6 | rate -4.21/min | BUY 662.3 | SELL 780.5 | dominance SELL 118.2 | price -81.3 | volume 1442.2
+2026-09-30 20:45–2026-09-30 21:15 | OI BUILD | samples 7 | net +33.1 BTC | gross add 49.2 | gross exit 16.1 | rate +1.10/min | BUY 368.6 | SELL 334.6 | dominance BUY 34.0 | price -8.5 | volume 703.0
+2026-09-30 21:20–2026-09-30 21:45 | OI BUILD | samples 6 | net +67.3 BTC | gross add 77.6 | gross exit 10.3 | rate +2.69/min | BUY 668.9 | SELL 814.3 | dominance SELL 145.4 | price -79.9 | volume 1483.3
+2026-09-30 21:40–2026-09-30 21:55 | OI UNWIND | samples 4 | net -33.9 BTC | gross add 0.0 | gross exit 33.9 | rate -2.26/min | BUY 280.9 | SELL 386.3 | dominance SELL 105.4 | price +47.7 | volume 667.4
+2026-09-30 21:55–2026-09-30 23:00 | OI BUILD | samples 14 | net +118.8 BTC | gross add 216.6 | gross exit 97.8 | rate +1.83/min | BUY 1538.3 | SELL 1428.5 | dominance BUY 109.8 | price +274.8 | volume 2967.7
+2026-09-30 22:55–2026-09-30 23:10 | OI UNWIND | samples 4 | net -51.1 BTC | gross add 0.0 | gross exit 51.1 | rate -3.41/min | BUY 589.7 | SELL 428.4 | dominance BUY 161.3 | price +106.7 | volume 1018.2

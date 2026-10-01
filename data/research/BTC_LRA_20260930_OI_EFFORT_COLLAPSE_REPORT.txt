@@ -1,0 +1,35 @@
+BTC-LRA OI LOAD → CUMULATIVE EFFORT COLLAPSE
+Research-only map. No production detector, thresholds, TVH, WATCH or TRIGGER logic used.
+OI context: two positive 5m samples start a local load context; one opposite sample is tolerated; two opposite samples end it; gaps >10m are hard causal breaks.
+Failure point: side had already produced a positive cumulative result, remained the stronger cumulative aggressor, and first reached non-positive incremental result after additional same-side effort.
+
+CONTEXT 2026-09-30 14:45–2026-09-30 15:25 | OI 94826.455 → 95552.384 | net +725.929 BTC
+
+CONTEXT 2026-09-30 15:40–2026-09-30 16:00 | OI 95511.062 → 95484.620 | net -26.442 BTC
+
+CONTEXT 2026-09-30 16:40–2026-09-30 17:30 | OI 95366.256 → 95381.285 | net +15.029 BTC
+
+CONTEXT 2026-09-30 17:45–2026-09-30 18:30 | OI 95379.820 → 95451.755 | net +71.935 BTC
+
+CONTEXT 2026-09-30 18:35–2026-09-30 19:00 | OI 95449.552 → 95419.199 | net -30.353 BTC
+
+CONTEXT 2026-09-30 19:00–2026-09-30 19:45 | OI 95419.199 → 95594.053 | net +174.854 BTC
+
+CONTEXT 2026-09-30 19:55–2026-09-30 20:25 | OI 95573.572 → 95645.456 | net +71.884 BTC
+
+CONTEXT 2026-09-30 20:45–2026-09-30 21:50 | OI 95550.167 → 95614.775 | net +64.608 BTC
+
+CONTEXT 2026-09-30 21:55–2026-09-30 23:05 | OI 95611.863 → 95716.102 | net +104.239 BTC
+2026-09-30 14:55 | GREEN LONG-WATCH | price 83566.60 | OI net +772.309 | gross add 772.309 | BUY 1612.600 | SELL 1726.600 | earlier eff +24.312 | incremental eff -65.452 | drop 369.2% | price result -216.10
+2026-09-30 15:00 | RED SHORT-WATCH | price 83585.90 | OI net +791.847 | gross add 791.847 | BUY 1969.700 | SELL 1901.400 | earlier eff +18.384 | incremental eff -10.518 | drop 157.2% | price result -196.80
+2026-09-30 15:57 | GREEN LONG-WATCH | price 83611.70 | OI net +10.690 | gross add 26.945 | BUY 206.500 | SELL 217.000 | earlier eff +146.178 | incremental eff -8.649 | drop 105.9% | price result -88.00
+2026-09-30 17:01 | RED SHORT-WATCH | price 83717.10 | OI net +23.476 | gross add 25.362 | BUY 186.500 | SELL 151.400 | earlier eff +3.160 | incremental eff -229.508 | drop 7363.7% | price result -8.30
+2026-09-30 17:08 | GREEN LONG-WATCH | price 83571.20 | OI net +27.517 | gross add 29.403 | BUY 317.100 | SELL 437.700 | earlier eff +325.397 | incremental eff -37.662 | drop 111.6% | price result -154.20
+2026-09-30 17:56 | GREEN LONG-WATCH | price 83696.40 | OI net +31.466 | gross add 31.466 | BUY 107.600 | SELL 176.700 | earlier eff +71.906 | incremental eff -1500.000 | drop 2186.1% | price result -75.00
+2026-09-30 18:45 | RED SHORT-WATCH | price 83546.10 | OI net +25.373 | gross add 25.373 | BUY 219.200 | SELL 137.800 | earlier eff +34.741 | incremental eff -159.687 | drop 559.6% | price result -23.20
+2026-09-30 19:11 | GREEN LONG-WATCH | price 83495.70 | OI net +53.874 | gross add 53.874 | BUY 331.500 | SELL 442.100 | earlier eff +27.149 | incremental eff -364.972 | drop 1444.3% | price result -40.80
+2026-09-30 20:09 | RED SHORT-WATCH | price 83553.00 | OI net +24.303 | gross add 24.303 | BUY 411.100 | SELL 305.500 | earlier eff +18.202 | incremental eff -118.947 | drop 753.5% | price result +61.80
+2026-09-30 20:55 | GREEN LONG-WATCH | price 83517.70 | OI net +21.326 | gross add 21.326 | BUY 110.200 | SELL 111.400 | earlier eff +93.819 | incremental eff -119.669 | drop 227.6% | price result -1.40
+2026-09-30 20:56 | RED SHORT-WATCH | price 83511.30 | OI net +21.326 | gross add 21.326 | BUY 116.900 | SELL 114.700 | earlier eff +24.315 | incremental eff -37.607 | drop 254.7% | price result -7.80
+2026-09-30 22:05 | GREEN LONG-WATCH | price 83430.50 | OI net +55.345 | gross add 55.345 | BUY 141.800 | SELL 215.800 | earlier eff +14.121 | incremental eff -177.632 | drop 1357.9% | price result -15.90
+2026-09-30 22:28 | RED SHORT-WATCH | price 83466.00 | OI net +90.871 | gross add 90.871 | BUY 527.100 | SELL 525.900 | earlier eff +85.131 | incremental eff -4.267 | drop 105.0% | price result +19.60

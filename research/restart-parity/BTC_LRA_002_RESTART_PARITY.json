@@ -1,0 +1,44 @@
+[
+  {
+    "label": "0-9000 split 7000",
+    "split": 7000,
+    "bars": 9000,
+    "parity": true,
+    "continuous_digest": {
+      "count": 2061933,
+      "sha256": "2c3e17691e3f3b94a33c1e696bda72c04fd931ffd6e2d721853adf0d87a570c2"
+    },
+    "restarted_digest": {
+      "count": 2061933,
+      "sha256": "2c3e17691e3f3b94a33c1e696bda72c04fd931ffd6e2d721853adf0d87a570c2"
+    },
+    "continuous_event_count": 2061933,
+    "restarted_event_count": 2061933,
+    "continuous_battles": 17469,
+    "restarted_battles": 7211,
+    "continuous_releases": 15168,
+    "restarted_releases": 6590,
+    "first_divergent_event": null
+  },
+  {
+    "label": "0-13810 split 11000",
+    "split": 11000,
+    "bars": 13810,
+    "parity": true,
+    "continuous_digest": {
+      "count": 5452655,
+      "sha256": "c52cf931bccca84bbd6939e657ec0e0355214c214851f84186704da8dd46043b"
+    },
+    "restarted_digest": {
+      "count": 5452655,
+      "sha256": "c52cf931bccca84bbd6939e657ec0e0355214c214851f84186704da8dd46043b"
+    },
+    "continuous_event_count": 5452655,
+    "restarted_event_count": 5452655,
+    "continuous_battles": 43252,
+    "restarted_battles": 17356,
+    "continuous_releases": 39552,
+    "restarted_releases": 16544,
+    "first_divergent_event": null
+  }
+]
