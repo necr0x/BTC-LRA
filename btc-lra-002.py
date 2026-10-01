@@ -58,6 +58,7 @@ RISK_OUTPUTS = {
     "events": RUNTIME_ROOT / "events" / "BTC_LRA_002_EVENTS.jsonl",
     "oi": RUNTIME_ROOT / "events" / "BTC_LRA_002_OI_SAMPLES.jsonl",
     "market_1m": RUNTIME_ROOT / "events" / "BTC_LRA_002_MARKET_1M.jsonl",
+    "windows_5m": RUNTIME_ROOT / "events" / "BTC_LRA_002_WINDOWS_5M.jsonl",
     "human": RUNTIME_ROOT / "logs" / "BTC_LRA_002_HUMAN.log",
     "debug": RUNTIME_ROOT / "debug" / "BTC_LRA_002_DEBUG.log",
     "audit": RUNTIME_ROOT / "debug" / "BTC_LRA_002_REPLAY_AUDIT.md",
@@ -1091,7 +1092,11 @@ class RiskPressureEngine:
         self.state.setdefault("last_processed_bar_ts", None)
         self.state.setdefault("recent_bars", [])
         self.state.setdefault("recent_oi_samples", [])
+        self.state.setdefault("window_buffer", [])
+        self.state.setdefault("window_count", 0)
+        self.state.setdefault("rolling_windows_5m", [])
         self.state.setdefault("current_episode", None)
+        self.state.setdefault("episode_archive", [])
         self.state.setdefault("buy_tracker", self.new_tracker("BUY"))
         self.state.setdefault("sell_tracker", self.new_tracker("SELL"))
         self.state.setdefault("effort_result_history", [])
@@ -1166,6 +1171,9 @@ class RiskPressureEngine:
         snapshot = copy.deepcopy(self.state)
         snapshot["recent_bars"] = snapshot.get("recent_bars", [])[-RISK_CONFIG["recent_bars_limit"]:]
         snapshot["recent_oi_samples"] = snapshot.get("recent_oi_samples", [])[-RISK_CONFIG["recent_oi_limit"]:]
+        snapshot["window_buffer"] = snapshot.get("window_buffer", [])[-5:]
+        snapshot["rolling_windows_5m"] = snapshot.get("rolling_windows_5m", [])[-2:]
+        snapshot["episode_archive"] = snapshot.get("episode_archive", [])[-RISK_CONFIG["push_history_limit"]:]
         snapshot["processed_event_ids"] = snapshot.get("processed_event_ids", [])[-DEDUPE_WINDOW:]
         snapshot["human_event_ids"] = snapshot.get("human_event_ids", [])[-DEDUPE_WINDOW:]
         snapshot["effort_result_history"] = snapshot.get("effort_result_history", [])[-RISK_CONFIG["push_history_limit"]:]
@@ -1212,8 +1220,8 @@ class RiskPressureEngine:
             self.event_digest_value = hashlib.sha256((self.event_digest_value + canonical).encode("utf-8")).hexdigest()
             self.event_digest_count += 1
             self.profile["counts"]["total_machine_events"] += 1
-            if human and self.human_enabled and eid not in self.human_event_ids_set:
-                self.human_event_ids_set.add(eid)
+            if human and self.human_enabled and eid not in self.human_event_id_set:
+                self.human_event_id_set.add(eid)
                 self.state["human_event_ids"] = (self.state.get("human_event_ids", []) + [eid])[-DEDUPE_WINDOW:]
                 append_text(self.outputs["human"], human)
         return record
@@ -1266,6 +1274,90 @@ class RiskPressureEngine:
     def _human(self, ts: int, title: str, *details: str) -> str:
         return "\n" + "\n".join([f"{human_time_panama(ts)}", title, *details])
 
+    @staticmethod
+    def _window_human(window: dict[str, Any]) -> str:
+        start = datetime.fromtimestamp(window["start_ts"] / 1000, tz=PANAMA_TZ).strftime("%H:%M")
+        end = datetime.fromtimestamp(window["end_ts"] / 1000, tz=PANAMA_TZ).strftime("%H:%M")
+        side = window["dominance_side"]
+        amount = window["dominance_BTC"]
+        if side == "BUY":
+            dominance = f"BUYERS DOMINANCE +{amount:.1f} BTC"
+        elif side == "SELL":
+            dominance = f"SELLERS DOMINANCE +{amount:.1f} BTC"
+        else:
+            dominance = f"NEUTRAL DOMINANCE {amount:.1f} BTC"
+        return "\n" + "\n".join([
+            f"TIME {start}–{end}", dominance,
+            f"PRICE RESULT {window['price_result_USD']:+.1f} USD",
+            f"OI {window['OI_change_BTC']:+.1f} BTC",
+        ])
+
+    def _finalize_window(self) -> None:
+        rows = self.state.get("window_buffer", [])
+        if len(rows) != 5:
+            return
+        timestamps = [int(row["ts"]) for row in rows]
+        if timestamps != list(range(timestamps[0], timestamps[0] + 5 * 60000, 60000)):
+            return
+        raw_delta = sum(float(row.get("delta_BTC") or 0.0) for row in rows)
+        if raw_delta > 0:
+            side = "BUY"
+        elif raw_delta < 0:
+            side = "SELL"
+        else:
+            side = "NEUTRAL"
+        start_ts = (timestamps[0] // 300000) * 300000
+        end_ts = start_ts + 300000
+        start_sample = self.latest_oi_sample_at_or_before(start_ts)
+        end_sample = self.latest_oi_sample_at_or_before(end_ts)
+        oi_start = start_sample.get("OI_BTC") if start_sample else rows[0].get("OI_BTC")
+        oi_end = end_sample.get("OI_BTC") if end_sample else rows[-1].get("OI_BTC")
+        window = {
+            "record_type": "WINDOW_5M", "causal": True,
+            "start_ts": start_ts, "end_ts": end_ts,
+            "start_time": fmt_ts(start_ts), "end_time": fmt_ts(end_ts),
+            "open": rows[0].get("open"), "high": max(float(row["high"]) for row in rows),
+            "low": min(float(row["low"]) for row in rows), "close": rows[-1].get("close"),
+            "volume_BTC": sum(float(row.get("volume_BTC") or 0.0) for row in rows),
+            "taker_buy_BTC": sum(float(row.get("taker_buy_BTC") or 0.0) for row in rows),
+            "taker_sell_BTC": sum(float(row.get("taker_sell_BTC") or 0.0) for row in rows),
+            "delta_BTC": raw_delta, "dominance_side": side,
+            "dominance_BTC": abs(raw_delta),
+            "price_result_USD": float(rows[-1]["close"]) - float(rows[0]["open"]),
+            "OI_start_BTC": oi_start, "OI_end_BTC": oi_end,
+            "OI_change_BTC": (float(oi_end) - float(oi_start)) if oi_start is not None and oi_end is not None else None,
+            "source_boundary_rule": "latest OI sample at-or-before each 1m boundary",
+        }
+        record = self.emit("WINDOW_5M", end_ts, window, self._window_human(window), end_ts)
+        self.write_jsonl(self.outputs["windows_5m"], record)
+        self.state["window_count"] = int(self.state.get("window_count", 0)) + 1
+        rolling = (self.state.get("rolling_windows_5m", []) + [window])[-2:]
+        self.state["rolling_windows_5m"] = rolling
+        if len(rolling) == 2 and self.human_enabled and not self.rehydrating:
+            raw_10m = sum(float(item.get("delta_BTC") or 0.0) for item in rolling)
+            side_10m = "BUY" if raw_10m > 0 else "SELL" if raw_10m < 0 else "NEUTRAL"
+            amount_10m = abs(raw_10m)
+            label = "BUYERS DOMINANCE" if side_10m == "BUY" else "SELLERS DOMINANCE" if side_10m == "SELL" else "NEUTRAL DOMINANCE"
+            oi_start_10m, oi_end_10m = rolling[0].get("OI_start_BTC"), rolling[-1].get("OI_end_BTC")
+            oi_10m = (float(oi_end_10m) - float(oi_start_10m)) if oi_start_10m is not None and oi_end_10m is not None else None
+            start = datetime.fromtimestamp(rolling[0]["start_ts"] / 1000, tz=PANAMA_TZ).strftime("%H:%M")
+            end = datetime.fromtimestamp(rolling[-1]["end_ts"] / 1000, tz=PANAMA_TZ).strftime("%H:%M")
+            append_text(self.outputs["human"], "\n" + "\n".join([
+                f"TIME {start}–{end}", "LAST 10 MIN",
+                f"{label} {'+' if amount_10m >= 0 else ''}{amount_10m:.1f} BTC",
+                f"PRICE RESULT {float(rolling[-1]['close']) - float(rolling[0]['open']):+.1f} USD",
+                f"OI {oi_10m:+.1f} BTC" if oi_10m is not None else "OI unavailable",
+            ]))
+
+    def _window_step(self, bar: dict[str, Any]) -> None:
+        bucket = (bar["ts"] // 300000) * 300000
+        rows = self.state.get("window_buffer", [])
+        if rows and int(rows[0]["ts"]) // 300000 * 300000 != bucket:
+            self._finalize_window()
+            rows = []
+        rows.append(bar)
+        self.state["window_buffer"] = rows[-5:]
+
     def _risk_step(self, bar: dict[str, Any]) -> None:
         episode = self.state.get("current_episode")
         risk_build, change = self._local_oi_build(bar)
@@ -1306,21 +1398,30 @@ class RiskPressureEngine:
         candidates = [(side, effort, result) for side, effort, result in candidates if effort >= RISK_CONFIG["pressure_min_effort_btc"] and result >= RISK_CONFIG["pressure_min_result_usd"]]
         if candidates and episode["pressure_side"] == "NONE":
             side, effort, result = max(candidates, key=lambda x: x[1] * x[2])
-            episode["pressure_side"] = side; episode["state"] = "PRESSURE"
+            episode["pressure_side"] = side; episode["pressure_start_ts"] = bar["ts"]; episode["state"] = "PRESSURE"
             self.emit("PRESSURE", bar["ts"], {"episode_id": episode["episode_id"], "pressure_side": side, "effort_BTC": effort, "result_USD": result},
                       self._human(bar["ts"], f"{side} ДАВИТ", f"Усилие {side} {effort:.2f} BTC → результат {result:+.2f} USD"), bar["observable_at_ts"])
         pressure = episode.get("pressure_side")
         if pressure:
             tracker = self.state["buy_tracker" if pressure == "BUY" else "sell_tracker"]
             pushes = tracker.get("pushes", [])
-            baseline = next((p["result_per_100_BTC"] for p in reversed(pushes) if p.get("result_per_100_BTC") and p["result_per_100_BTC"] > 0), None)
-            current_effort = tracker.get("effort_since_extreme", 0.0)
-            current_result = 0.0
-            if baseline is not None and current_effort >= RISK_CONFIG["decay_min_effort_btc"]:
-                relative = current_result / baseline * 100
-                if relative <= RISK_CONFIG["decay_max_relative_pct"] and not episode["decay_emitted"]:
+            current_push = tracker.get("last_push")
+            prior_pushes = pushes[:-1] if current_push is not None and current_push in pushes and current_push.get("end_ts") == bar["ts"] else pushes
+            baseline = next((p["result_per_100_BTC"] for p in reversed(prior_pushes) if p.get("result_per_100_BTC") and p["result_per_100_BTC"] > 0), None)
+            if current_push is not None and current_push.get("end_ts") == bar["ts"]:
+                current_effort = float(current_push.get("effort_BTC") or 0.0)
+                current_result = float(current_push.get("extension_USD") or 0.0)
+            else:
+                current_effort = tracker.get("effort_since_extreme", 0.0)
+                current_extreme = float(bar["high"] if pressure == "BUY" else bar["low"])
+                anchor_extreme = float(tracker.get("extreme") or current_extreme)
+                current_result = max(0.0, current_extreme - anchor_extreme) if pressure == "BUY" else max(0.0, anchor_extreme - current_extreme)
+            current_efficiency = current_result / current_effort * 100 if current_effort else None
+            if baseline is not None and episode.get("pressure_start_ts") != bar["ts"] and current_effort >= RISK_CONFIG["decay_min_effort_btc"]:
+                relative = current_efficiency / baseline * 100 if current_efficiency is not None else None
+                if relative is not None and relative <= RISK_CONFIG["decay_max_relative_pct"] and not episode["decay_emitted"]:
                     episode["decay_emitted"] = True; episode["state"] = "EFFORT_DECAY"
-                    self.emit("EFFORT_DECAY", bar["ts"], {"episode_id": episode["episode_id"], "side": pressure, "baseline_efficiency": baseline, "current_efficiency": current_result, "relative_efficiency_pct": relative, "effort_since_extreme": current_effort, "extension_since_extreme": 0.0},
+                    self.emit("EFFORT_DECAY", bar["ts"], {"episode_id": episode["episode_id"], "side": pressure, "baseline_efficiency": baseline, "current_efficiency": current_efficiency, "relative_efficiency_pct": relative, "effort_since_extreme": current_effort, "extension_since_extreme": current_result},
                               self._human(bar["ts"], f"{pressure} ЭФФЕКТИВНОСТЬ РЕЗКО ПАДАЕТ", f"Усилие {current_effort:.2f} BTC", f"эффективность {relative:.1f}% от предыдущего push"), bar["observable_at_ts"])
         if episode.get("decay_emitted") and not episode.get("counter_emitted"):
             opposite = "SELL" if pressure == "BUY" else "BUY"
@@ -1335,6 +1436,14 @@ class RiskPressureEngine:
         if episode["bars"] >= RISK_CONFIG["episode_expiry_bars"] and episode["state"] not in ("RESOLVED", "EXPIRED"):
             episode["state"] = "EXPIRED"
             self.emit("EPISODE_EXPIRED", bar["ts"], {"episode_id": episode["episode_id"], "reason": "parameterized bar lifetime"}, None, bar["observable_at_ts"])
+        if episode.get("state") in ("RESOLVED", "EXPIRED"):
+            self.state.setdefault("episode_archive", []).append({
+                "episode_id": episode["episode_id"], "start_ts": episode["start_ts"],
+                "end_ts": episode["current_ts"], "state": episode["state"],
+                "pressure_side": episode.get("pressure_side"), "oi_change_BTC": episode.get("oi_change_BTC"),
+            })
+            self.state["episode_archive"] = self.state["episode_archive"][-RISK_CONFIG["push_history_limit"]:]
+            self.state["current_episode"] = None
 
     def process_closed_bar(self, bar: dict[str, Any]) -> None:
         started = time.perf_counter(); bar = normalize_bar(bar)
@@ -1343,8 +1452,9 @@ class RiskPressureEngine:
         market = {"record_type": "MARKET_1M", "causal": True, **bar}
         if not self.rehydrating:
             self.write_jsonl(self.outputs["market_1m"], market)
-        self._risk_step(bar)
         self._update_tracker("BUY", bar); self._update_tracker("SELL", bar)
+        self._window_step(bar)
+        self._risk_step(bar)
         self._remember_bar(bar)
         self.state["last_processed_bar_ts"] = bar["ts"]; self.state["bar_count"] += 1
         self.profile["counts"]["bars"] += 1
@@ -1380,9 +1490,42 @@ def _risk_future_leakage(path: Path) -> int:
     return errors
 
 
+def _risk_control_report(engine: RiskPressureEngine) -> dict[str, Any]:
+    windows = RiskPressureEngine.load_jsonl(engine.outputs["windows_5m"])
+    selected_starts = {
+        "2026-09-30T19:45:00Z", "2026-09-30T19:50:00Z",
+        "2026-09-30T22:35:00Z", "2026-09-30T22:50:00Z",
+        "2026-09-30T23:00:00Z",
+    }
+    selected = [row for row in windows if row.get("start_time") in selected_starts]
+    first_two = [row for row in windows if row.get("start_time") in {"2026-09-30T19:45:00Z", "2026-09-30T19:50:00Z"}]
+    rolling = None
+    if len(first_two) == 2:
+        raw_delta = sum(float(row.get("delta_BTC") or 0.0) for row in first_two)
+        oi_start, oi_end = first_two[0].get("OI_start_BTC"), first_two[-1].get("OI_end_BTC")
+        rolling = {
+            "time_local": "14:45–14:55", "delta_BTC": raw_delta,
+            "dominance_side": "BUY" if raw_delta > 0 else "SELL" if raw_delta < 0 else "NEUTRAL",
+            "dominance_BTC": abs(raw_delta),
+            "price_result_USD": float(first_two[-1]["close"]) - float(first_two[0]["open"]),
+            "OI_change_BTC": float(oi_end) - float(oi_start) if oi_start is not None and oi_end is not None else None,
+        }
+    risk_kinds = {"RISK_BUILD", "PRESSURE", "EFFORT_DECAY", "COUNTER_RESULT", "REVERSAL_CANDIDATE", "OI_BUILD_STALLED", "OI_UNWIND"}
+    timeline = []
+    for row in RiskPressureEngine.load_jsonl(engine.outputs["events"]):
+        if row.get("event") not in risk_kinds or not (1790797500000 <= int(row.get("time_ts", 0)) <= 1790799000000):
+            continue
+        timeline.append({key: row.get(key) for key in (
+            "event", "time", "episode_id", "side", "pressure_side", "oi_change_BTC",
+            "effort_BTC", "result_USD", "baseline_efficiency", "current_efficiency",
+            "relative_efficiency_pct", "effort_since_extreme", "extension_since_extreme",
+            "dOI_BTC", "oi_trend")})
+    return {"window_count": len(windows), "control_windows": selected, "rolling_10m": rolling, "risk_timeline_14_45_to_15_10": timeline}
+
+
 def run_risk_replay(args: argparse.Namespace) -> dict[str, Any]:
     adapter = ReplayAdapter(args.csv); bars = adapter.bars()[:args.max_bars or None]
-    engine = RiskPressureEngine(reset=args.reset, human_enabled=False, live_start_ts=(bars[-1]["ts"] + 60000 if bars else now_ms()), telemetry=args.telemetry, persist_each_bar=False)
+    engine = RiskPressureEngine(reset=args.reset, human_enabled=True, live_start_ts=(bars[-1]["ts"] + 60000 if bars else now_ms()), telemetry=args.telemetry, persist_each_bar=False)
     for sample in adapter.all_oi_samples: engine.record_oi_sample(sample)
     started = time.perf_counter()
     for bar in bars: engine.process_closed_bar(bar)
@@ -1392,6 +1535,7 @@ def run_risk_replay(args: argparse.Namespace) -> dict[str, Any]:
              "elapsed_seconds": time.perf_counter() - started, "future_leakage": _risk_future_leakage(engine.outputs["events"]),
              "digest": engine.digest(), "profile": engine.profile_snapshot(),
              "config": RISK_CONFIG, "zones_generated": 0, "battles_generated": 0, "releases_generated": 0}
+    audit.update(_risk_control_report(engine))
     engine.outputs["audit"].parent.mkdir(parents=True, exist_ok=True)
     engine.outputs["audit"].write_text("# BTC-LRA-002 risk-pressure replay audit\n\n```json\n" + json.dumps(audit, ensure_ascii=False, indent=2) + "\n```\n", encoding="utf-8")
     return audit
@@ -1411,6 +1555,8 @@ def run_risk_self_test(args: argparse.Namespace) -> dict[str, Any]:
     for bar in bars[split:]: restarted.process_closed_bar(dict(bar))
     result = {"deterministic_digest": "PASS" if continuous.digest() == run(bars, _risk_temp_outputs()).digest() else "FAIL",
               "restart_parity": "PASS" if continuous.digest() == restarted.digest() else "FAIL",
+              "window_count": len(RiskPressureEngine.load_jsonl(continuous.outputs["windows_5m"])),
+              "window_restart_parity": "PASS" if len(RiskPressureEngine.load_jsonl(continuous.outputs["windows_5m"])) == len(RiskPressureEngine.load_jsonl(restarted.outputs["windows_5m"])) else "FAIL",
               "future_leakage": "PASS" if _risk_future_leakage(continuous.outputs["events"]) == 0 else "FAIL",
               "bar_count": len(bars), "continuous": continuous.digest(), "restarted": restarted.digest(),
               "zones_generated": 0, "battles_generated": 0, "releases_generated": 0,

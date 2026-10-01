@@ -2,7 +2,7 @@
 
 ## Current objective
 
-Complete repository reorganization without changing detector logic, thresholds, market semantics, causal behavior, or research results.
+Establish a continuous causal 1m market-state output for BTC-LRA-002 and validate it on the 2026-09-30 DUMP fixture before any signal optimization.
 
 ## Operational status
 
@@ -12,6 +12,10 @@ Complete repository reorganization without changing detector logic, thresholds, 
 - No replay/live writer processes are currently running; stability check passed before migration.
 - Production fix in `btc-lra-002.py` and audit tooling changes remain separate from this layout work until validation/commit review.
 - A new risk/pressure implementation is validated on the available local MASTER; the requested 2026-09-30 control window is still open because no raw 1m OHLCV source for that window is present locally.
+- The 2026-09-30 DUMP fixture now provides 506 1m bars and 102 causal 5m OI samples from 14:45 through 23:10 Panama.
+- Continuous 5m windows are implemented independently of risk episodes; fixture replay produced 101 windows and the control arithmetic matches the supplied values.
+- Correctness fixes are implemented for real incremental effort/result decay, tracker-before-decision ordering, and repeatable episode lifecycle.
+- Validation after the final fixes: fixture `506` bars / `101` windows, deterministic PASS, restart parity PASS, window-count parity PASS, future leakage PASS; full local MASTER `13,810` bars / `2,761` windows with the same PASS results.
 
 ## Frozen rules
 
@@ -34,9 +38,9 @@ Complete repository reorganization without changing detector logic, thresholds, 
 
 ## Current blockers / next tasks
 
-1. Obtain or expose raw 1m OHLCV for 2026-09-30 14:45–15:05 Panama and run the risk/pressure control scan.
+1. Review and push the continuous-window/risk correctness change after final Git diff inspection.
 2. Preserve local generated runtime/dump/replay evidence while keeping those artifacts out of Git.
-3. Continue the blind event-population audit only after the risk/pressure control window is validated.
+3. Do not optimize thresholds or signals until the continuous market-state output is reviewed.
 
 ## Migration audit result
 
