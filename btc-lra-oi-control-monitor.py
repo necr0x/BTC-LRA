@@ -61,6 +61,15 @@ def flow_ru(value: str) -> str:
     return {'BUY': 'BUY', 'SELL': 'SELL', 'HELD': 'УДЕРЖАНО'}.get(value, value)
 
 
+def compact(value: Any, signed: bool = True) -> str:
+    if value is None:
+        return '—'
+    number = float(value)
+    digits = 0 if abs(number - round(number)) < 0.05 else 1
+    text = f'{abs(number):,.{digits}f}'.replace(',', ' ')
+    return (('-' if number < 0 else '+') if signed else '') + text
+
+
 def parse_time(value: str) -> datetime:
     if value.endswith('Z'):
         return datetime.fromisoformat(value.replace('Z', '+00:00')).astimezone(PANAMA)
@@ -175,6 +184,23 @@ def load_market(path: Path) -> list[dict[str, Any]]:
     return rows
 
 
+def decorate_event_interval(event: dict[str, Any], minute_rows: list[dict[str, Any]], market: list[dict[str, Any]]) -> None:
+    start_index = event['start']
+    confirmed_index = event['confirmed']
+    oi_rows = minute_rows[start_index:confirmed_index + 1]
+    event['display_oi_net'] = sum(row['net'] for row in oi_rows)
+    event['display_oi_activity'] = sum(row['activity'] for row in oi_rows)
+    start_time = minute_rows[start_index]['minute']
+    end_time = minute_rows[confirmed_index]['minute']
+    bars = [row for row in market if start_time <= row['ts'].replace(second=0, microsecond=0) <= end_time]
+    if bars:
+        event['display_flow_delta'] = sum(row['buy'] - row['sell'] for row in bars)
+        event['display_price_change'] = bars[-1]['close'] - bars[0]['open']
+    else:
+        event['display_flow_delta'] = 0.0
+        event['display_price_change'] = None
+
+
 def discover_raw_paths(root: Path) -> list[Path]:
     candidates = [
         root / 'runtime' / 'events' / 'BTC_LRA_002_OI_SAMPLES.jsonl',
@@ -224,7 +250,8 @@ class Session:
         self.anchor_price: float | None = None
         self.price: float | None = None
         self.previous_event: dict[str, Any] | None = None
-        self.last_events: deque[dict[str, Any]] = deque(maxlen=3)
+        self.last_events: deque[dict[str, Any]] = deque(maxlen=10)
+        self.event_history: list[dict[str, Any]] = []
         self.buy_peak = self.sell_peak = 0.0
         self.last_control: str | None = None
         self.last_low: float | None = None
@@ -441,10 +468,10 @@ class Session:
         print(f'СТАТУС: {status_ru(snap["status"])}')
         print('\nПОСЛЕДНИЕ СОБЫТИЯ')
         for event in self.last_events:
-            oi_value = event.get('event_oi_net', event.get('oi_net'))
-            oi_word = 'ПРИШЛО' if (oi_value or 0) >= 0 else 'УШЛО'
-            print(f'{event["time"].strftime("%H:%M")} | OI {n(oi_value)} BTC — {oi_word} | АКТИВНОСТЬ OI {n(event.get("event_oi_activity"))} BTC')
-            print(f'       FLOW {flow_ru(event["flow"])} {n(event["flow_adv"])} | ЦЕНА {n(event["price_change"])} | {result_ru(event["classification"])}')
+            display_flow = event.get('display_flow', event['flow'])
+            display_flow_adv = event.get('display_flow_adv', event['flow_adv'])
+            display_price = event.get('display_price_change', event['price_change'])
+            print(f'{event["time"].strftime("%H:%M")} | OI ACT {compact(event.get("event_oi_activity"), signed=False)} | NET {compact(event.get("event_oi_net"))} | FLOW {flow_ru(display_flow)} {compact(display_flow_adv)} | PRICE {compact(display_price)}')
 
     def emit_event(self, event: dict[str, Any], minute: dict[str, Any], market_rows: list[dict[str, Any]]) -> None:
         before = self.previous_event
@@ -458,8 +485,11 @@ class Session:
         flow_delta = (snap['buy'] - prev_buy) - (snap['sell'] - prev_sell)
         flow = 'BUY' if flow_delta > 0 else 'SELL' if flow_delta < 0 else 'HELD'
         classification = self.result_control(flow, price_change)
-        current = dict(snap, time=minute['minute'], flow=flow, flow_adv=abs(flow_delta), price_change=price_change, classification=classification, event_oi_net=(snap['oi_net'] or 0.0) - prev_oi, event_oi_activity=snap['oi_activity'] - prev_activity)
+        display_delta = event.get('display_flow_delta', flow_delta)
+        display_flow = 'BUY' if display_delta > 0 else 'SELL' if display_delta < 0 else 'HELD'
+        current = dict(snap, time=minute['minute'], flow=flow, flow_adv=abs(flow_delta), price_change=price_change, classification=classification, event_oi_net=event.get('display_oi_net', (snap['oi_net'] or 0.0) - prev_oi), event_oi_activity=event.get('display_oi_activity', snap['oi_activity'] - prev_activity), display_flow=display_flow, display_flow_adv=abs(display_delta), display_price_change=event.get('display_price_change', price_change))
         self.last_events.append(current)
+        self.event_history.append(current)
         self.previous_event = current
         start_time = event.get('start_time', event['start'])
         start_text = start_time.strftime('%H:%M') if isinstance(start_time, datetime) else str(start_time)
@@ -467,7 +497,7 @@ class Session:
         oi_word = 'ПРИШЛО' if current['event_oi_net'] >= 0 else 'УШЛО'
         print(f'\n{event_label} {minute["minute"].strftime("%H:%M")} | НАЧАЛО ЭПИЗОДА {start_text}')
         print(f'OI {n(current["event_oi_net"])} BTC — {oi_word} | АКТИВНОСТЬ OI {n(current["event_oi_activity"])} BTC')
-        print(f'FLOW {flow_ru(flow)} {n(abs(flow_delta))} | ЦЕНА {n(price_change)} | {result_ru(classification)}')
+        print(f'FLOW {flow_ru(display_flow)} {compact(abs(display_delta))} | ЦЕНА {compact(event.get("display_price_change", price_change))}')
 
 
 def run_replay(args: argparse.Namespace) -> None:
@@ -505,6 +535,7 @@ def run_replay(args: argparse.Namespace) -> None:
             event = dict(event_by_time[minute['minute']])
             event['start_time'] = minutes[event['start']]['minute']
             event['kind'] = 'MEGA' if minutes[event['confirmed']]['mega'] else 'STRONG'
+            decorate_event_interval(event, minutes, market)
             session.emit_event(event, minute, market_rows)
         if minute['minute'].strftime('%H:%M') in snapshots:
             current = session.snapshot(minute['minute'])
@@ -611,6 +642,7 @@ def run_replay_live(args: argparse.Namespace) -> None:
                 event = dict(event_by_time[minute_time])
                 event['start_time'] = prefix_minutes[event['start']]['minute']
                 event['kind'] = 'MEGA' if prefix_minutes[event['confirmed']]['mega'] else 'STRONG'
+                decorate_event_interval(event, prefix_minutes, market)
                 with contextlib.redirect_stdout(io.StringIO()):
                     rebuilt.emit_event(event, minute, [market_row] if market_row else [])
             rebuilt.snapshot(minute_time)
@@ -690,6 +722,7 @@ def run_replay_live(args: argparse.Namespace) -> None:
                 event = dict(event_by_time[minute_time])
                 event['start_time'] = prefix_minutes[event['start']]['minute']
                 event['kind'] = 'MEGA' if prefix_minutes[event['confirmed']]['mega'] else 'STRONG'
+                decorate_event_interval(event, prefix_minutes, market)
                 emitted_events.add(minute_time)
                 event_count += 1
                 if args.sound == 'on':
@@ -760,6 +793,7 @@ def run_live(args: argparse.Namespace) -> None:
                 event = dict(event_by_time[minute['minute']])
                 event['start_time'] = minutes[event['start']]['minute']
                 event['kind'] = 'MEGA' if minutes[event['confirmed']]['mega'] else 'STRONG'
+                decorate_event_interval(event, minutes, [])
                 print('\a', end='', flush=True)
                 session.emit_event(event, minute, [])
         session.print_status('LIVE STATUS')
