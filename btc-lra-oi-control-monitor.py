@@ -421,6 +421,55 @@ class Session:
         print(f'СОСТОЯНИЕ ЭКСТРЕМУМА: {status_ru(snap["status"])} | ПЕРЕВЕС SELL СЕЙЧАС {n(snap["sell_adv_now"])} / ПОТЕРЯНО {snap["sell_adv_retraced"]:.1f}% | РЕЗУЛЬТАТ SELL / 100 BTC {n(snap["low_extension_per_100"])} | РЕЗУЛЬТАТ BUY / 100 BTC {n(snap["high_extension_per_100"])}')
 
 
+    def print_status(self, title='SESSION SNAPSHOT', current_time: datetime | None = None) -> None:
+        snap = self.snapshot(self.anchor)
+        anchor_text = self.anchor.strftime('%H:%M:%S / %d.%m.%y -5') if self.anchor else '—'
+        print(f'\nBTC-LRA OI МОНИТОР ПОТОКА / СКАНИРОВАНИЕ ОТ {anchor_text}')
+        print(f'ЦЕНА                         {n(self.price)}')
+        if snap['dominant'] in ('BUY', 'SELL'):
+            side = snap['dominant']
+            print(f'ДОМИНАЦИЯ — {side}                  {n(snap["advantage"])} BTC')
+            print(f'ПИК ДОМИНАЦИИ {side}                {n(snap["peak"])} BTC | 100.0%')
+            print(f'ДОМИНАЦИЯ {side} СЕЙЧАС             {n(snap["advantage"])} BTC | {snap["adv_remaining_pct"]:5.1f}%')
+            print(f'ПОТЕРЯНО ОТ ПИКА                  {n(snap["adv_lost"])} BTC | {snap["adv_lost_pct"]:5.1f}%')
+            opposite = 'BUY' if side == 'SELL' else 'SELL'
+            opposite_peak = snap['buy_peak'] if opposite == 'BUY' else snap['sell_peak']
+            if opposite_peak > 0:
+                print(f'ПРЕДЫДУЩИЙ ПИК {opposite}               {n(opposite_peak)} BTC')
+        else:
+            print(f'ДОМИНАЦИЯ — УДЕРЖАНО               {n(snap["advantage"])} BTC')
+        print(f'СТАТУС: {status_ru(snap["status"])}')
+        print('\nПОСЛЕДНИЕ СОБЫТИЯ')
+        for event in self.last_events:
+            oi_value = event.get('event_oi_net', event.get('oi_net'))
+            oi_word = 'ПРИШЛО' if (oi_value or 0) >= 0 else 'УШЛО'
+            print(f'{event["time"].strftime("%H:%M")} | OI {n(oi_value)} BTC — {oi_word} | АКТИВНОСТЬ OI {n(event.get("event_oi_activity"))} BTC')
+            print(f'       FLOW {flow_ru(event["flow"])} {n(event["flow_adv"])} | ЦЕНА {n(event["price_change"])} | {result_ru(event["classification"])}')
+
+    def emit_event(self, event: dict[str, Any], minute: dict[str, Any], market_rows: list[dict[str, Any]]) -> None:
+        before = self.previous_event
+        snap = self.snapshot(minute['minute'])
+        previous_price = before['price'] if before else self.anchor_price
+        price_change = snap['price'] - previous_price if snap['price'] is not None and previous_price is not None else None
+        prev_oi = before['oi_net'] if before else 0.0
+        prev_activity = before['oi_activity'] if before else 0.0
+        prev_buy = before['buy'] if before else 0.0
+        prev_sell = before['sell'] if before else 0.0
+        flow_delta = (snap['buy'] - prev_buy) - (snap['sell'] - prev_sell)
+        flow = 'BUY' if flow_delta > 0 else 'SELL' if flow_delta < 0 else 'HELD'
+        classification = self.result_control(flow, price_change)
+        current = dict(snap, time=minute['minute'], flow=flow, flow_adv=abs(flow_delta), price_change=price_change, classification=classification, event_oi_net=(snap['oi_net'] or 0.0) - prev_oi, event_oi_activity=snap['oi_activity'] - prev_activity)
+        self.last_events.append(current)
+        self.previous_event = current
+        start_time = event.get('start_time', event['start'])
+        start_text = start_time.strftime('%H:%M') if isinstance(start_time, datetime) else str(start_time)
+        event_label = 'ЭКСТРЕМАЛЬНОЕ OI-СОБЫТИЕ' if event.get('kind') == 'MEGA' else 'СИЛЬНОЕ OI-СОБЫТИЕ'
+        oi_word = 'ПРИШЛО' if current['event_oi_net'] >= 0 else 'УШЛО'
+        print(f'\n{event_label} {minute["minute"].strftime("%H:%M")} | НАЧАЛО ЭПИЗОДА {start_text}')
+        print(f'OI {n(current["event_oi_net"])} BTC — {oi_word} | АКТИВНОСТЬ OI {n(current["event_oi_activity"])} BTC')
+        print(f'FLOW {flow_ru(flow)} {n(abs(flow_delta))} | ЦЕНА {n(price_change)} | {result_ru(classification)}')
+
+
 def run_replay(args: argparse.Namespace) -> None:
     samples = load_raw(args.raw_oi)
     minutes = minute_oi(samples)
