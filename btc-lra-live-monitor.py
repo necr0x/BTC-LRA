@@ -203,27 +203,6 @@ class LiveMonitor:
                 self.zones.setdefault(str(key), value)
         self.last_state_check = time.monotonic()
 
-    def zone_text(self, record: dict[str, Any], current_price: float | None = None) -> list[str]:
-        zone_id = record.get("zone_id")
-        zone = self.zones.get(str(zone_id)) if zone_id else None
-        if not zone:
-            return [f"Зона: {zone_id or 'не указана'}"]
-        low, high = zone.get("low"), zone.get("high")
-        timeframe = zone.get("timeframe", "?")
-        lines = [f"Зона: {timeframe} {number(low, 1)}–{number(high, 1)}"]
-        price = current_price if current_price is not None else price_of(record)
-        if isinstance(price, (int, float)) and isinstance(low, (int, float)) and isinstance(high, (int, float)) and high > low:
-            if price < low:
-                position = "НИЖЕ ЗОНЫ"
-            elif price > high:
-                position = "ВЫШЕ ЗОНЫ"
-            else:
-                percent = (price - low) / (high - low) * 100
-                half = "НИЖНЯЯ ПОЛОВИНА" if percent < 50 else "ВЕРХНЯЯ ПОЛОВИНА"
-                position = f"В ЗОНЕ — {half}, {percent:.0f}% от нижней границы"
-            lines.append(f"Положение: {position}")
-        return lines
-
     def oi_delta(self, start_ts: int | None = None) -> tuple[float | None, float | None, str]:
         samples = list(self.oi)
         if not samples:
@@ -261,24 +240,6 @@ class LiveMonitor:
         lines.append(f"ОИ {trend}")
         return lines
 
-    def print_battle_metrics(self, record: dict[str, Any], current_price: float | None = None) -> None:
-        battle_id = record.get("battle_id")
-        battle = self.battles.get(str(battle_id), record)
-        if battle_id and str(battle_id) in self.battle_latest:
-            merged = dict(battle)
-            merged.update(self.battle_latest[str(battle_id)])
-            battle = merged
-        display_price = current_price if isinstance(current_price, (int, float)) else price_of(record) or price_of(battle)
-        print(f"Цена: {number(display_price, 1)}")
-        print(*self.zone_text(record if record.get("zone_id") else battle, display_price), sep="\n")
-        print(f"Усилие BUY:  {number(battle.get('buy_effort'), 1)} BTC")
-        print(f"Усилие SELL: {number(battle.get('sell_effort'), 1)} BTC")
-        print(f"Результат BUY:  {number(battle.get('buy_result'), 1)} USD")
-        print(f"Результат SELL: {number(battle.get('sell_result'), 1)} USD")
-        print(f"Лидер: {battle.get('leader') or record.get('leader') or '—'}")
-        print(f"Кандидат: {battle.get('candidate_side') or record.get('candidate_side') or '—'} ({battle.get('candidate_status') or record.get('candidate_status') or '—'})")
-        print(*self.oi_text(ts_ms(battle.get("start_ts"))), sep="\n")
-
     @staticmethod
     def transfer_sides(record: dict[str, Any]) -> tuple[Any, Any]:
         evidence = record.get("evidence") if isinstance(record.get("evidence"), dict) else {}
@@ -296,44 +257,74 @@ class LiveMonitor:
         group = self.pending_transfer_groups.setdefault(key, {"time_ts": timestamp, "price": price, "side_a": side_a, "side_b": side_b, "records": []})
         group["records"].append(record)
 
-    def flush_transfer_candidates(self) -> None:
-        for group in self.pending_transfer_groups.values():
-            records = group["records"]
-            if not records:
-                continue
-            price = group["price"]
-            print()
-            print(f"{current_header(price, group['time_ts'])}")
-            print(f"ВОЗМОЖНАЯ ПЕРЕДАЧА КОНТРОЛЯ {group['side_a']} → {group['side_b']}")
-            if len(records) > 1:
-                tf_counts: dict[str, int] = {}
-                lows: list[float] = []
-                highs: list[float] = []
-                for record in records:
-                    zone = self.zones.get(str(record.get("zone_id")), {})
-                    timeframe = zone.get("timeframe")
-                    if timeframe:
-                        tf_counts[timeframe] = tf_counts.get(timeframe, 0) + 1
-                    if isinstance(zone.get("low"), (int, float)):
-                        lows.append(float(zone["low"]))
-                    if isinstance(zone.get("high"), (int, float)):
-                        highs.append(float(zone["high"]))
-                order = {"5m": 0, "15m": 1, "1h": 2, "4h": 3}
-                tf_text = " / ".join(f"{tf} ×{count}" for tf, count in sorted(tf_counts.items(), key=lambda item: order.get(item[0], 99)))
-                print(f"Представлений {len(records)}")
-                if tf_text:
-                    print(f"TF {tf_text}")
-                if lows and highs:
-                    print(f"Охват зон {min(lows):.1f}–{max(highs):.1f}")
-            print("─" * 56)
-        self.pending_transfer_groups.clear()
+    def event_price(self, record: dict[str, Any]) -> float | None:
+        value = record.get("new_extreme")
+        if isinstance(value, (int, float)):
+            return float(value)
+        return price_of(record) or self.latest_price
+
+    def event_context(self, kind: str, record: dict[str, Any]) -> str:
+        if kind in {"NEW_EXTREME_WITHOUT_RETENTION", "PASSIVE_REJECTION_EXIT_WARNING", "RETAINED_PUSH", "ORIGINAL_SIDE_RESTORED"}:
+            side = direction(record)
+            if side == "BUY":
+                return "HIGH"
+            if side == "SELL":
+                return "LOW"
+        return "PRICE"
+
+    def position_text(self, price: float | None, zone: dict[str, Any] | None) -> str:
+        low, high = (zone or {}).get("low"), (zone or {}).get("high")
+        if not isinstance(price, (int, float)) or not isinstance(low, (int, float)) or not isinstance(high, (int, float)) or high <= low:
+            return "ПОЛОЖЕНИЕ НЕДОСТУПНО"
+        if price < low:
+            return "НИЖЕ НИЖНЕЙ ГРАНИЦЫ"
+        if price > high:
+            return "ВЫШЕ ВЕРХНЕЙ ГРАНИЦЫ"
+        position_pct = (price - low) / (high - low) * 100
+        rounded_pct = round(position_pct)
+        if rounded_pct == 50:
+            return "СЕРЕДИНА ЗОНЫ"
+        if position_pct < 50:
+            return f"{rounded_pct}% ОТ НИЖНЕЙ ГРАНИЦЫ"
+        return f"{100 - rounded_pct}% ДО ВЕРХНЕЙ ГРАНИЦЫ"
+
+    def print_event_block(self, record: dict[str, Any], description: str, event_price: float | None = None,
+                          context: str | None = None, extra: list[str] | None = None) -> None:
+        price = event_price if event_price is not None else self.event_price(record)
+        zone = self.zones.get(str(record.get("zone_id"))) if record.get("zone_id") else None
+        if zone and isinstance(zone.get("low"), (int, float)) and isinstance(zone.get("high"), (int, float)):
+            first = f"{zone.get('timeframe', '?')} / {number(zone['low'], 1)} – {number(zone['high'], 1)} / {clock(record_ts(record))}"
+        else:
+            first = f"— / — / {clock(record_ts(record))}"
+        print()
+        print(first)
+        print(description)
+        print(f"{number(price, 2)} {context or 'PRICE'} / {self.position_text(price, zone)}")
+        if extra:
+            print(*extra, sep="\n")
+
+    def print_battle_metrics(self, record: dict[str, Any], current_price: float | None = None) -> None:
+        battle_id = record.get("battle_id")
+        battle = self.battles.get(str(battle_id), record)
+        if battle_id and str(battle_id) in self.battle_latest:
+            merged = dict(battle)
+            merged.update(self.battle_latest[str(battle_id)])
+            battle = merged
+        display_price = current_price if isinstance(current_price, (int, float)) else price_of(record) or price_of(battle)
+        print(f"Цена: {number(display_price, 1)}")
+        print(f"Усилие BUY:  {number(battle.get('buy_effort'), 1)} BTC")
+        print(f"Усилие SELL: {number(battle.get('sell_effort'), 1)} BTC")
+        print(f"Результат BUY:  {number(battle.get('buy_result'), 1)} USD")
+        print(f"Результат SELL: {number(battle.get('sell_result'), 1)} USD")
+        print(f"Лидер: {battle.get('leader') or record.get('leader') or '—'}")
+        print(f"Кандидат: {battle.get('candidate_side') or record.get('candidate_side') or '—'} ({battle.get('candidate_status') or record.get('candidate_status') or '—'})")
+        print(*self.oi_text(ts_ms(battle.get("start_ts"))), sep="\n")
 
     def emit(self, record: dict[str, Any], historical: bool = False, quiet: bool = False) -> None:
         kind = record.get("event") or record.get("record_type")
         if not kind:
             return
         self.latest_price = price_of(record) or self.latest_price
-        stamp = event_header(record, kind, self.latest_price)
         if kind == "BATTLE_BAR":
             battle_id = str(record.get("battle_id", ""))
             signature = tuple(record.get(key) for key in ("leader", "candidate_side", "candidate_status", "state"))
@@ -342,13 +333,11 @@ class LiveMonitor:
             self.battle_latest[battle_id] = record
             if quiet or previous is None or previous == signature:
                 return
-            print()
-            if previous[0] != signature[0]:
-                print(f"{stamp} | ЛИДЕР СМЕНИЛСЯ: {previous[0] or '—'} → {signature[0] or '—'}")
-            elif previous[1:] != signature[1:]:
-                print(f"{stamp} | Состояние кандидата изменилось: {signature[1] or 'нет кандидата'} / {signature[2] or '—'}")
+            description = (f"ЛИДЕР СМЕНИЛСЯ: {previous[0] or '—'} → {signature[0] or '—'}"
+                           if previous[0] != signature[0]
+                           else f"Состояние кандидата изменилось: {signature[1] or 'нет кандидата'} / {signature[2] or '—'}")
+            self.print_event_block(record, description, price_of(record), "PRICE")
             self.print_battle_metrics(record)
-            print("─" * 56)
             return
         if kind == "TRANSFER_CANDIDATE":
             if not quiet:
@@ -359,51 +348,90 @@ class LiveMonitor:
                 release_id = str(record.get("release_id", ""))
                 self.release_view[release_id] = record.get("status") or record.get("new_status") or "—"
             return
-        print()
+        event_price = self.event_price(record)
+        context = self.event_context(kind, record)
         if kind == "BATTLE_STARTED":
-            print(f"{stamp} | НАЧАЛАСЬ БОРЬБА {display_direction(record)}")
+            self.print_event_block(record, f"НАЧАЛАСЬ БОРЬБА {display_direction(record)}", event_price, context)
             self.print_battle_metrics(record)
         elif kind == "BATTLE_RESOLUTION_CANDIDATE":
-            print(f"{stamp} | ПОЯВИЛСЯ ПЕРЕВЕС {display_direction(record)}")
+            self.print_event_block(record, f"ПОЯВИЛСЯ ПЕРЕВЕС {display_direction(record)}", event_price, context)
             self.print_battle_metrics(record)
         elif kind == "TRANSFER_CHALLENGED":
-            print(f"{stamp} | ПЕРЕДАЧА КОНТРОЛЯ ОСПОРЕНА")
+            self.print_event_block(record, "ПЕРЕДАЧА КОНТРОЛЯ ОСПОРЕНА", event_price, context)
         elif kind == "OLD_SIDE_RESTORED":
-            print(f"{stamp} | ПРЕЖНЯЯ СТОРОНА ВОССТАНОВИЛАСЬ")
+            self.print_event_block(record, "ПРЕЖНЯЯ СТОРОНА ВОССТАНОВИЛАСЬ", event_price, context)
         elif kind == "BATTLE_RESOLUTION_HOLDING":
-            print(f"{stamp} | {display_direction(record)} ВЫИГРАЛ ЛОКАЛЬНУЮ БОРЬБУ")
+            self.print_event_block(record, f"{display_direction(record)} ВЫИГРАЛ ЛОКАЛЬНУЮ БОРЬБУ", event_price, context)
             self.print_battle_metrics(record)
         elif kind == "BATTLE_ARCHIVED":
-            print(f"{stamp} | БОРЬБА ЗАКРЫТА: статус={record.get('status') or record.get('state') or '—'}, причина={record.get('reason') or 'не указана'}")
+            self.print_event_block(record, f"БОРЬБА ЗАКРЫТА: статус={record.get('status') or record.get('state') or '—'}, причина={record.get('reason') or 'не указана'}", event_price, context)
         elif kind == "RETAINED_PUSH":
-            print(f"{stamp} | ДВИЖЕНИЕ ПОСЛЕ ПОБЕДЫ ПРОДОЛЖАЕТСЯ ({display_direction(record)})")
+            self.print_event_block(record, f"ДВИЖЕНИЕ ПОСЛЕ ПОБЕДЫ ПРОДОЛЖАЕТСЯ ({display_direction(record)})", event_price, context)
         elif kind == "PULLBACK_OBSERVATION":
-            print(f"{stamp} | НАЧАЛСЯ ОТКАТ")
+            self.print_event_block(record, "НАЧАЛСЯ ОТКАТ", event_price, context)
         elif kind == "ORIGINAL_SIDE_RESTORED":
-            print(f"{stamp} | ИСХОДНАЯ СТОРОНА ВОССТАНОВИЛА ДВИЖЕНИЕ")
+            self.print_event_block(record, "ИСХОДНАЯ СТОРОНА ВОССТАНОВИЛА ДВИЖЕНИЕ", event_price, context)
         elif kind == "NEW_EXTREME_WITHOUT_RETENTION":
-            print(f"{stamp} | НОВЫЙ ЭКСТРЕМУМ НЕ УДЕРЖАН")
+            self.print_event_block(record, "НОВЫЙ ЭКСТРЕМУМ НЕ УДЕРЖАН", event_price, context)
         elif kind == "PASSIVE_REJECTION_EXIT_WARNING":
-            print(f"{stamp} | ЭФФЕКТИВНОСТЬ УХУДШАЕТСЯ / ВОЗМОЖНОЕ ПОГЛОЩЕНИЕ")
+            self.print_event_block(record, "ЭФФЕКТИВНОСТЬ УХУДШАЕТСЯ / ВОЗМОЖНОЕ ПОГЛОЩЕНИЕ", event_price, context)
         elif kind == "OPPOSITE_CONTROL_CANDIDATE":
-            print(f"{stamp} | ПРОТИВОПОЛОЖНАЯ СТОРОНА ПОЛУЧИЛА КОНТРОЛЬ — КАНДИДАТ")
+            self.print_event_block(record, "ПРОТИВОПОЛОЖНАЯ СТОРОНА ПОЛУЧИЛА КОНТРОЛЬ — КАНДИДАТ", event_price, context)
         elif kind == "RELEASE_STATUS":
             release_id = str(record.get("release_id", ""))
             status = record.get("status") or record.get("new_status") or "—"
             if self.release_view.get(release_id) == status:
                 return
             self.release_view[release_id] = status
-            print(f"{stamp} | RELEASE {release_id}: статус → {status}")
+            self.print_event_block(record, f"RELEASE: статус → {status}", event_price, context)
         elif kind == "RELEASE_ARCHIVED":
-            print(f"{stamp} | RELEASE ЗАКРЫТ: {record.get('release_id', '—')}; причина={record.get('reason') or 'не указана'}")
+            self.print_event_block(record, f"RELEASE ЗАКРЫТ: причина={record.get('reason') or 'не указана'}", event_price, context)
         elif kind == "ATTEMPT_EPISODE_ARCHIVED":
             result = record.get("result") or record.get("status") or record.get("outcome") or "результат не указан"
-            print(f"{stamp} | ПОПЫТКА ЗАВЕРШЕНА: {result}")
-        else:
-            return
-        if kind != "BATTLE_ARCHIVED" and kind != "RELEASE_STATUS":
-            print(*self.zone_text(record, self.latest_price), sep="\n")
-            print("─" * 56)
+            self.print_event_block(record, f"ПОПЫТКА ЗАВЕРШЕНА: {result}", event_price, context)
+
+    def flush_transfer_candidates(self) -> None:
+        for group in self.pending_transfer_groups.values():
+            records = group["records"]
+            if not records:
+                continue
+            tf_counts: dict[str, int] = {}
+            lows: list[float] = []
+            highs: list[float] = []
+            for record in records:
+                zone = self.zones.get(str(record.get("zone_id")), {})
+                timeframe = zone.get("timeframe")
+                if timeframe:
+                    tf_counts[timeframe] = tf_counts.get(timeframe, 0) + 1
+                if isinstance(zone.get("low"), (int, float)):
+                    lows.append(float(zone["low"]))
+                if isinstance(zone.get("high"), (int, float)):
+                    highs.append(float(zone["high"]))
+            order = {"5m": 0, "15m": 1, "1h": 2, "4h": 3}
+            tf_text = " / ".join(f"{tf} ×{count}" for tf, count in sorted(tf_counts.items(), key=lambda item: order.get(item[0], 99)))
+            price = group["price"]
+            if len(records) == 1:
+                zone = self.zones.get(str(records[0].get("zone_id")), {})
+                first = f"{zone.get('timeframe', '?')} / {number(zone.get('low'), 1)} – {number(zone.get('high'), 1)} / {clock(group['time_ts'])}"
+                position = self.position_text(price, zone)
+            elif lows and highs:
+                coverage = {"low": min(lows), "high": max(highs)}
+                first = f"{tf_text or '?'} / {number(coverage['low'], 1)} – {number(coverage['high'], 1)} / {clock(group['time_ts'])}"
+                position = self.position_text(price, coverage).replace("ГРАНИЦЫ", "ГРАНИЦЫ ОХВАТА")
+            else:
+                first = f"{tf_text or '?'} / — – — / {clock(group['time_ts'])}"
+                position = "ПОЛОЖЕНИЕ НЕДОСТУПНО"
+            print()
+            print(first)
+            print(f"ВОЗМОЖНАЯ ПЕРЕДАЧА КОНТРОЛЯ {group['side_a']} → {group['side_b']}")
+            print(f"{number(price, 2)} PRICE / {position}")
+            if len(records) > 1:
+                print(f"Представлений {len(records)}")
+                if tf_text:
+                    print(f"TF {tf_text}")
+                if lows and highs:
+                    print(f"Охват зон {min(lows):.1f}–{max(highs):.1f}")
+        self.pending_transfer_groups.clear()
 
     def handle_oi(self, record: dict[str, Any]) -> None:
         if not isinstance(record.get("OI_BTC"), (int, float)):
@@ -421,7 +449,6 @@ class LiveMonitor:
                 label = f"ОИ {after} {delta:+.1f} BTC / 60 сек"
             print()
             print(f"{current_header(self.latest_price, record_ts(record))}\n{label}")
-            print("─" * 56)
 
     def current_context_battle(self, active_battles: list[dict[str, Any]]) -> dict[str, Any] | None:
         if not isinstance(self.latest_price, (int, float)):
@@ -446,11 +473,12 @@ class LiveMonitor:
         print(f"Активных release-представлений: {len(active_releases)}")
         battle = self.current_context_battle(active_battles)
         if battle is not None:
-            print("Текущая борьба")
+            current_context = dict(battle)
+            current_context["time_ts"] = int(time.time() * 1000)
+            self.print_event_block(current_context, "ТЕКУЩАЯ БОРЬБА", self.latest_price, "PRICE")
             self.print_battle_metrics(battle, self.latest_price)
         else:
             print("Явной текущей борьбы у цены сейчас нет")
-        print("─" * 56)
 
     def startup(self) -> None:
         self.load_state()
