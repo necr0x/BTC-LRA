@@ -22,6 +22,44 @@ from typing import Any
 PANAMA = timezone(timedelta(hours=-5))
 
 
+STATUS_RU = {
+    'OBSERVATION': 'НАБЛЮДЕНИЕ',
+    'SELL CONTROL': 'КОНТРОЛЬ SELL',
+    'BUY CONTROL': 'КОНТРОЛЬ BUY',
+    'SELL RESULT EFFICIENCY FALLING': 'ОТДАЧА SELL ПАДАЕТ',
+    'BUY RESULT EFFICIENCY FALLING': 'ОТДАЧА BUY ПАДАЕТ',
+    'SELL PRESSURE HELD': 'SELL НЕ ПРОДАВЛИВАЕТ ЦЕНУ',
+    'BUY PRESSURE HELD': 'BUY НЕ ПРОДАВЛИВАЕТ ЦЕНУ',
+    'POSSIBLE EARLY BUY CONTROL SHIFT': 'ВОЗМОЖНА РАННЯЯ ПЕРЕДАЧА К BUY',
+    'POSSIBLE EARLY SELL CONTROL SHIFT': 'ВОЗМОЖНА РАННЯЯ ПЕРЕДАЧА К SELL',
+    'EARLY BUY CONTROL': 'РАННИЙ КОНТРОЛЬ BUY',
+    'EARLY SELL CONTROL': 'РАННИЙ КОНТРОЛЬ SELL',
+}
+
+
+def status_ru(value: str) -> str:
+    return STATUS_RU.get(value, value)
+
+
+def result_ru(value: str) -> str:
+    replacements = {
+        'HELD / NO CLEAR RESULT': 'УДЕРЖАНО / ЯСНОГО РЕЗУЛЬТАТА НЕТ',
+        'BUY GOT RESULT': 'BUY ПОЛУЧИЛ РЕЗУЛЬТАТ',
+        'SELL GOT RESULT': 'SELL ПОЛУЧИЛ РЕЗУЛЬТАТ',
+        'BUY WON THIS INTERVAL': 'BUY ПОЛУЧИЛ РЕЗУЛЬТАТ В ЭТОМ ИНТЕРВАЛЕ',
+        'SELL WON THIS INTERVAL': 'SELL ПОЛУЧИЛ РЕЗУЛЬТАТ В ЭТОМ ИНТЕРВАЛЕ',
+        'BUY PRESSURE FAILED': 'ДАВЛЕНИЕ BUY НЕ ДАЛО РЕЗУЛЬТАТА',
+        'SELL PRESSURE FAILED': 'ДАВЛЕНИЕ SELL НЕ ДАЛО РЕЗУЛЬТАТА',
+    }
+    for english, russian in replacements.items():
+        value = value.replace(english, russian)
+    return value
+
+
+def flow_ru(value: str) -> str:
+    return {'BUY': 'BUY', 'SELL': 'SELL', 'HELD': 'УДЕРЖАНО'}.get(value, value)
+
+
 def parse_time(value: str) -> datetime:
     if value.endswith('Z'):
         return datetime.fromisoformat(value.replace('Z', '+00:00')).astimezone(PANAMA)
@@ -289,25 +327,36 @@ class Session:
         if dominant == 'SELL': self.sell_peak = max(self.sell_peak, advantage)
         peak = self.sell_peak if dominant == 'SELL' else self.buy_peak if dominant == 'BUY' else 0.0
         retraced = (peak - advantage) / peak * 100 if peak else 0.0
-        return {'time': event_time, 'oi_net': (self.oi_current - self.oi_start) if self.oi_current is not None and self.oi_start is not None else None, 'oi_add': self.oi_add, 'oi_exit': self.oi_exit, 'oi_activity': self.oi_add + self.oi_exit, 'buy': self.buy, 'sell': self.sell, 'delta': delta, 'dominant': dominant, 'advantage': advantage, 'peak': peak, 'sell_peak': self.sell_peak, 'buy_peak': self.buy_peak, 'retraced': retraced, 'price': self.price, 'price_from_start': (self.price - self.anchor_price) if self.price is not None and self.anchor_price is not None else None, **self.early_metrics()}
+        adv_lost = max(0.0, peak - advantage)
+        return {'time': event_time, 'oi_net': (self.oi_current - self.oi_start) if self.oi_current is not None and self.oi_start is not None else None, 'oi_add': self.oi_add, 'oi_exit': self.oi_exit, 'oi_activity': self.oi_add + self.oi_exit, 'buy': self.buy, 'sell': self.sell, 'delta': delta, 'dominant': dominant, 'advantage': advantage, 'peak': peak, 'sell_peak': self.sell_peak, 'buy_peak': self.buy_peak, 'retraced': retraced, 'adv_lost': adv_lost, 'adv_remaining_pct': advantage / peak * 100 if peak else 0.0, 'adv_lost_pct': adv_lost / peak * 100 if peak else 0.0, 'price': self.price, 'price_from_start': (self.price - self.anchor_price) if self.price is not None and self.anchor_price is not None else None, **self.early_metrics()}
 
     def print_status(self, title='SESSION SNAPSHOT') -> None:
         snap = self.snapshot(self.anchor)
-        print(f'\nBTC-LRA OI CONTROL MONITOR\n{title}\nSESSION FROM: {self.anchor.strftime("%H:%M") if self.anchor else "—"}')
-        print(f'PRICE              {n(self.price)}')
-        print(f'OI NET             {n(snap["oi_net"])} BTC\nOI ADD              {n(self.oi_add)} BTC\nOI EXIT             {n(self.oi_exit)} BTC\nOI ACTIVITY         {n(snap["oi_activity"])} BTC')
-        print(f'CUM BUY             {n(self.buy)} BTC\nCUM SELL            {n(self.sell)} BTC\nCUM DOMINANCE       {snap["dominant"]} {n(snap["advantage"])} BTC')
-        print(f'SELL PEAK ADV       {n(self.sell_peak)} BTC\nBUY PEAK ADV        {n(self.buy_peak)} BTC\nCURRENT RETRACED    {snap["retraced"]:.1f}%\nPRICE FROM START    {n(snap["price_from_start"])} USD')
-        print(f'SELL ADV NOW        {n(snap["sell_adv_now"])} BTC | RETRACED {snap["sell_adv_retraced"]:.1f}%')
-        print(f'BUY ADV NOW         {n(snap["buy_adv_now"])} BTC | RETRACED {snap["buy_adv_retraced"]:.1f}%')
-        print(f'PREVIOUS LOW        {n(snap["previous_low"])} | CURRENT LOW {n(snap["current_low"])} | LOW EXTENSION {n(snap["low_extension"])}')
-        print(f'SELL EFFORT         {n(snap["sell_effort_btc"])} BTC | LOW / 100 BTC {n(snap["low_extension_per_100"])} USD')
-        print(f'PREVIOUS HIGH       {n(snap["previous_high"])} | CURRENT HIGH {n(snap["current_high"])} | HIGH EXTENSION {n(snap["high_extension"])}')
-        print(f'BUY EFFORT          {n(snap["buy_effort_btc"])} BTC | HIGH / 100 BTC {n(snap["high_extension_per_100"])} USD')
-        print(f'STATUS: {snap["status"]}')
-        print('\nLAST EVENTS')
+        title_display = {'FINAL SESSION STATE': 'ИТОГОВОЕ СОСТОЯНИЕ СЕССИИ', 'LIVE STATUS': 'ТЕКУЩЕЕ СОСТОЯНИЕ'}.get(title, title)
+        print(f'\nBTC-LRA OI МОНИТОР ПОТОКА\n{title_display}\nОТСЧЁТ С: {self.anchor.strftime("%H:%M") if self.anchor else "—"}')
+        print(f'ЦЕНА                 {n(self.price)}')
+        print(f'OI В НАЧАЛЕ          {n(self.oi_start)} BTC\nOI СЕЙЧАС            {n(self.oi_current)} BTC\nИЗМЕНЕНИЕ OI         {n(snap["oi_net"])} BTC\nПРИТОК OI            {n(self.oi_add)} BTC\nВЫХОД OI             {n(self.oi_exit)} BTC\nАКТИВНОСТЬ OI        {n(snap["oi_activity"])} BTC')
+        print(f'НАКОПЛЕННЫЙ BUY      {n(self.buy)} BTC\nНАКОПЛЕННЫЙ SELL     {n(self.sell)} BTC\nНАКОПИТЕЛЬНАЯ ДЕЛЬТА {n(snap["delta"])} BTC\nДОМИНАНТ ПОТОКА      {flow_ru(snap["dominant"])}')
+        print(f'НАКОПЛЕННЫЙ ПЕРЕВЕС {n(snap["advantage"])} BTC\nЦЕНА ОТ НАЧАЛА       {n(snap["price_from_start"])} USD')
+        if snap['dominant'] in ('BUY', 'SELL'):
+            print(f'МАКС. ПЕРЕВЕС {snap["dominant"]:<4}   {n(snap["peak"])} BTC | 100.0%')
+            print(f'ПЕРЕВЕС {snap["dominant"]} СЕЙЧАС  {n(snap["advantage"])} BTC | {snap["adv_remaining_pct"]:5.1f}%')
+            print(f'ПОТЕРЯНО ПЕРЕВЕСА     {n(snap["adv_lost"])} BTC | {snap["adv_lost_pct"]:5.1f}%')
+            other = 'BUY' if snap['dominant'] == 'SELL' else 'SELL'
+            other_peak = snap['buy_peak'] if other == 'BUY' else snap['sell_peak']
+            print(f'ПРЕДЫДУЩИЙ ПИК {other}  {n(other_peak)} BTC')
+        else:
+            print(f'МАКС. ПЕРЕВЕС SELL    {n(snap["sell_peak"])} BTC\nМАКС. ПЕРЕВЕС BUY     {n(snap["buy_peak"])} BTC')
+        print(f'ПЕРЕВЕС SELL СЕЙЧАС  {n(snap["sell_adv_now"])} BTC | ПОТЕРЯНО {snap["sell_adv_retraced"]:5.1f}%')
+        print(f'ПЕРЕВЕС BUY СЕЙЧАС   {n(snap["buy_adv_now"])} BTC | ПОТЕРЯНО {snap["buy_adv_retraced"]:5.1f}%')
+        print(f'ПРЕДЫДУЩИЙ LOW       {n(snap["previous_low"])} | ТЕКУЩИЙ LOW {n(snap["current_low"])} | НОВОЕ СНИЖЕНИЕ {n(snap["low_extension"])}')
+        print(f'УСИЛИЕ SELL          {n(snap["sell_effort_btc"])} BTC | РЕЗУЛЬТАТ SELL / 100 BTC {n(snap["low_extension_per_100"])} USD')
+        print(f'ПРЕДЫДУЩИЙ HIGH      {n(snap["previous_high"])} | ТЕКУЩИЙ HIGH {n(snap["current_high"])} | НОВЫЙ РОСТ {n(snap["high_extension"])}')
+        print(f'УСИЛИЕ BUY           {n(snap["buy_effort_btc"])} BTC | РЕЗУЛЬТАТ BUY / 100 BTC {n(snap["high_extension_per_100"])} USD')
+        print(f'СТАТУС: {status_ru(snap["status"])}')
+        print('\nПОСЛЕДНИЕ СОБЫТИЯ')
         for event in self.last_events:
-            print(f'{event["time"].strftime("%H:%M")} | OI {n(event["oi_net"])} | FLOW {event["flow"]} {n(event["flow_adv"])} | PRICE {n(event["price_change"])} | RESULT CONTROL {event["classification"]}')
+            print(f'{event["time"].strftime("%H:%M")} | ИЗМЕНЕНИЕ OI {n(event["oi_net"])} | ДОМИНАНТ ПОТОКА {flow_ru(event["flow"])} {n(event["flow_adv"])} | РЕЗУЛЬТАТ ЦЕНЫ {n(event["price_change"])} | КТО ПОЛУЧИЛ РЕЗУЛЬТАТ: {result_ru(event["classification"])}')
 
     def emit_event(self, event: dict[str, Any], minute: dict[str, Any], market_rows: list[dict[str, Any]]) -> None:
         before = self.previous_event
@@ -325,10 +374,11 @@ class Session:
         self.last_events.append(current); self.previous_event = current
         start_time = event.get('start_time', event['start'])
         start_text = start_time.strftime('%H:%M') if isinstance(start_time, datetime) else str(start_time)
-        print(f'\nRAW OI EVENT CONFIRMED AT {minute["minute"].strftime("%H:%M")} | EPISODE START {start_text}')
-        print(f'SINCE PREVIOUS EVENT: OI NET {n((snap["oi_net"] or 0)-prev_oi)} | BUY {n(snap["buy"]-prev_buy)} | SELL {n(snap["sell"]-prev_sell)} | FLOW {flow} {n(abs(flow_delta))} | PRICE {n(price_change)}')
-        print(f'SINCE SESSION ANCHOR: OI NET {n(snap["oi_net"])} | ADD {n(snap["oi_add"])} | EXIT {n(snap["oi_exit"])} | BUY {n(snap["buy"])} | SELL {n(snap["sell"])} | CUM FLOW DOMINANT {snap["dominant"]} {n(snap["advantage"])} | RESULT CONTROL {classification}')
-        print(f'EXTREMUM STATE: {snap["status"]} | SELL ADV NOW {n(snap["sell_adv_now"])} / RETRACED {snap["sell_adv_retraced"]:.1f}% | LOW EXT / 100 SELL {n(snap["low_extension_per_100"])} | HIGH EXT / 100 BUY {n(snap["high_extension_per_100"])}')
+        event_label = 'ЭКСТРЕМАЛЬНОЕ OI-СОБЫТИЕ' if event.get('kind') == 'MEGA' else 'СИЛЬНОЕ OI-СОБЫТИЕ'
+        print(f'\n{event_label} ПОДТВЕРЖДЕНО В {minute["minute"].strftime("%H:%M")} | НАЧАЛО ЭПИЗОДА {start_text}')
+        print(f'С ПРЕДЫДУЩЕГО СОБЫТИЯ: ИЗМЕНЕНИЕ OI {n((snap["oi_net"] or 0)-prev_oi)} | BUY {n(snap["buy"]-prev_buy)} | SELL {n(snap["sell"]-prev_sell)} | ДОМИНАНТ ПОТОКА {flow_ru(flow)} {n(abs(flow_delta))} | РЕЗУЛЬТАТ ЦЕНЫ {n(price_change)}')
+        print(f'С ОТСЧЁТА: ИЗМЕНЕНИЕ OI {n(snap["oi_net"])} | ПРИТОК {n(snap["oi_add"])} | ВЫХОД {n(snap["oi_exit"])} | BUY {n(snap["buy"])} | SELL {n(snap["sell"])} | ДОМИНАНТ ПОТОКА {flow_ru(snap["dominant"])} {n(snap["advantage"])} | КТО ПОЛУЧИЛ РЕЗУЛЬТАТ: {result_ru(classification)}')
+        print(f'СОСТОЯНИЕ ЭКСТРЕМУМА: {status_ru(snap["status"])} | ПЕРЕВЕС SELL СЕЙЧАС {n(snap["sell_adv_now"])} / ПОТЕРЯНО {snap["sell_adv_retraced"]:.1f}% | РЕЗУЛЬТАТ SELL / 100 BTC {n(snap["low_extension_per_100"])} | РЕЗУЛЬТАТ BUY / 100 BTC {n(snap["high_extension_per_100"])}')
 
 
 def run_replay(args: argparse.Namespace) -> None:
@@ -359,12 +409,13 @@ def run_replay(args: argparse.Namespace) -> None:
         minute_table_rows.append(current)
         if current['dominant'] in ('BUY', 'SELL') and previous_control and current['dominant'] != previous_control:
             flow_crosses.append((minute['minute'].strftime('%H:%M'), previous_control, current['dominant']))
-            print(f'\nCUM FLOW CROSS: {previous_control} -> {current["dominant"]} at {minute["minute"].strftime("%H:%M")}')
+            print(f'\nСМЕНА НАКОПИТЕЛЬНОГО ДОМИНАНТА: {previous_control} -> {current["dominant"]} В {minute["minute"].strftime("%H:%M")}')
         if current['dominant'] in ('BUY', 'SELL'):
             previous_control = current['dominant']
         if minute['minute'] in event_by_time:
             event = dict(event_by_time[minute['minute']])
             event['start_time'] = minutes[event['start']]['minute']
+            event['kind'] = 'MEGA' if minutes[event['confirmed']]['mega'] else 'STRONG'
             session.emit_event(event, minute, market_rows)
         if minute['minute'].strftime('%H:%M') in snapshots:
             current = session.snapshot(minute['minute'])
@@ -384,32 +435,32 @@ def run_replay(args: argparse.Namespace) -> None:
                 result_changes.append((minute['minute'].strftime('%H:%M'), previous_result, result_side))
             row = dict(current, time=minute['minute'].strftime('%H:%M'), interval_buy=interval_buy, interval_sell=interval_sell, interval_flow=interval_flow, interval_price=interval_price, result=result, result_side=result_side)
             checkpoint_rows.append(row)
-            print(f'\nCHECKPOINT {row["time"]}')
-            print(f'CUM BUY {n(row["buy"])} | CUM SELL {n(row["sell"])} | CUM FLOW DOMINANT {row["dominant"]} | CUM ADV {n(row["advantage"])}')
-            print(f'PEAK ADV {n(row["peak"])} | ADV NOW {n(row["advantage"])} | ADV RETRACED {row["retraced"]:.1f}% | PRICE FROM ANCHOR {n(row["price_from_start"])}')
-            print(f'OI NET {n(row["oi_net"])} | OI ADD {n(row["oi_add"])} | OI EXIT {n(row["oi_exit"])} | OI ACTIVITY {n(row["oi_activity"])}')
-            print(f'SINCE PREVIOUS CHECKPOINT: BUY {n(interval_buy)} | SELL {n(interval_sell)} | FLOW {interval_flow} {n(abs(interval_delta))} | PRICE {n(interval_price)} | RESULT CONTROL {result}')
-            print(f'EXTREMUM STATUS: {row["status"]} | SELL PEAK {n(row["sell_peak"])} | SELL NOW {n(row["sell_adv_now"])} | SELL RETRACED {row["sell_adv_retraced"]:.1f}% | LOW EXT / 100 SELL {n(row["low_extension_per_100"])}')
-            print(f'PREVIOUS LOW {n(row["previous_low"])} | CURRENT LOW {n(row["current_low"])} | SELL BAR EFFORT {n(row["sell_effort_btc"])} BTC')
-            print(f'BUY PEAK {n(row["buy_peak"])} | BUY NOW {n(row["buy_adv_now"])} | BUY RETRACED {row["buy_adv_retraced"]:.1f}% | HIGH EXT / 100 BUY {n(row["high_extension_per_100"])}')
-            print(f'PREVIOUS HIGH {n(row["previous_high"])} | CURRENT HIGH {n(row["current_high"])} | BUY BAR EFFORT {n(row["buy_effort_btc"])} BTC')
+            print(f'\nКОНТРОЛЬНАЯ ТОЧКА {row["time"]}')
+            print(f'НАКОПЛЕННЫЙ BUY {n(row["buy"])} | НАКОПЛЕННЫЙ SELL {n(row["sell"])} | ДОМИНАНТ ПОТОКА {flow_ru(row["dominant"])} | НАКОПЛЕННЫЙ ПЕРЕВЕС {n(row["advantage"])}')
+            print(f'МАКС. ПЕРЕВЕС {n(row["peak"])} | ПЕРЕВЕС СЕЙЧАС {n(row["advantage"])} | ПОТЕРЯНО {row["retraced"]:.1f}% | ЦЕНА ОТ НАЧАЛА {n(row["price_from_start"])}')
+            print(f'ИЗМЕНЕНИЕ OI {n(row["oi_net"])} | ПРИТОК OI {n(row["oi_add"])} | ВЫХОД OI {n(row["oi_exit"])} | АКТИВНОСТЬ OI {n(row["oi_activity"])}')
+            print(f'С ПРЕДЫДУЩЕЙ ТОЧКИ: BUY {n(interval_buy)} | SELL {n(interval_sell)} | ДОМИНАНТ ПОТОКА {flow_ru(interval_flow)} {n(abs(interval_delta))} | РЕЗУЛЬТАТ ЦЕНЫ {n(interval_price)} | КТО ПОЛУЧИЛ РЕЗУЛЬТАТ: {result_ru(result)}')
+            print(f'СОСТОЯНИЕ ЭКСТРЕМУМА: {status_ru(row["status"])} | МАКС. SELL {n(row["sell_peak"])} | SELL СЕЙЧАС {n(row["sell_adv_now"])} | ПОТЕРЯНО {row["sell_adv_retraced"]:.1f}% | РЕЗУЛЬТАТ SELL / 100 BTC {n(row["low_extension_per_100"])}')
+            print(f'ПРЕДЫДУЩИЙ LOW {n(row["previous_low"])} | ТЕКУЩИЙ LOW {n(row["current_low"])} | УСИЛИЕ SELL {n(row["sell_effort_btc"])} BTC')
+            print(f'МАКС. BUY {n(row["buy_peak"])} | BUY СЕЙЧАС {n(row["buy_adv_now"])} | ПОТЕРЯНО {row["buy_adv_retraced"]:.1f}% | РЕЗУЛЬТАТ BUY / 100 BTC {n(row["high_extension_per_100"])}')
+            print(f'ПРЕДЫДУЩИЙ HIGH {n(row["previous_high"])} | ТЕКУЩИЙ HIGH {n(row["current_high"])} | УСИЛИЕ BUY {n(row["buy_effort_btc"])} BTC')
             previous_checkpoint = current
     visible_events = [event for event in events if anchor <= minutes[event['confirmed']]['minute'] and (end is None or minutes[event['confirmed']]['minute'] <= end)]
-    print(f'\nREPLAY COMPLETE | raw samples={len(samples)} | minute aggregates={len(minutes)} | valid STRONG episodes={len(visible_events)}')
-    print('\nCUM FLOW CROSSES:')
+    print(f'\nПОВТОР ЗАВЕРШЁН | raw samples={len(samples)} | минутных агрегатов={len(minutes)} | СИЛЬНЫХ OI-эпизодов={len(visible_events)}')
+    print('\nСМЕНЫ НАКОПИТЕЛЬНОГО ДОМИНАНТА:')
     for at, old, new in flow_crosses:
         print(f'{at} | {old} -> {new}')
-    print('\nRESULT CONTROL CHANGES:')
+    print('\nИЗМЕНЕНИЯ РЕЗУЛЬТАТА ЦЕНЫ:')
     for at, old, new in result_changes:
         print(f'{at} | {old} -> {new}')
-    print('\nCHRONOLOGICAL CHECKPOINT TABLE:')
-    print('TIME | CUM FLOW | CUM ADV | PRICE FROM ANCHOR | INTERVAL FLOW | INTERVAL PRICE | RESULT CONTROL')
+    print('\nХРОНОЛОГИЧЕСКАЯ ТАБЛИЦА КОНТРОЛЬНЫХ ТОЧЕК:')
+    print('ВРЕМЯ | ПОТОК | ПЕРЕВЕС | ЦЕНА ОТ НАЧАЛА | ПОТОК ИНТЕРВАЛА | РЕЗУЛЬТАТ ЦЕНЫ | КТО ПОЛУЧИЛ РЕЗУЛЬТАТ')
     for row in checkpoint_rows:
-        print(f'{row["time"]} | {row["dominant"]} {n(row["advantage"])} | {n(row["advantage"])} | {n(row["price_from_start"])} | {row["interval_flow"]} {n(abs(row["interval_buy"]-row["interval_sell"]))} | {n(row["interval_price"])} | {row["result"]}')
-    print('\nMINUTE EXTREME / EFFICIENCY TABLE:')
-    print('TIME | CUM FLOW | PEAK ADV | ADV NOW | ADV RETRACED | OI NET | SELL EFFORT | LOW EXT | LOW EXT / 100 SELL | BUY EFFORT | HIGH EXT | HIGH EXT / 100 BUY | STATUS')
+        print(f'{row["time"]} | {flow_ru(row["dominant"])} {n(row["advantage"])} | {n(row["advantage"])} | {n(row["price_from_start"])} | {flow_ru(row["interval_flow"])} {n(abs(row["interval_buy"]-row["interval_sell"]))} | {n(row["interval_price"])} | {result_ru(row["result"])}')
+    print('\nМИНУТНАЯ ТАБЛИЦА ЭКСТРЕМУМОВ И ОТДАЧИ:')
+    print('ВРЕМЯ | ПОТОК | МАКС. ПЕРЕВЕС | ПЕРЕВЕС СЕЙЧАС | ПОТЕРЯНО | ИЗМЕНЕНИЕ OI | УСИЛИЕ SELL | НОВОЕ СНИЖЕНИЕ | РЕЗУЛЬТАТ SELL / 100 BTC | УСИЛИЕ BUY | НОВЫЙ РОСТ | РЕЗУЛЬТАТ BUY / 100 BTC | СТАТУС')
     for row in minute_table_rows:
-        print(f'{row["time"].strftime("%H:%M")} | {row["dominant"]} {n(row["advantage"])} | {n(row["peak"])} | {n(row["sell_adv_now"] if row["dominant"] == "SELL" else row["buy_adv_now"])} | {row["sell_adv_retraced"] if row["dominant"] == "SELL" else row["buy_adv_retraced"]:.1f}% | {n(row["oi_net"])} | {n(row["sell_effort_btc"])} | {n(row["low_extension"])} | {n(row["low_extension_per_100"])} | {n(row["buy_effort_btc"])} | {n(row["high_extension"])} | {n(row["high_extension_per_100"])} | {row["status"]}')
+        print(f'{row["time"].strftime("%H:%M")} | {flow_ru(row["dominant"])} {n(row["advantage"])} | {n(row["peak"])} | {n(row["sell_adv_now"] if row["dominant"] == "SELL" else row["buy_adv_now"])} | {(row["sell_adv_retraced"] if row["dominant"] == "SELL" else row["buy_adv_retraced"]):.1f}% | {n(row["oi_net"])} | {n(row["sell_effort_btc"])} | {n(row["low_extension"])} | {n(row["low_extension_per_100"])} | {n(row["buy_effort_btc"])} | {n(row["high_extension"])} | {n(row["high_extension_per_100"])} | {status_ru(row["status"])}')
     session.print_status('FINAL SESSION STATE')
 
 
@@ -421,14 +472,14 @@ def run_live(args: argparse.Namespace) -> None:
     anchor = datetime.now(PANAMA) if args.from_now or not args.from_time else parse_time(args.from_time)
     session = Session(anchor)
     processed: set[datetime] = set()
-    print('BTC-LRA OI CONTROL MONITOR | READ-ONLY LIVE')
-    print('R = RESET SESSION ANCHOR TO NOW | Ctrl+C = exit')
+    print('BTC-LRA OI МОНИТОР ПОТОКА | ТОЛЬКО ЧТЕНИЕ')
+    print('R = СБРОСИТЬ ОТСЧЁТ НА СЕЙЧАС | Ctrl+C = выход')
     while True:
         if msvcrt and msvcrt.kbhit():
             key = msvcrt.getwch().upper()
             if key == 'R':
                 session.reset(datetime.now(PANAMA)); processed.clear()
-                print(f'\nSESSION ANCHOR RESET: {session.anchor.strftime("%H:%M:%S / %d.%m.%y -5")}')
+                print(f'\nОТСЧЁТ СБРОШЕН: {session.anchor.strftime("%H:%M:%S / %d.%m.%y -5")}')
         samples = load_raw(args.raw_oi)
         minutes = minute_oi(samples)
         annotate_minutes(minutes)
@@ -442,6 +493,7 @@ def run_live(args: argparse.Namespace) -> None:
             if minute['minute'] in event_by_time:
                 event = dict(event_by_time[minute['minute']])
                 event['start_time'] = minutes[event['start']]['minute']
+                event['kind'] = 'MEGA' if minutes[event['confirmed']]['mega'] else 'STRONG'
                 print('\a', end='', flush=True)
                 session.emit_event(event, minute, [])
         session.print_status('LIVE STATUS')
@@ -449,7 +501,11 @@ def run_live(args: argparse.Namespace) -> None:
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description='Session-anchored read-only BTC-LRA OI control monitor')
+    if hasattr(sys.stdout, 'reconfigure'):
+        sys.stdout.reconfigure(encoding='utf-8', errors='replace')
+    if hasattr(sys.stderr, 'reconfigure'):
+        sys.stderr.reconfigure(encoding='utf-8', errors='replace')
+    parser = argparse.ArgumentParser(description='Сессионный read-only монитор потока OI BTC-LRA')
     parser.add_argument('--mode', choices=('replay', 'historical', 'live'), default='replay')
     parser.add_argument('--from', dest='from_time')
     parser.add_argument('--from-now', action='store_true')
