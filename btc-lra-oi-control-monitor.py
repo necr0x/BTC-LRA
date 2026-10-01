@@ -1,4 +1,4 @@
-"""Session-anchored, read-only BTC-LRA OI control monitor.
+"""Session-anchored, read-only BTC-LRA OI flow monitor.
 
 Research presentation only. It never imports, starts, writes, or changes the
 BTC-LRA engine. Replay uses raw instantaneous OI and 1m market bars; 5m is
@@ -151,6 +151,10 @@ class Session:
         self.last_control: str | None = None
         self.last_low: float | None = None
         self.last_high: float | None = None
+        self.previous_low: float | None = None
+        self.current_low: float | None = None
+        self.previous_high: float | None = None
+        self.current_high: float | None = None
         self.low_sell_effort = 0.0
         self.high_buy_effort = 0.0
         self.last_low_extension = 0.0
@@ -179,16 +183,19 @@ class Session:
             self.anchor_price = row['open']
         previous_close = self.price
         self.price = row['close']; self.buy += row['buy']; self.sell += row['sell']
-        self.sell_effort_btc = self.sell - self.low_sell_effort
-        self.buy_effort_btc = self.buy - self.high_buy_effort
+        self.sell_effort_btc = row['sell']
+        self.buy_effort_btc = row['buy']
         self.last_low_extension = 0.0
         self.last_high_extension = 0.0
+        self.previous_low = self.last_low
+        self.current_low = row['low']
+        self.previous_high = self.last_high
+        self.current_high = row['high']
         if self.last_low is None:
             self.last_low = row['low']
             self.low_sell_effort = self.sell
         elif row['low'] < self.last_low:
             self.last_low_extension = self.last_low - row['low']
-            self.sell_effort_btc = max(0.0, self.sell - self.low_sell_effort)
             if self.sell_effort_btc > 0:
                 efficiency = self.last_low_extension / self.sell_effort_btc * 100
                 self.sell_best_efficiency = max(self.sell_best_efficiency, efficiency)
@@ -199,7 +206,6 @@ class Session:
             self.high_buy_effort = self.buy
         elif row['high'] > self.last_high:
             self.last_high_extension = row['high'] - self.last_high
-            self.buy_effort_btc = max(0.0, self.buy - self.high_buy_effort)
             if self.buy_effort_btc > 0:
                 efficiency = self.last_high_extension / self.buy_effort_btc * 100
                 self.buy_best_efficiency = max(self.buy_best_efficiency, efficiency)
@@ -246,16 +252,18 @@ class Session:
             'buy_adv_now': buy_now,
             'sell_adv_retraced': (self.sell_peak - sell_now) / self.sell_peak * 100 if self.sell_peak else 0.0,
             'buy_adv_retraced': (self.buy_peak - buy_now) / self.buy_peak * 100 if self.buy_peak else 0.0,
+            'previous_low': self.previous_low,
             'last_low': self.last_low,
-            'current_low': self.last_low,
+            'current_low': self.current_low,
             'low_extension': self.last_low_extension,
             'sell_effort_btc': self.sell_effort_btc,
             'low_extension_per_100': self.last_low_extension / self.sell_effort_btc * 100 if self.sell_effort_btc > 0 else 0.0,
             'last_high': self.last_high,
-            'current_high': self.last_high,
+            'current_high': self.current_high,
             'high_extension': self.last_high_extension,
             'buy_effort_btc': self.buy_effort_btc,
             'high_extension_per_100': self.last_high_extension / self.buy_effort_btc * 100 if self.buy_effort_btc > 0 else 0.0,
+            'previous_high': self.previous_high,
             'status': self.early_status,
         }
 
@@ -292,9 +300,9 @@ class Session:
         print(f'SELL PEAK ADV       {n(self.sell_peak)} BTC\nBUY PEAK ADV        {n(self.buy_peak)} BTC\nCURRENT RETRACED    {snap["retraced"]:.1f}%\nPRICE FROM START    {n(snap["price_from_start"])} USD')
         print(f'SELL ADV NOW        {n(snap["sell_adv_now"])} BTC | RETRACED {snap["sell_adv_retraced"]:.1f}%')
         print(f'BUY ADV NOW         {n(snap["buy_adv_now"])} BTC | RETRACED {snap["buy_adv_retraced"]:.1f}%')
-        print(f'LAST LOW            {n(snap["last_low"])} | CURRENT LOW {n(snap["current_low"])} | LOW EXTENSION {n(snap["low_extension"])}')
+        print(f'PREVIOUS LOW        {n(snap["previous_low"])} | CURRENT LOW {n(snap["current_low"])} | LOW EXTENSION {n(snap["low_extension"])}')
         print(f'SELL EFFORT         {n(snap["sell_effort_btc"])} BTC | LOW / 100 BTC {n(snap["low_extension_per_100"])} USD')
-        print(f'LAST HIGH           {n(snap["last_high"])} | CURRENT HIGH {n(snap["current_high"])} | HIGH EXTENSION {n(snap["high_extension"])}')
+        print(f'PREVIOUS HIGH       {n(snap["previous_high"])} | CURRENT HIGH {n(snap["current_high"])} | HIGH EXTENSION {n(snap["high_extension"])}')
         print(f'BUY EFFORT          {n(snap["buy_effort_btc"])} BTC | HIGH / 100 BTC {n(snap["high_extension_per_100"])} USD')
         print(f'STATUS: {snap["status"]}')
         print('\nLAST EVENTS')
@@ -337,6 +345,7 @@ def run_replay(args: argparse.Namespace) -> None:
     previous_control = None
     previous_checkpoint: dict[str, Any] | None = None
     checkpoint_rows: list[dict[str, Any]] = []
+    minute_table_rows: list[dict[str, Any]] = []
     flow_crosses: list[tuple[str, str, str]] = []
     result_changes: list[tuple[str, str, str]] = []
     for index, minute in enumerate(minutes):
@@ -347,6 +356,7 @@ def run_replay(args: argparse.Namespace) -> None:
         for row in market_rows:
             session.apply_market(row)
         current = session.snapshot(minute['minute'])
+        minute_table_rows.append(current)
         if current['dominant'] in ('BUY', 'SELL') and previous_control and current['dominant'] != previous_control:
             flow_crosses.append((minute['minute'].strftime('%H:%M'), previous_control, current['dominant']))
             print(f'\nCUM FLOW CROSS: {previous_control} -> {current["dominant"]} at {minute["minute"].strftime("%H:%M")}')
@@ -380,7 +390,9 @@ def run_replay(args: argparse.Namespace) -> None:
             print(f'OI NET {n(row["oi_net"])} | OI ADD {n(row["oi_add"])} | OI EXIT {n(row["oi_exit"])} | OI ACTIVITY {n(row["oi_activity"])}')
             print(f'SINCE PREVIOUS CHECKPOINT: BUY {n(interval_buy)} | SELL {n(interval_sell)} | FLOW {interval_flow} {n(abs(interval_delta))} | PRICE {n(interval_price)} | RESULT CONTROL {result}')
             print(f'EXTREMUM STATUS: {row["status"]} | SELL PEAK {n(row["sell_peak"])} | SELL NOW {n(row["sell_adv_now"])} | SELL RETRACED {row["sell_adv_retraced"]:.1f}% | LOW EXT / 100 SELL {n(row["low_extension_per_100"])}')
+            print(f'PREVIOUS LOW {n(row["previous_low"])} | CURRENT LOW {n(row["current_low"])} | SELL BAR EFFORT {n(row["sell_effort_btc"])} BTC')
             print(f'BUY PEAK {n(row["buy_peak"])} | BUY NOW {n(row["buy_adv_now"])} | BUY RETRACED {row["buy_adv_retraced"]:.1f}% | HIGH EXT / 100 BUY {n(row["high_extension_per_100"])}')
+            print(f'PREVIOUS HIGH {n(row["previous_high"])} | CURRENT HIGH {n(row["current_high"])} | BUY BAR EFFORT {n(row["buy_effort_btc"])} BTC')
             previous_checkpoint = current
     visible_events = [event for event in events if anchor <= minutes[event['confirmed']]['minute'] and (end is None or minutes[event['confirmed']]['minute'] <= end)]
     print(f'\nREPLAY COMPLETE | raw samples={len(samples)} | minute aggregates={len(minutes)} | valid STRONG episodes={len(visible_events)}')
@@ -394,6 +406,10 @@ def run_replay(args: argparse.Namespace) -> None:
     print('TIME | CUM FLOW | CUM ADV | PRICE FROM ANCHOR | INTERVAL FLOW | INTERVAL PRICE | RESULT CONTROL')
     for row in checkpoint_rows:
         print(f'{row["time"]} | {row["dominant"]} {n(row["advantage"])} | {n(row["advantage"])} | {n(row["price_from_start"])} | {row["interval_flow"]} {n(abs(row["interval_buy"]-row["interval_sell"]))} | {n(row["interval_price"])} | {row["result"]}')
+    print('\nMINUTE EXTREME / EFFICIENCY TABLE:')
+    print('TIME | CUM FLOW | PEAK ADV | ADV NOW | ADV RETRACED | OI NET | SELL EFFORT | LOW EXT | LOW EXT / 100 SELL | BUY EFFORT | HIGH EXT | HIGH EXT / 100 BUY | STATUS')
+    for row in minute_table_rows:
+        print(f'{row["time"].strftime("%H:%M")} | {row["dominant"]} {n(row["advantage"])} | {n(row["peak"])} | {n(row["sell_adv_now"] if row["dominant"] == "SELL" else row["buy_adv_now"])} | {row["sell_adv_retraced"] if row["dominant"] == "SELL" else row["buy_adv_retraced"]:.1f}% | {n(row["oi_net"])} | {n(row["sell_effort_btc"])} | {n(row["low_extension"])} | {n(row["low_extension_per_100"])} | {n(row["buy_effort_btc"])} | {n(row["high_extension"])} | {n(row["high_extension_per_100"])} | {row["status"]}')
     session.print_status('FINAL SESSION STATE')
 
 
