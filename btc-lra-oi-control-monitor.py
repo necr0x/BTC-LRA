@@ -7,6 +7,7 @@ only a display/aggregation concern outside this monitor.
 from __future__ import annotations
 
 import argparse
+import bisect
 import csv
 import contextlib
 import ctypes
@@ -95,6 +96,12 @@ def fmt_time(value: datetime | None) -> str:
 
 def n(value: Any, digits: int = 1) -> str:
     return '—' if value is None else f'{float(value):+,.{digits}f}'.replace(',', ' ')
+
+
+def price_display(value: Any) -> str:
+    if value is None:
+        return '—'
+    return f'{float(value):,.1f}'.replace(',', ' ')
 
 
 def load_raw(paths: list[Path]) -> list[dict[str, Any]]:
@@ -319,28 +326,42 @@ def publish_gui(bridge: GuiBridge | None, session: 'Session', clock: datetime,
     for event in session.event_history:
         display_flow = event.get('display_flow', event.get('flow', 'HELD'))
         control = event.get('control_label', 'CONTROL NEUTRAL')
+        control = event.get('display_control_text', control)
         if control.startswith('CONTROL '):
             control = control.removeprefix('CONTROL ')
         events.append({
             'time': event['time'].strftime('%H:%M'),
-            'btc_price': f'{compact(event.get("display_event_price"), signed=False)} USDT',
+            'btc_price': price_display(event.get("display_event_price")),
             'oi_act': f'{compact(event.get("event_oi_activity"), signed=False)} BTC',
             'net': f'{compact(event.get("event_oi_net"))} BTC',
-            'aggr': f'{display_flow} {event.get("aggr_share_pct", 0.0):.1f}% {compact(event.get("aggr_mag", event.get("display_flow_adv", event.get("flow_adv", 0))))} BTC',
+            'aggr': f'{event.get("aggr_side", "HELD")} {event.get("aggr_share_pct", 0.0):.1f}% {compact(event.get("aggr_mag", 0.0))} BTC',
             'delta_price': f'{compact(event.get("display_price_change", event.get("price_change")))} USDT',
             'control': control,
         })
+    old_buy_pct, old_sell_pct = dominance_percentages(
+        session.buy_dominance_weight_usdt, session.sell_dominance_weight_usdt
+    )
+    v2_buy_pct, v2_sell_pct = dominance_percentages(
+        session.buy_dominance_v2_btc, session.sell_dominance_v2_btc
+    )
+    old_dominance = (
+        f'DOMINANCE OLD BUY {old_buy_pct:.1f}% / SELL {old_sell_pct:.1f}%'
+        if old_buy_pct is not None else 'DOMINANCE OLD BUY -- / SELL --'
+    )
+    v2_dominance = (
+        f'DOMINANCE V2   BUY {v2_buy_pct:.1f}% / SELL {v2_sell_pct:.1f}%'
+        if v2_buy_pct is not None else 'DOMINANCE V2   BUY -- / SELL --'
+    )
     bridge.publish({
         'live': live,
         'anchor': fmt_time(session.anchor),
         'clock': fmt_time(clock),
         'speed': speed,
         'price': f'{compact(market_price if market_price is not None else session.price, signed=False)} USDT',
-        'dominance': (
-            f'DOMINANCE BUY {session.buy_dominance_weight_usdt / (session.buy_dominance_weight_usdt + session.sell_dominance_weight_usdt) * 100:.1f}% / '
-            f'SELL {session.sell_dominance_weight_usdt / (session.buy_dominance_weight_usdt + session.sell_dominance_weight_usdt) * 100:.1f}%'
-            if session.buy_dominance_weight_usdt + session.sell_dominance_weight_usdt > 0 else 'DOMINANCE BUY -- / SELL --'
-        ),
+        'dominance': old_dominance,
+        'dominance_v2': v2_dominance,
+        'dominance_v2_buy_pct': v2_buy_pct,
+        'dominance_v2_sell_pct': v2_sell_pct,
         'oi_flow': f'OI FLOW {compact(session.oi_event_flow)} BTC',
         'events': events,
     })
@@ -431,6 +452,694 @@ def write_tv_events_pine(path: Path, events: list[dict[str, Any]]) -> None:
     temporary.replace(path)
 
 
+def dominance_percentages(buy_weight: float, sell_weight: float) -> tuple[float | None, float | None]:
+    total = buy_weight + sell_weight
+    if total <= 0:
+        return None, None
+    return buy_weight / total * 100, sell_weight / total * 100
+
+
+def percentage_text(value: float | None) -> str:
+    return '--' if value is None else f'{value:.1f}%'
+
+
+def write_v2_replay_report(path: Path, rows: list[dict[str, Any]], session: 'Session',
+                           checkpoint_times: list[datetime] | None = None) -> None:
+    """Write the comparison report without changing the live monitor state."""
+    path.parent.mkdir(parents=True, exist_ok=True)
+    old_buy_pct, old_sell_pct = dominance_percentages(
+        session.buy_dominance_weight_usdt, session.sell_dominance_weight_usdt
+    )
+    v2_buy_pct, v2_sell_pct = dominance_percentages(
+        session.buy_dominance_v2_btc, session.sell_dominance_v2_btc
+    )
+    lines = [
+        'BTC-LRA DOMINANCE V2 RECORDED REPLAY',
+        'V2 only: individual STRONG/MEGA events; OI MASS = raw minute OI ADD.',
+        'OLD dominance and all detector/AGGR/CONTROL calculations remain unchanged.',
+        '',
+        'TIME | OI ADD | CONTROL | STRENGTH | WEIGHT | BUY V2 | SELL V2 | BUY% | SELL%',
+    ]
+    for row in rows:
+        lines.append(
+            f'{row["time"].strftime("%H:%M")} | '
+            f'{compact(row["oi_add"], signed=False)} BTC | '
+            f'{row["control"]} | {row["strength"]:.4f} | '
+            f'{compact(row["weight"], signed=False)} BTC | '
+            f'{compact(row["cum_buy"], signed=False)} BTC | '
+            f'{compact(row["cum_sell"], signed=False)} BTC | '
+            f'{percentage_text(row["buy_pct"]):>6} | '
+            f'{percentage_text(row["sell_pct"]):>6}'
+        )
+    lines.extend(['', f'EVENT COUNT: {len(rows)}'])
+    lines.append(f'OLD FINAL: BUY {old_buy_pct:.1f}% / SELL {old_sell_pct:.1f}%' if old_buy_pct is not None else 'OLD FINAL: BUY -- / SELL --')
+    lines.append(f'V2 FINAL: BUY {v2_buy_pct:.1f}% / SELL {v2_sell_pct:.1f}%' if v2_buy_pct is not None else 'V2 FINAL: BUY -- / SELL --')
+    if checkpoint_times:
+        lines.extend(['', 'CHECKPOINTS (last V2 state at or before time):', 'TIME | EVENT | BUY V2 | SELL V2 | BUY% | SELL%'])
+        for checkpoint in checkpoint_times:
+            eligible = [row for row in rows if row['time'] <= checkpoint]
+            if not eligible:
+                lines.append(f'{checkpoint.strftime("%H:%M")} | -- | -- | -- | -- | --')
+                continue
+            row = eligible[-1]
+            lines.append(
+                f'{checkpoint.strftime("%H:%M")} | {row["time"].strftime("%H:%M")} | '
+                f'{compact(row["cum_buy"], signed=False)} BTC | {compact(row["cum_sell"], signed=False)} BTC | '
+                f'{percentage_text(row["buy_pct"]):>6} | '
+                f'{percentage_text(row["sell_pct"]):>6}'
+            )
+    path.write_text('\n'.join(lines) + '\n', encoding='utf-8')
+
+
+NEIGHBOR_ANALYSIS_COLUMNS = [
+    'TIME', 'PRICE', 'PRICE_CHANGE', 'OI_NET', 'OI_ADD', 'OI_EXIT', 'OI_ACT',
+    'OI_MAX_JUMP', 'NET_X', 'ACT_X', 'JUMP_X', 'OI_ACT_3M', 'OI_ACT_3M_X',
+    'STRONG', 'MEGA', 'ELEVATED', 'TAKER_BUY', 'TAKER_SELL', 'AGGR_SIDE',
+    'AGGR_MAG', 'AGGR_SHARE', 'AGGR_MAG_X', 'MEANINGFUL_AGGR', 'EFF_RATIO',
+    'ABSORPTION_RATIO', 'CONTROL', 'CTX_3M_2X', 'CTX_3M_3X', 'CTX_3M_4X',
+    'CTX_3M_5X',
+]
+
+
+def _analysis_value(value: Any) -> Any:
+    """CSV-safe formatting without changing any market calculation."""
+    if value is None:
+        return ''
+    if isinstance(value, bool):
+        return 'YES' if value else 'NO'
+    if isinstance(value, float):
+        return f'{value:.8f}'.rstrip('0').rstrip('.')
+    return value
+
+
+def _causal_rolling_oi(minutes: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """Return 3m OI windows and X ratios using only prior completed windows."""
+    import statistics
+
+    windows: list[dict[str, Any]] = []
+    for index, _row in enumerate(minutes):
+        start = max(0, index - 2)
+        complete = index >= 2
+        window = minutes[start:index + 1]
+        current = {
+            'oi_act_3m': sum(row['activity'] for row in window),
+            'oi_add_3m': sum(row['add'] for row in window),
+            'oi_exit_3m': sum(row['exit'] for row in window),
+            'oi_net_3m': sum(row['net'] for row in window),
+            'complete': complete,
+        }
+        previous = [
+            item['oi_act_3m']
+            for item in windows[max(0, index - 30):index]
+            if item['complete'] and item['oi_act_3m'] > 0
+        ]
+        baseline = statistics.median(previous) if previous else None
+        current['oi_act_3m_x'] = (
+            current['oi_act_3m'] / baseline
+            if baseline and baseline > 0 and complete else None
+        )
+        windows.append(current)
+    return windows
+
+
+def _neighbor_analysis_rows(minutes: list[dict[str, Any]],
+                            market: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """Build diagnostics for every OI minute without changing monitor state."""
+    rolling = _causal_rolling_oi(minutes)
+    market_by_minute = {
+        row['ts'].replace(second=0, microsecond=0): row for row in market
+    }
+    rows: list[dict[str, Any]] = []
+    for index, oi_row in enumerate(minutes):
+        bar = market_by_minute.get(oi_row['minute'])
+        effort: dict[str, Any] | None = None
+        if bar is not None:
+            # A fresh Session prevents diagnostic minutes from accumulating
+            # dominance or other mutable state into the real monitor session.
+            diagnostic_session = Session(oi_row['minute'])
+            diagnostic_session.market_history = market
+            effort = diagnostic_session.effort_result_control(
+                oi_row['minute'], bar['buy'], bar['sell'],
+                bar['close'] - bar['open'], bar['open'],
+            )
+        rolling_row = rolling[index]
+        oi_act_3m_x = rolling_row['oi_act_3m_x']
+        result = {
+            'TIME': oi_row['minute'].strftime('%Y-%m-%d %H:%M:%S'),
+            'PRICE': bar['close'] if bar else None,
+            'REFERENCE_PRICE': bar['open'] if bar else None,
+            'PRICE_CHANGE': (bar['close'] - bar['open']) if bar else None,
+            'OI_NET': oi_row['net'],
+            'OI_ADD': oi_row['add'],
+            'OI_EXIT': oi_row['exit'],
+            'OI_ACT': oi_row['activity'],
+            'OI_MAX_JUMP': oi_row['jump'],
+            'NET_X': oi_row.get('net_x'),
+            'ACT_X': oi_row.get('activity_x'),
+            'JUMP_X': oi_row.get('jump_x'),
+            'OI_ACT_3M': rolling_row['oi_act_3m'] if rolling_row['complete'] else None,
+            'OI_ACT_3M_X': oi_act_3m_x,
+            'STRONG': oi_row.get('strong', False),
+            'MEGA': oi_row.get('mega', False),
+            'ELEVATED': oi_row.get('elevated', False),
+            'TAKER_BUY': bar['buy'] if bar else None,
+            'TAKER_SELL': bar['sell'] if bar else None,
+            'AGGR_SIDE': effort.get('aggr_side') if effort else None,
+            'AGGR_MAG': effort.get('aggr_mag') if effort else None,
+            'AGGR_SHARE': effort.get('aggr_share_pct') if effort else None,
+            'AGGR_MAG_X': effort.get('aggr_mag_x') if effort else None,
+            'MEANINGFUL_AGGR': effort.get('meaningful_aggression', False) if effort else False,
+            'EFF_RATIO': effort.get('eff_ratio') if effort else None,
+            'ABSORPTION_RATIO': effort.get('absorption_ratio') if effort else None,
+            'CONTROL': effort.get('control') if effort else None,
+            'CTX_3M_2X': oi_act_3m_x is not None and oi_act_3m_x >= 2.0,
+            'CTX_3M_3X': oi_act_3m_x is not None and oi_act_3m_x >= 3.0,
+            'CTX_3M_4X': oi_act_3m_x is not None and oi_act_3m_x >= 4.0,
+            'CTX_3M_5X': oi_act_3m_x is not None and oi_act_3m_x >= 5.0,
+        }
+        rows.append({key: _analysis_value(value) for key, value in result.items()})
+        rows[-1]['_time'] = oi_row['minute']
+        rows[-1]['_meaningful'] = bool(effort and effort.get('meaningful_aggression'))
+    return rows
+
+
+def _analysis_selected(row: dict[str, Any], rule: str) -> bool:
+    strong = row['STRONG'] == 'YES' or row['MEGA'] == 'YES'
+    if rule == 'CURRENT STRONG/MEGA':
+        return strong
+    if rule == 'CURRENT ELEVATED':
+        return row['ELEVATED'] == 'YES'
+    if rule == '3M 2X':
+        return row['CTX_3M_2X'] == 'YES'
+    if rule == '3M 3X':
+        return row['CTX_3M_3X'] == 'YES'
+    if rule == '3M 4X':
+        return row['CTX_3M_4X'] == 'YES'
+    if rule == '3M 5X':
+        return row['CTX_3M_5X'] == 'YES'
+    if rule == 'STRONG OR ELEVATED OR 3M':
+        return strong or row['ELEVATED'] == 'YES' or any(
+            row[key] == 'YES' for key in ('CTX_3M_2X', 'CTX_3M_3X', 'CTX_3M_4X', 'CTX_3M_5X')
+        )
+    return False
+
+
+def _neighbor_window_bounds(day: datetime, start: str, end: str) -> tuple[datetime, datetime]:
+    return (
+        day.replace(hour=int(start[:2]), minute=int(start[3:]), second=0, microsecond=0),
+        day.replace(hour=int(end[:2]), minute=int(end[3:]), second=59, microsecond=999999),
+    )
+
+
+def _neighbor_report(rows: list[dict[str, Any]], output_csv: Path) -> str:
+    rules = ('CURRENT STRONG/MEGA', 'CURRENT ELEVATED', '3M 2X', '3M 3X', '3M 4X', '3M 5X', 'STRONG OR ELEVATED OR 3M')
+    target_day = datetime(2026, 9, 30, tzinfo=PANAMA)
+    ranges = {
+        '14:45–15:00': _neighbor_window_bounds(target_day, '14:45', '15:00'),
+        '20:25–20:45': _neighbor_window_bounds(target_day, '20:25', '20:45'),
+        '22:10–22:40': _neighbor_window_bounds(target_day, '22:10', '22:40'),
+    }
+    lines = [
+        '# BTC-LRA Neighbor Flow Analysis',
+        '',
+        'Diagnostic-only output. The production STRONG/MEGA detector, AGGR, CONTROL, DOMINANCE, GUI, Pine and replay chronology were not changed.',
+        '',
+        'All OI ratios use the existing `annotate_minutes()` causal baselines. 3m ratios use only completed rolling windows ending before the current minute. Per-minute CONTROL is the existing `Session.effort_result_control()` applied to that minute, in a fresh diagnostic session.',
+        '',
+        f'- CSV: `{output_csv}`',
+        f'- OI minutes analyzed: {len(rows)}',
+        f'- Current STRONG/MEGA minutes: {sum(_neighbor_selected(row, "CURRENT STRONG/MEGA") for row in rows)}',
+        '',
+        '## Rule comparison',
+        '',
+        'Extra minutes means selected minutes minus the current STRONG/MEGA set. Noise is a selected extra minute with no meaningful aggression and `CONTROL UNCLEAR`; this is a transparent diagnostic indicator, not a new detector rule.',
+        '',
+        '| RULE | EXTRA MINUTES | EARLIEST USEFUL 22:xx | NOISE |',
+        '|---|---:|---|---|',
+    ]
+    for rule in rules[1:]:
+        selected = [row for row in rows if _neighbor_selected(row, rule)]
+        strong_selected = [row for row in selected if _neighbor_selected(row, 'CURRENT STRONG/MEGA')]
+        extras = [row for row in selected if not _neighbor_selected(row, 'CURRENT STRONG/MEGA')]
+        useful = [row for row in extras if 22 <= row['_time'].hour <= 22 and 10 <= row['_time'].minute <= 37 and row['_meaningful'] and str(row['CONTROL']).startswith('CONTROL LIMIT')]
+        noise = [row['_time'].strftime('%H:%M') for row in extras if not row['_meaningful'] and row['CONTROL'] == 'CONTROL UNCLEAR']
+        lines.append(f'| {rule} | {len(selected) - len(strong_selected)} | {useful[0]["_time"].strftime("%H:%M") if useful else "--"} | {", ".join(noise) or "--"} |')
+    lines.extend(['', '## Requested minutes', '', '| TIME | STRONG? | OI ACT X | 3M X | AGGR | EFF_RATIO | CONTROL |', '|---|---|---:|---:|---|---:|---|'])
+    for row in rows:
+        if row['_time'].date() == target_day.date() and row['_time'].hour == 22 and 10 <= row['_time'].minute <= 40:
+            aggr = f'{row["AGGR_SIDE"]} {row["AGGR_SHARE"]}% +{row["AGGR_MAG"]} BTC' if row['AGGR_SIDE'] else '--'
+            lines.append(f'| {row["_time"].strftime("%H:%M")} | {"YES" if _neighbor_selected(row, "CURRENT STRONG/MEGA") else "NO"} | {row["ACT_X"] or "--"} | {row["OI_ACT_3M_X"] or "--"} | {aggr} | {row["EFF_RATIO"] or "--"} | {row["CONTROL"] or "--"} |')
+    lines.extend(['', '## Focused interpretation', ''])
+    for time_text in ('22:17', '22:26', '22:27', '22:37', '22:39'):
+        matching = [row for row in rows if row['_time'].date() == target_day.date() and row['_time'].strftime('%H:%M') == time_text]
+        if not matching:
+            lines.append(f'- **{time_text}**: no matching raw OI minute in the loaded intersection.')
+            continue
+        row = matching[0]
+        lines.append(f'- **{time_text}**: OI ACT X `{row["ACT_X"] or "--"}`, AGGR MAG X `{row["AGGR_MAG_X"] or "--"}`, CONTROL `{row["CONTROL"] or "--"}`, EFF_RATIO `{row["EFF_RATIO"] or "--"}`. It is absent from the current event table because `STRONG/MEGA={row["STRONG"]}/{row["MEGA"]}` is false; the table is driven only by individual STRONG minutes.')
+    lines.append('')
+    useful = [row for row in rows if row['_time'].date() == target_day.date() and row['_time'].hour == 22 and 10 <= row['_time'].minute <= 37 and row['_meaningful'] and str(row['CONTROL']).startswith('CONTROL LIMIT')]
+    lines.append(f'**Earliest 22:10–22:37 meaningful aggression with opposite LIMIT control:** {useful[0]["_time"].strftime("%H:%M") if useful else "none in loaded data"}.')
+    lines.extend(['', '## Counts by comparison window', '', '| WINDOW | RULE | SELECTED | EXTRA |', '|---|---|---:|---:|'])
+    for name, (start, end) in ranges.items():
+        scoped = [row for row in rows if start <= row['_time'] <= end]
+        base = sum(_neighbor_selected(row, 'CURRENT STRONG/MEGA') for row in scoped)
+        for rule in rules[1:]:
+            selected = sum(_neighbor_selected(row, rule) for row in scoped)
+            lines.append(f'| {name} | {rule} | {selected} | {selected - base} |')
+    lines.extend(['', 'No production threshold was selected by this diagnostic pass.'])
+    return '\n'.join(lines) + '\n'
+
+
+def _neighbor_selected(row: dict[str, Any], rule: str) -> bool:
+    return _analysis_selected(row, rule)
+
+
+def run_neighbor_flow_analysis(args: argparse.Namespace) -> None:
+    root = Path(__file__).resolve().parent
+    raw_paths = args.raw_oi or discover_raw_paths(root)
+    market_path = args.market_csv or discover_market_path(root)
+    if not raw_paths:
+        raise RuntimeError('Neighbor analysis: raw OI data was not found')
+    if market_path is None:
+        raise RuntimeError('Neighbor analysis: market CSV was not found')
+    samples = load_raw(raw_paths)
+    market = load_market(market_path)
+    minutes = minute_oi(samples)
+    annotate_minutes(minutes)
+    common = recorded_range(samples, market)
+    if common is not None:
+        start, end = common
+        if args.from_time:
+            start = max(start, parse_time(args.from_time))
+        if args.end:
+            end = min(end, parse_time(args.end))
+        minutes = [row for row in minutes if start <= row['minute'] <= end]
+    rows = _neighbor_analysis_rows(minutes, market)
+    output_csv = root / 'data' / 'research' / 'BTC_LRA_NEIGHBOR_FLOW_ANALYSIS.csv'
+    output_md = root / 'data' / 'research' / 'BTC_LRA_NEIGHBOR_FLOW_ANALYSIS.md'
+    output_csv.parent.mkdir(parents=True, exist_ok=True)
+    with output_csv.open('w', newline='', encoding='utf-8') as handle:
+        writer = csv.DictWriter(handle, fieldnames=NEIGHBOR_ANALYSIS_COLUMNS)
+        writer.writeheader()
+        for row in rows:
+            writer.writerow({key: row.get(key, '') for key in NEIGHBOR_ANALYSIS_COLUMNS})
+    output_md.write_text(_neighbor_report(rows, output_csv), encoding='utf-8')
+    print(f'NEIGHBOR ANALYSIS CSV: {output_csv}')
+    print(f'NEIGHBOR ANALYSIS REPORT: {output_md}')
+    print(f'OI MINUTES: {len(rows)} | STRONG/MEGA: {sum(_neighbor_selected(row, "CURRENT STRONG/MEGA") for row in rows)}')
+
+
+RAW_INTENSITY_COLUMNS = [
+    'TIME', 'PRICE', 'PRICE_CHANGE', 'TAKER_BUY', 'TAKER_SELL', 'AGGR_SIDE',
+    'AGGR_MAG', 'AGGR_MAG_X', 'AGGR_SHARE', 'MEANINGFUL_AGGR', 'EFF_RATIO',
+    'ABSORPTION_RATIO', 'CONTROL', 'STRONG', 'MEGA', 'OI_IMPULSE_5S_EQ_MAX',
+    'OI_ACTIVITY_30S', 'OI_ACTIVITY_60S', 'OI_NET_30S', 'OI_NET_60S',
+    'OI_DIRECTIONALITY_30S', 'OI_DIRECTIONALITY_60S', 'IMPULSE_5S_PCTL',
+    'BURST_30S_PCTL', 'BURST_60S_PCTL', 'MAX_IMPULSE_5S_PCTL',
+    'MAX_BURST_30S_PCTL', 'MAX_BURST_60S_PCTL', 'OI_INTENSITY_PCTL',
+    'P95_HITS', 'P99_HITS', 'PEAK_TIMESTAMP', 'PEAK_TYPE',
+    'WARMUP_INSUFFICIENT',
+]
+
+
+RAW_SAMPLE_COLUMNS = [
+    'TIMESTAMP', 'DT_SEC', 'DOI', 'OI_IMPULSE_5S_EQ', 'OI_ACTIVITY_30S',
+    'OI_ACTIVITY_60S', 'OI_NET_30S', 'OI_NET_60S',
+    'OI_DIRECTIONALITY_30S', 'OI_DIRECTIONALITY_60S', 'IMPULSE_5S_PCTL',
+    'BURST_30S_PCTL', 'BURST_60S_PCTL', 'OI_INTENSITY_PCTL',
+    'WARMUP_INSUFFICIENT',
+]
+
+
+def _raw_intensity_metrics(samples: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """Calculate raw-sample metrics and guarded causal empirical percentiles."""
+    from collections import deque
+
+    if not samples:
+        return []
+    metrics: list[dict[str, Any]] = []
+    left_30 = left_60 = 0
+    activity_30 = activity_60 = net_30 = net_60 = 0.0
+    first_ts = samples[0]['ts']
+    for index, sample in enumerate(samples):
+        if index == 0:
+            dt_sec = None
+            doi = None
+            impulse = None
+        else:
+            dt_sec = (sample['ts'] - samples[index - 1]['ts']).total_seconds()
+            doi = sample['oi'] - samples[index - 1]['oi']
+            impulse = abs(doi) * 5.0 / dt_sec if dt_sec and dt_sec > 0 else None
+        while left_30 < index and samples[left_30]['ts'] < sample['ts'] - timedelta(seconds=30):
+            old = metrics[left_30]
+            activity_30 -= old['_abs_doi']
+            net_30 -= old['_doi']
+            left_30 += 1
+        while left_60 < index and samples[left_60]['ts'] < sample['ts'] - timedelta(seconds=60):
+            old = metrics[left_60]
+            activity_60 -= old['_abs_doi']
+            net_60 -= old['_doi']
+            left_60 += 1
+        abs_doi = abs(doi) if doi is not None else 0.0
+        signed_doi = doi if doi is not None else 0.0
+        activity_30 += abs_doi
+        activity_60 += abs_doi
+        net_30 += signed_doi
+        net_60 += signed_doi
+        metrics.append({
+            'ts': sample['ts'], 'dt_sec': dt_sec, 'doi': doi, 'impulse': impulse,
+            'activity_30': activity_30, 'activity_60': activity_60,
+            'net_30': net_30, 'net_60': net_60,
+            'directionality_30': abs(net_30) / activity_30 if activity_30 > 0 else None,
+            'directionality_60': abs(net_60) / activity_60 if activity_60 > 0 else None,
+            '_doi': signed_doi, '_abs_doi': abs_doi,
+            'warmup': sample['ts'] - first_ts < timedelta(minutes=60),
+        })
+
+    # The reference is a moving sorted distribution. Its upper edge is T-30m
+    # and its lower edge is T-6h30m; neither current nor recent samples enter.
+    sorted_values = {'impulse': [], 'activity_30': [], 'activity_60': []}
+    eligible = {'impulse': deque(), 'activity_30': deque(), 'activity_60': deque()}
+    add_index = 0
+    for index, item in enumerate(metrics):
+        current_time = item['ts']
+        lower = current_time - timedelta(hours=6, minutes=30)
+        upper = current_time - timedelta(minutes=30)
+        while add_index < index and metrics[add_index]['ts'] < upper:
+            candidate = metrics[add_index]
+            if candidate['ts'] >= lower:
+                for key in sorted_values:
+                    value = candidate[key] if key == 'impulse' else candidate[key]
+                    if value is None:
+                        continue
+                    bisect.insort(sorted_values[key], value)
+                    eligible[key].append((candidate['ts'], value))
+            add_index += 1
+        for key in sorted_values:
+            while eligible[key] and eligible[key][0][0] < lower:
+                _, value = eligible[key].popleft()
+                position = bisect.bisect_left(sorted_values[key], value)
+                if position < len(sorted_values[key]):
+                    sorted_values[key].pop(position)
+        if item['warmup']:
+            item['impulse_pctl'] = item['burst_30_pctl'] = item['burst_60_pctl'] = None
+        else:
+            for metric_key, output_key in (
+                ('impulse', 'impulse_pctl'),
+                ('activity_30', 'burst_30_pctl'),
+                ('activity_60', 'burst_60_pctl'),
+            ):
+                value = item[metric_key]
+                distribution = sorted_values[metric_key]
+                if value is None or not distribution:
+                    item[output_key] = None
+                else:
+                    rank = bisect.bisect_right(distribution, value)
+                    item[output_key] = rank / len(distribution) * 100.0
+    return metrics
+
+
+def _raw_intensity_summary(samples: list[dict[str, Any]],
+                           minutes: list[dict[str, Any]],
+                           market: list[dict[str, Any]]) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
+    raw_metrics = _raw_intensity_metrics(samples)
+    by_minute: dict[datetime, list[dict[str, Any]]] = defaultdict(list)
+    for item in raw_metrics:
+        by_minute[item['ts'].replace(second=0, microsecond=0)].append(item)
+    market_rows = _neighbor_analysis_rows(minutes, market)
+    market_by_minute = {row['_time']: row for row in market_rows}
+    summaries: list[dict[str, Any]] = []
+    for minute, raw_rows in sorted(by_minute.items()):
+        valid = [row for row in raw_rows if row['impulse_pctl'] is not None]
+        for row in raw_rows:
+            row['intensity_pctl'] = max((row[key] for key in ('impulse_pctl', 'burst_30_pctl', 'burst_60_pctl') if row[key] is not None), default=None)
+        valid_intensity = [row for row in raw_rows if row['intensity_pctl'] is not None]
+        minute_oi = next((row for row in minutes if row['minute'] == minute), None)
+        market_row = market_by_minute.get(minute, {})
+        peak = max(valid_intensity, key=lambda row: row['intensity_pctl']) if valid_intensity else None
+        peak_type = None
+        if peak:
+            peak_type = max(
+                (('IMPULSE_5S', peak['impulse_pctl']), ('BURST_30S', peak['burst_30_pctl']), ('BURST_60S', peak['burst_60_pctl'])),
+                key=lambda pair: pair[1] if pair[1] is not None else -1,
+            )[0]
+        intensity_values = [row['intensity_pctl'] for row in raw_rows if row['intensity_pctl'] is not None]
+        summary = {
+            'TIME': minute.strftime('%Y-%m-%d %H:%M:%S'),
+            'PRICE': market_row.get('PRICE'), 'REFERENCE_PRICE': market_row.get('REFERENCE_PRICE'),
+            'PRICE_CHANGE': market_row.get('PRICE_CHANGE'),
+            'TAKER_BUY': market_row.get('TAKER_BUY'), 'TAKER_SELL': market_row.get('TAKER_SELL'),
+            'AGGR_SIDE': market_row.get('AGGR_SIDE'), 'AGGR_MAG': market_row.get('AGGR_MAG'),
+            'AGGR_MAG_X': market_row.get('AGGR_MAG_X'), 'AGGR_SHARE': market_row.get('AGGR_SHARE'),
+            'MEANINGFUL_AGGR': market_row.get('MEANINGFUL_AGGR', 'NO'),
+            'EFF_RATIO': market_row.get('EFF_RATIO'), 'ABSORPTION_RATIO': market_row.get('ABSORPTION_RATIO'),
+            'CONTROL': market_row.get('CONTROL'),
+            'STRONG': market_row.get('STRONG', 'NO'), 'MEGA': market_row.get('MEGA', 'NO'),
+            'OI_NET': minute_oi.get('net') if minute_oi else None,
+            'OI_ADD': minute_oi.get('add') if minute_oi else None,
+            'OI_EXIT': minute_oi.get('exit') if minute_oi else None,
+            'OI_ACT': minute_oi.get('activity') if minute_oi else None,
+            'OI_MAX_JUMP': minute_oi.get('jump') if minute_oi else None,
+            'OI_IMPULSE_5S_EQ_MAX': max((row['impulse'] for row in raw_rows if row['impulse'] is not None), default=None),
+            'OI_ACTIVITY_30S': raw_rows[-1]['activity_30'], 'OI_ACTIVITY_60S': raw_rows[-1]['activity_60'],
+            'OI_NET_30S': raw_rows[-1]['net_30'], 'OI_NET_60S': raw_rows[-1]['net_60'],
+            'OI_DIRECTIONALITY_30S': raw_rows[-1]['directionality_30'], 'OI_DIRECTIONALITY_60S': raw_rows[-1]['directionality_60'],
+            'IMPULSE_5S_PCTL': max((row['impulse_pctl'] for row in raw_rows if row['impulse_pctl'] is not None), default=None),
+            'BURST_30S_PCTL': max((row['burst_30_pctl'] for row in raw_rows if row['burst_30_pctl'] is not None), default=None),
+            'BURST_60S_PCTL': max((row['burst_60_pctl'] for row in raw_rows if row['burst_60_pctl'] is not None), default=None),
+            'MAX_IMPULSE_5S_PCTL': max((row['impulse_pctl'] for row in raw_rows if row['impulse_pctl'] is not None), default=None),
+            'MAX_BURST_30S_PCTL': max((row['burst_30_pctl'] for row in raw_rows if row['burst_30_pctl'] is not None), default=None),
+            'MAX_BURST_60S_PCTL': max((row['burst_60_pctl'] for row in raw_rows if row['burst_60_pctl'] is not None), default=None),
+            'OI_INTENSITY_PCTL': max(intensity_values, default=None),
+            'P95_HITS': sum(1 for row in raw_rows if row['intensity_pctl'] is not None and row['intensity_pctl'] >= 95.0),
+            'P99_HITS': sum(1 for row in raw_rows if row['intensity_pctl'] is not None and row['intensity_pctl'] >= 99.0),
+            'PEAK_TIMESTAMP': peak['ts'].strftime('%Y-%m-%d %H:%M:%S') if peak else None,
+            'PEAK_TYPE': peak_type, 'WARMUP_INSUFFICIENT': any(row['warmup'] for row in raw_rows),
+            '_raw_rows': raw_rows, '_minute_oi': minute_oi,
+        }
+        summaries.append({key: _analysis_value(value) for key, value in summary.items() if not key.startswith('_')})
+        summaries[-1]['_raw_rows'] = raw_rows
+        summaries[-1]['_time'] = minute
+    return summaries, raw_metrics
+
+
+def _raw_threshold_selected(row: dict[str, Any], threshold: float, metric: str) -> bool:
+    if row.get('WARMUP_INSUFFICIENT') == 'YES':
+        return False
+    if metric == '5s':
+        value = row.get('MAX_IMPULSE_5S_PCTL')
+    elif metric == '30s':
+        value = row.get('MAX_BURST_30S_PCTL')
+    elif metric == '60s':
+        value = row.get('MAX_BURST_60S_PCTL')
+    else:
+        value = row.get('OI_INTENSITY_PCTL')
+    return value not in (None, '') and float(value) >= threshold
+
+
+def _raw_intensity_report(rows: list[dict[str, Any]], output_csv: Path) -> str:
+    target_day = datetime(2026, 9, 30, tzinfo=PANAMA).date()
+    target_rows = [row for row in rows if row['_time'].date() == target_day and row['_time'].hour == 22 and 10 <= row['_time'].minute <= 40]
+    strong_count = sum(row['STRONG'] == 'YES' or row['MEGA'] == 'YES' for row in rows)
+    lines = [
+        '# BTC-LRA Raw OI Intensity Analysis', '',
+        'Diagnostic-only experiment. Production STRONG/MEGA, AGGR, CONTROL, DOMINANCE, GUI, Pine, replay chronology and `btc-lra-002.py` were not changed.', '',
+        'Raw metrics use `dOI = OI[i] - OI[i-1]`. The reference distribution is causal: `T-6h30m <= sample_time < T-30m`. The last 30 minutes never enter the reference. Percentiles are empirical ranks; warmup points have no threshold selection.', '',
+        f'- CSV: `{output_csv}`', f'- 1m summaries: {len(rows)}', f'- Existing STRONG/MEGA minutes: {strong_count}', '',
+        '## Threshold comparison', '',
+        '| THRESHOLD | 5s | 30s | 60s | COMBINED | +AGGR | +CONTROL |', '|---:|---:|---:|---:|---:|---:|---:|',
+    ]
+    for threshold in (95.0, 97.5, 99.0, 99.5):
+        counts: dict[str, int] = {}
+        for metric in ('5s', '30s', '60s', 'combined'):
+            counts[metric] = sum(_raw_threshold_selected(row, threshold, metric) for row in rows)
+        combined_rows = [row for row in rows if _raw_threshold_selected(row, threshold, 'combined')]
+        aggr_rows = [row for row in combined_rows if row['MEANINGFUL_AGGR'] == 'YES']
+        control_rows = [row for row in combined_rows if row['CONTROL'] not in ('', None, 'CONTROL UNCLEAR')]
+        lines.append(f'| P{threshold:g} | {counts["5s"]} | {counts["30s"]} | {counts["60s"]} | {counts["combined"]} | {len(aggr_rows)} | {len(control_rows)} |')
+    lines.extend(['', '## Target minutes and existing effort/result', '', '| TIME | OI INTENSITY | PEAK TYPE | AGGR | EFF | CONTROL | STRONG |', '|---|---:|---|---|---:|---|---|'])
+    for row in target_rows:
+        aggr = f'{row["AGGR_SIDE"]} {row["AGGR_MAG"]} BTC' if row['AGGR_SIDE'] else '--'
+        lines.append(f'| {row["_time"].strftime("%H:%M")} | {row["OI_INTENSITY_PCTL"] or "--"} | {row["PEAK_TYPE"] or "--"} | {aggr} | {row["EFF_RATIO"] or "--"} | {row["CONTROL"] or "--"} | {row["STRONG"]} |')
+    lines.extend(['', '## Requested 22:10–22:40 detail', '', '| TIME | OI INTENSITY | 5s | 30s | 60s | P99 HITS | PEAK | AGGR | AGGR MAG X | EFF_RATIO | CONTROL | STRONG |', '|---|---:|---:|---:|---:|---:|---|---|---:|---:|---|---|'])
+    for row in target_rows:
+        aggr = f'{row["AGGR_SIDE"]} {row["AGGR_MAG"]}' if row['AGGR_SIDE'] else '--'
+        lines.append(f'| {row["_time"].strftime("%H:%M")} | {row["OI_INTENSITY_PCTL"] or "--"} | {row["IMPULSE_5S_PCTL"] or "--"} | {row["BURST_30S_PCTL"] or "--"} | {row["BURST_60S_PCTL"] or "--"} | {row["P99_HITS"]} | {row["PEAK_TYPE"] or "--"} | {aggr} | {row["AGGR_MAG_X"] or "--"} | {row["EFF_RATIO"] or "--"} | {row["CONTROL"] or "--"} | {row["STRONG"]} |')
+    lines.extend(['', '## 22:17 / 22:26 / 22:27 / 22:37 / 22:39', ''])
+    for time_text in ('22:17', '22:26', '22:27', '22:37', '22:39'):
+        matching = [row for row in target_rows if row['_time'].strftime('%H:%M') == time_text]
+        if not matching:
+            lines.append(f'- **{time_text}**: no raw OI minute in loaded data.')
+            continue
+        row = matching[0]
+        lines.append(f'- **{time_text}**: intensity `{row["OI_INTENSITY_PCTL"] or "--"}` (5s `{row["IMPULSE_5S_PCTL"] or "--"}`, 30s `{row["BURST_30S_PCTL"] or "--"}`, 60s `{row["BURST_60S_PCTL"] or "--"}`), P99 hits `{row["P99_HITS"]}`, peak `{row["PEAK_TYPE"] or "--"}`, AGGR `{row["AGGR_SIDE"] or "--"} {row["AGGR_MAG"] or "--"}`, CONTROL `{row["CONTROL"] or "--"}`, STRONG `{row["STRONG"]}`.')
+    lines.extend(['', '## Threshold detail for benchmark minutes', '', '| THRESHOLD | 5s | 30s | 60s | COMBINED | +AGGR | +CONTROL |', '|---:|---|---|---|---|---|---|'])
+    for threshold in (95.0, 97.5, 99.0, 99.5):
+        cells = []
+        for metric in ('5s', '30s', '60s', 'combined'):
+            selected = [row['_time'].strftime('%H:%M') for row in target_rows if _raw_threshold_selected(row, threshold, metric)]
+            cells.append(', '.join(selected) or '--')
+        aggr = [row['_time'].strftime('%H:%M') for row in target_rows if _raw_threshold_selected(row, threshold, 'combined') and row['MEANINGFUL_AGGR'] == 'YES']
+        control = [row['_time'].strftime('%H:%M') for row in target_rows if _raw_threshold_selected(row, threshold, 'combined') and row['CONTROL'] not in ('', None, 'CONTROL UNCLEAR')]
+        lines.append(f'| P{threshold:g} | {cells[0]} | {cells[1]} | {cells[2]} | {cells[3]} | {", ".join(aggr) or "--"} | {", ".join(control) or "--"} |')
+    lines.extend(['', '## Interpretation framework', '', '- **Single impulse:** high 5s percentile but low `P99_HITS` and no repeated high 30s/60s percentile.', '- **Burst:** high 30s/60s percentile with multiple raw high-percentile samples.', '- **Sustained process:** high-percentile minutes repeated across neighboring 1m rows. This report describes the evidence; it does not create a production event rule.', '', f'Existing STRONG/MEGA count used for regression check: **{strong_count}**.', 'The report does not select a production threshold or declare a trading signal.'])
+    return '\n'.join(lines) + '\n'
+
+
+def run_raw_intensity_analysis(args: argparse.Namespace) -> None:
+    root = Path(__file__).resolve().parent
+    raw_paths = args.raw_oi or discover_raw_paths(root)
+    market_path = args.market_csv or discover_market_path(root)
+    if not raw_paths:
+        raise RuntimeError('Raw intensity analysis: raw OI data was not found')
+    if market_path is None:
+        raise RuntimeError('Raw intensity analysis: market CSV was not found')
+    samples = load_raw(raw_paths)
+    market = load_market(market_path)
+    minutes = minute_oi(samples)
+    annotate_minutes(minutes)
+    common = recorded_range(samples, market)
+    if common is not None:
+        start, end = common
+        if args.from_time:
+            start = max(start, parse_time(args.from_time))
+        if args.end:
+            end = min(end, parse_time(args.end))
+        samples = [row for row in samples if start <= row['ts'] <= end + timedelta(minutes=1)]
+        minutes = [row for row in minutes if start <= row['minute'] <= end]
+    rows, raw_metrics = _raw_intensity_summary(samples, minutes, market)
+    output_csv = root / 'data' / 'research' / 'BTC_LRA_RAW_OI_INTENSITY.csv'
+    output_samples = root / 'data' / 'research' / 'BTC_LRA_RAW_OI_INTENSITY_SAMPLES.csv'
+    output_md = root / 'data' / 'research' / 'BTC_LRA_RAW_OI_INTENSITY_ANALYSIS.md'
+    output_csv.parent.mkdir(parents=True, exist_ok=True)
+    with output_csv.open('w', newline='', encoding='utf-8') as handle:
+        writer = csv.DictWriter(handle, fieldnames=RAW_INTENSITY_COLUMNS)
+        writer.writeheader()
+        for row in rows:
+            writer.writerow({key: row.get(key, '') for key in RAW_INTENSITY_COLUMNS})
+    benchmark_ranges = (
+        (datetime(2026, 9, 30, 14, 45, tzinfo=PANAMA), datetime(2026, 9, 30, 15, 0, 59, tzinfo=PANAMA)),
+        (datetime(2026, 9, 30, 20, 25, tzinfo=PANAMA), datetime(2026, 9, 30, 20, 45, 59, tzinfo=PANAMA)),
+        (datetime(2026, 9, 30, 22, 10, tzinfo=PANAMA), datetime(2026, 9, 30, 22, 40, 59, tzinfo=PANAMA)),
+    )
+    with output_samples.open('w', newline='', encoding='utf-8') as handle:
+        writer = csv.DictWriter(handle, fieldnames=RAW_SAMPLE_COLUMNS)
+        writer.writeheader()
+        for item in raw_metrics:
+            if not any(start <= item['ts'] <= end for start, end in benchmark_ranges):
+                continue
+            row = {
+                'TIMESTAMP': item['ts'].strftime('%Y-%m-%d %H:%M:%S'), 'DT_SEC': item['dt_sec'], 'DOI': item['doi'],
+                'OI_IMPULSE_5S_EQ': item['impulse'], 'OI_ACTIVITY_30S': item['activity_30'], 'OI_ACTIVITY_60S': item['activity_60'],
+                'OI_NET_30S': item['net_30'], 'OI_NET_60S': item['net_60'], 'OI_DIRECTIONALITY_30S': item['directionality_30'],
+                'OI_DIRECTIONALITY_60S': item['directionality_60'], 'IMPULSE_5S_PCTL': item['impulse_pctl'],
+                'BURST_30S_PCTL': item['burst_30_pctl'], 'BURST_60S_PCTL': item['burst_60_pctl'],
+                'OI_INTENSITY_PCTL': item.get('intensity_pctl'), 'WARMUP_INSUFFICIENT': item['warmup'],
+            }
+            writer.writerow({key: _analysis_value(value) for key, value in row.items()})
+    output_md.write_text(_raw_intensity_report(rows, output_csv), encoding='utf-8')
+    print(f'RAW INTENSITY CSV: {output_csv}')
+    print(f'RAW SAMPLE AUDIT CSV: {output_samples}')
+    print(f'RAW INTENSITY REPORT: {output_md}')
+
+
+def _raw_float(value: Any) -> float | None:
+    if value in (None, ''):
+        return None
+    return float(value)
+
+
+def _raw_event_payload(summary: dict[str, Any], session: 'Session') -> dict[str, Any]:
+    """Convert a raw-intensity minute into a presentation-only event object."""
+    control = summary.get('CONTROL') or 'CONTROL UNCLEAR'
+    raw_class = 'RAW STRONG' if float(summary.get('OI_INTENSITY_PCTL') or 0) >= 99.0 else 'RAW WATCH'
+    control_text = control.removeprefix('CONTROL ')
+    oi_net_60s = _raw_float(summary.get('OI_NET_60S')) or 0.0
+    oi_directionality_60s = _raw_float(summary.get('OI_DIRECTIONALITY_60S'))
+    oi_flow = 'EXPANSION' if oi_net_60s > 0 else 'CONTRACTION' if oi_net_60s < 0 else 'FLAT'
+    aggr_side = summary.get('AGGR_SIDE') or 'HELD'
+    aggr_mag = _raw_float(summary.get('AGGR_MAG')) or 0.0
+    aggr_share = _raw_float(summary.get('AGGR_SHARE')) or 0.0
+    payload = {
+        'time': summary['_time'],
+        'event_source': 'RAW_OI_INTENSITY',
+        'raw_class': raw_class,
+        'raw_watch': True,
+        'raw_strong': raw_class == 'RAW STRONG',
+        'raw_oi_intensity_pctl': _raw_float(summary.get('OI_INTENSITY_PCTL')),
+        'raw_peak_type': summary.get('PEAK_TYPE'),
+        'raw_oi_net_60s': oi_net_60s,
+        'raw_oi_directionality_60s': oi_directionality_60s,
+        'raw_oi_flow': oi_flow,
+        'raw_aggr': f'{aggr_side} {aggr_share:.1f}% {compact(aggr_mag)} BTC',
+        'raw_eff_ratio': _raw_float(summary.get('EFF_RATIO')),
+        'raw_control': control,
+        'control_label': control,
+        'display_control_text': f'{raw_class} {control_text} | {oi_flow} {oi_directionality_60s:.2f}' if oi_directionality_60s is not None else f'{raw_class} {control_text} | {oi_flow}',
+        'aggr_side': aggr_side,
+        'aggr_mag': aggr_mag,
+        'aggr_share_pct': aggr_share,
+        'meaningful_aggression': summary.get('MEANINGFUL_AGGR') == 'YES',
+        'event_oi_net': _raw_float(summary.get('OI_NET')) or 0.0,
+        'event_oi_activity': _raw_float(summary.get('OI_ACT')) or 0.0,
+        'display_oi_add': _raw_float(summary.get('OI_ADD')) or 0.0,
+        'display_oi_exit': _raw_float(summary.get('OI_EXIT')) or 0.0,
+        'display_oi_jump': _raw_float(summary.get('OI_MAX_JUMP')) or 0.0,
+        'display_reference_price': _raw_float(summary.get('REFERENCE_PRICE')),
+        'display_event_price': _raw_float(summary.get('PRICE')),
+        'display_price_change': _raw_float(summary.get('PRICE_CHANGE')),
+        'display_taker_buy': _raw_float(summary.get('TAKER_BUY')) or 0.0,
+        'display_taker_sell': _raw_float(summary.get('TAKER_SELL')) or 0.0,
+        'display_flow_delta': (_raw_float(summary.get('TAKER_BUY')) or 0.0) - (_raw_float(summary.get('TAKER_SELL')) or 0.0),
+        'oi_add_mass': _raw_float(summary.get('OI_ADD')) or 0.0,
+        'raw_dominance_v2_contribution_btc': 0.0,
+        'raw_oi_flow_contribution': 0.0,
+        'oi_flow_contribution': 0.0,
+        'event_flags': [raw_class],
+        'oi_event_flow': session.oi_event_flow,
+        'buy_dominance_v2_btc': session.buy_dominance_v2_btc,
+        'sell_dominance_v2_btc': session.sell_dominance_v2_btc,
+    }
+    return payload
+
+
+def apply_raw_event_to_session(session: 'Session', summary: dict[str, Any]) -> dict[str, Any] | None:
+    """Append/annotate raw events without changing OI flow or dominance."""
+    if summary.get('WARMUP_INSUFFICIENT') == 'YES':
+        return None
+    intensity = _raw_float(summary.get('OI_INTENSITY_PCTL'))
+    if intensity is None or intensity < 97.5:
+        return None
+    if summary.get('MEANINGFUL_AGGR') != 'YES' or summary.get('CONTROL') in ('', None, 'CONTROL UNCLEAR'):
+        return None
+    existing = next((event for event in session.event_history if event.get('time') == summary['_time']), None)
+    if existing is not None:
+        flags = existing.setdefault('event_flags', ['STRONG/MEGA'])
+        raw_class = 'RAW STRONG' if intensity >= 99.0 else 'RAW WATCH'
+        if raw_class not in flags:
+            flags.append(raw_class)
+        existing.update({
+            'raw_watch': True,
+            'raw_strong': intensity >= 99.0,
+            'raw_class': raw_class,
+            'raw_oi_intensity_pctl': intensity,
+            'raw_peak_type': summary.get('PEAK_TYPE'),
+            'raw_oi_net_60s': _raw_float(summary.get('OI_NET_60S')),
+            'raw_oi_directionality_60s': _raw_float(summary.get('OI_DIRECTIONALITY_60S')),
+            'raw_oi_flow': 'EXPANSION' if (_raw_float(summary.get('OI_NET_60S')) or 0.0) > 0 else 'CONTRACTION' if (_raw_float(summary.get('OI_NET_60S')) or 0.0) < 0 else 'FLAT',
+            'raw_aggr': f'{summary.get("AGGR_SIDE") or "HELD"} {float(summary.get("AGGR_SHARE") or 0.0):.1f}% {compact(_raw_float(summary.get("AGGR_MAG")) or 0.0)} BTC',
+            'raw_eff_ratio': _raw_float(summary.get('EFF_RATIO')),
+            'raw_control': summary.get('CONTROL') or 'CONTROL UNCLEAR',
+            'raw_dominance_v2_contribution_btc': 0.0,
+            'raw_oi_flow_contribution': 0.0,
+        })
+        return existing
+    event = _raw_event_payload(summary, session)
+    session.event_history.append(event)
+    return event
+
+
 class Session:
     def __init__(self, anchor: datetime) -> None:
         self.anchor = anchor
@@ -447,6 +1156,8 @@ class Session:
         self.market_history: list[dict[str, Any]] = []
         self.buy_dominance_weight_usdt = 0.0
         self.sell_dominance_weight_usdt = 0.0
+        self.buy_dominance_v2_btc = 0.0
+        self.sell_dominance_v2_btc = 0.0
         self.buy_peak = self.sell_peak = 0.0
         self.last_control: str | None = None
         self.last_low: float | None = None
@@ -591,6 +1302,36 @@ class Session:
         if 'BUY PRESSURE FAILED' in classification:
             return 'CONTROL LIMIT SELL'
         return 'CONTROL NEUTRAL'
+
+    def apply_dominance_v2(self, oi_add: float, effort: dict[str, Any]) -> dict[str, Any]:
+        """Accumulate the separate OI-mass/control-strength dominance model."""
+        control = str(effort.get('control', 'CONTROL UNCLEAR'))
+        if control.startswith('CONTROL '):
+            control = control.removeprefix('CONTROL ')
+        side = 'BUY' if control.endswith('BUY') else 'SELL' if control.endswith('SELL') else None
+        if control.startswith('LIMIT '):
+            strength = min(1.0, max(0.0, float(effort.get('absorption_ratio') or 0.0)))
+        elif control.startswith('MARKET '):
+            strength = min(1.0, max(0.0, float(effort.get('eff_ratio') or 0.0)))
+        else:
+            strength = 0.0
+        weight = float(oi_add or 0.0) * strength if side is not None else 0.0
+        if side == 'BUY':
+            self.buy_dominance_v2_btc += weight
+        elif side == 'SELL':
+            self.sell_dominance_v2_btc += weight
+        buy_pct, sell_pct = dominance_percentages(
+            self.buy_dominance_v2_btc, self.sell_dominance_v2_btc
+        )
+        return {
+            'v2_side': side or 'UNCLEAR',
+            'v2_strength': strength,
+            'v2_weight_btc': weight,
+            'buy_dominance_v2_btc': self.buy_dominance_v2_btc,
+            'sell_dominance_v2_btc': self.sell_dominance_v2_btc,
+            'buy_v2_pct': buy_pct,
+            'sell_v2_pct': sell_pct,
+        }
 
     def effort_result_control(self, event_time: datetime, taker_buy: float,
                               taker_sell: float, price_change: float | None,
@@ -784,8 +1525,11 @@ class Session:
             event.get('display_reference_price'),
         )
         control_label = effort['control']
-        current = dict(snap, time=minute['minute'], flow=flow, flow_adv=abs(flow_delta), price_change=price_change, classification=classification, control_label=control_label, event_oi_net=event_oi_net, event_oi_activity=event_oi_activity, display_flow=display_flow, display_flow_adv=abs(display_delta), display_price_change=display_price_change, display_event_price=event.get('display_event_price'), **effort)
+        v2 = self.apply_dominance_v2(float(minute.get('add', 0.0)), effort)
+        current = dict(snap, time=minute['minute'], flow=flow, flow_adv=abs(flow_delta), price_change=price_change, classification=classification, control_label=control_label, event_oi_net=event_oi_net, event_oi_activity=event_oi_activity, display_flow=display_flow, display_flow_adv=abs(display_delta), display_price_change=display_price_change, display_event_price=event.get('display_event_price'), display_reference_price=event.get('display_reference_price'), display_taker_buy=event.get('display_taker_buy', 0.0), display_taker_sell=event.get('display_taker_sell', 0.0), display_flow_delta=event.get('display_flow_delta', display_delta), display_oi_add=float(minute.get('add', 0.0)), display_oi_exit=float(minute.get('exit', 0.0)), display_oi_jump=float(minute.get('jump', 0.0)), oi_add_mass=float(minute.get('add', 0.0)), **effort, **v2)
+        current['event_flags'] = ['STRONG/MEGA']
         self.oi_event_flow += float(event_oi_net or 0.0)
+        current['oi_flow_contribution'] = float(event_oi_net or 0.0)
         current['oi_event_flow'] = self.oi_event_flow
         self.last_events.append(current)
         self.event_history.append(current)
@@ -902,6 +1646,8 @@ def run_replay_live(args: argparse.Namespace, gui: GuiBridge | None = None) -> N
     market = load_market(market_path)
     all_minutes = minute_oi(samples)
     annotate_minutes(all_minutes)
+    raw_flow_summaries, _raw_flow_samples = _raw_intensity_summary(samples, all_minutes, market)
+    raw_flow_by_time = {row['_time']: row for row in raw_flow_summaries}
     common = recorded_range(samples, market)
     if common is None:
         raise SystemExit('Нет общего записанного диапазона между raw OI и market 1m.')
@@ -912,6 +1658,12 @@ def run_replay_live(args: argparse.Namespace, gui: GuiBridge | None = None) -> N
     tv_path = root / 'BTC_LRA_TV_EVENTS.pine'
     tv_event_history: dict[datetime, dict[str, Any]] = {}
     write_tv_events_pine(tv_path, [])
+    v2_report_path = root / 'data' / 'research' / 'BTC_LRA_DOMINANCE_V2_REPLAY.txt'
+    v2_rows: list[dict[str, Any]] = []
+    v2_checkpoints = [datetime(2026, 9, 30, hour, minute, tzinfo=PANAMA) for hour, minute in (
+        (14, 54), (17, 7), (18, 51), (20, 5), (20, 31), (22, 37), (22, 39), (22, 44), (23, 10)
+    )]
+    write_v2_replay_report(v2_report_path, v2_rows, session, v2_checkpoints)
     log_path.write_text('', encoding='utf-8')
     write_replay_log(log_path, f'RAW OI: {fmt_time(samples[0]["ts"])} -> {fmt_time(samples[-1]["ts"])} | samples={len(samples)}')
     write_replay_log(log_path, f'MARKET 1M: {fmt_time(market[0]["ts"])} -> {fmt_time(market[-1]["ts"])} | bars={len(market)}')
@@ -972,6 +1724,9 @@ def run_replay_live(args: argparse.Namespace, gui: GuiBridge | None = None) -> N
                 decorate_event_interval(event, prefix_minutes, market)
                 with contextlib.redirect_stdout(io.StringIO()):
                     rebuilt.emit_event(event, minute, [market_row] if market_row else [])
+            raw_summary = raw_flow_by_time.get(minute_time)
+            if raw_summary is not None:
+                apply_raw_event_to_session(rebuilt, raw_summary)
             rebuilt.snapshot(minute_time)
         return rebuilt
 
@@ -1091,6 +1846,24 @@ def run_replay_live(args: argparse.Namespace, gui: GuiBridge | None = None) -> N
                 tv_event_history[minute_time] = dict(session.event_history[-1])
                 write_tv_events_pine(tv_path, list(tv_event_history.values()))
                 debug_event = session.last_events[-1]
+                v2_rows.append({
+                    'time': minute_time,
+                    'oi_add': minute['add'],
+                    'oi_net': minute['net'],
+                    'oi_activity': minute['activity'],
+                    'aggr': f'{debug_event.get("aggr_side")} {debug_event.get("aggr_share_pct", 0.0):.1f}% {compact(debug_event.get("aggr_mag", 0.0))}',
+                    'control': debug_event.get('control', 'CONTROL UNCLEAR').removeprefix('CONTROL '),
+                    'eff_ratio': debug_event.get('eff_ratio'),
+                    'absorption_ratio': debug_event.get('absorption_ratio'),
+                    'v2_side': debug_event.get('v2_side'),
+                    'strength': debug_event.get('v2_strength', 0.0),
+                    'weight': debug_event.get('v2_weight_btc', 0.0),
+                    'cum_buy': debug_event.get('buy_dominance_v2_btc', 0.0),
+                    'cum_sell': debug_event.get('sell_dominance_v2_btc', 0.0),
+                    'buy_pct': debug_event.get('buy_v2_pct'),
+                    'sell_pct': debug_event.get('sell_v2_pct'),
+                })
+                write_v2_replay_report(v2_report_path, v2_rows, session, v2_checkpoints)
                 write_replay_log(log_path, 'EFFORT_RESULT ' + json.dumps({
                     'timestamp': minute_time.isoformat(),
                     'taker_buy': event.get('display_taker_buy', 0.0),
@@ -1117,8 +1890,33 @@ def run_replay_live(args: argparse.Namespace, gui: GuiBridge | None = None) -> N
                     'sell_dominance_weight_usdt': debug_event.get('sell_dominance_weight_usdt'),
                     'buy_dominance_pct': debug_event.get('buy_dominance_pct'),
                     'sell_dominance_pct': debug_event.get('sell_dominance_pct'),
+                    'oi_add_mass_btc': debug_event.get('oi_add_mass'),
+                    'v2_side': debug_event.get('v2_side'),
+                    'v2_strength': debug_event.get('v2_strength'),
+                    'v2_weight_btc': debug_event.get('v2_weight_btc'),
+                    'cum_buy_v2_btc': debug_event.get('buy_dominance_v2_btc'),
+                    'cum_sell_v2_btc': debug_event.get('sell_dominance_v2_btc'),
+                    'buy_v2_pct': debug_event.get('buy_v2_pct'),
+                    'sell_v2_pct': debug_event.get('sell_v2_pct'),
                 }, ensure_ascii=False))
                 write_replay_log(log_path, f'{fmt_time(clock)} | СИЛЬНОЕ OI-СОБЫТИЕ | подтверждено {minute_time.strftime("%H:%M")}')
+            raw_summary = raw_flow_by_time.get(minute_time)
+            if raw_summary is not None:
+                raw_event = apply_raw_event_to_session(session, raw_summary)
+                if raw_event is not None:
+                    write_replay_log(log_path, 'RAW_OI_EVENT ' + json.dumps({
+                        'timestamp': minute_time.isoformat(),
+                        'classification': raw_event.get('raw_class'),
+                        'oi_intensity_pctl': raw_event.get('raw_oi_intensity_pctl'),
+                        'peak_type': raw_event.get('raw_peak_type'),
+                        'oi_net_60s': raw_event.get('raw_oi_net_60s'),
+                        'oi_directionality_60s': raw_event.get('raw_oi_directionality_60s'),
+                        'oi_flow': raw_event.get('raw_oi_flow'),
+                        'aggr': raw_event.get('raw_aggr'),
+                        'eff_ratio': raw_event.get('raw_eff_ratio'),
+                        'control': raw_event.get('raw_control'),
+                        'dominance_v2_contribution_btc': 0.0,
+                    }, ensure_ascii=False))
             peaks = (session.sell_peak, session.buy_peak)
             state_changed = current['status'] != previous_status or peaks != previous_peaks
             if state_changed:
@@ -1147,12 +1945,14 @@ def run_replay_live(args: argparse.Namespace, gui: GuiBridge | None = None) -> N
     process_until(end + timedelta(minutes=1))
     publish_gui(gui, session, end, speed, live=False, market_price=latest_closed_market_price(end))
     final = session.snapshot(end)
+    write_v2_replay_report(v2_report_path, v2_rows, session, v2_checkpoints)
     write_replay_log(log_path, f'FINAL | {fmt_time(end)} | buy={session.buy:.1f} | sell={session.sell:.1f} | oi_net={final["oi_net"]} | events={event_count} | crosses={flow_cross_count}')
     print(f'\nЗАПИСАННЫЙ REPLAY ЗАВЕРШЁН | СИЛЬНЫХ OI-СОБЫТИЙ: {event_count} | СМЕН НАКОПИТЕЛЬНОГО ДОМИНАНТА: {flow_cross_count}')
     print(f'RAW OI: {fmt_time(samples[0]["ts"])} -> {fmt_time(samples[-1]["ts"])} | {len(samples)} samples')
     print(f'MARKET 1M: {fmt_time(market[0]["ts"])} -> {fmt_time(market[-1]["ts"])} | {len(market)} bars')
     print(f'ОБЩИЙ ДИАПАЗОН: {fmt_time(start)} -> {fmt_time(end)}')
     print(f'TV PINE: {tv_path} | events={len(tv_event_history)}')
+    print(f'DOMINANCE V2 REPORT: {v2_report_path} | events={len(v2_rows)}')
     print('ZERO FUTURE LEAKAGE: PASS | STRONG detector: unchanged')
     for line in event_source_validation(all_minutes):
         print(line)
@@ -1274,7 +2074,7 @@ def launch_gui(args: argparse.Namespace) -> None:
             horizontal.setSectionResizeMode(QHeaderView.ResizeMode.ResizeToContents)
             horizontal.setFixedHeight(30)
             horizontal.setStyleSheet('QHeaderView::section { border-bottom: 1px solid #a8a8a8; }')
-            sample_values = ['14:51', '83 520.5 USDT', '306.7 BTC', '+290.7 BTC', 'SELL 58.9% +112.1 BTC', '-87.3 USDT', 'MARKET SELL']
+            sample_values = ['14:51', '83 520.5', '306.7 BTC', '+290.7 BTC', 'SELL 58.9% +112.1 BTC', '-87.3 USDT', 'MARKET SELL']
             self.table.setRowCount(1)
             for column, value in enumerate(sample_values):
                 item = QTableWidgetItem(value)
@@ -1310,7 +2110,9 @@ def launch_gui(args: argparse.Namespace) -> None:
             self._content_width_initialized = False
             self._setting_initial_size = True
             self._resizing_to_content = False
+            self._user_resized = False
             self._snapping_height = False
+            self._current_plain_text = ''
             horizontal.setMinimumSectionSize(0)
             initial_metrics = QFontMetrics(font)
             initial_headers = ['TIME', 'BTC PRICE', 'OI ACT', 'NET', 'AGGR', 'ΔPRICE', 'CONTROL']
@@ -1367,7 +2169,7 @@ def launch_gui(args: argparse.Namespace) -> None:
             top_width = max(
                 metrics.horizontalAdvance(self.header.text()),
                 metrics.horizontalAdvance(self.replay_line.text()),
-                metrics.horizontalAdvance(self.current.text()),
+                metrics.horizontalAdvance(self._current_plain_text or self.current.text()),
             )
             required_width = max(top_width, sum(self._natural_column_widths)) + 16
             if self.table.verticalScrollBarPolicy() == Qt.ScrollBarPolicy.ScrollBarAsNeeded:
@@ -1376,7 +2178,7 @@ def launch_gui(args: argparse.Namespace) -> None:
                 self._content_width_initialized = True
                 self.resize_columns()
             self._required_content_width = required_width
-            if required_width > self.width() and not self._resizing_to_content:
+            if not self._user_resized and required_width > self.width() and not self._resizing_to_content:
                 self._resizing_to_content = True
                 self._setting_initial_size = True
                 self.resize(required_width, self.height())
@@ -1385,6 +2187,7 @@ def launch_gui(args: argparse.Namespace) -> None:
 
         def showEvent(self, event) -> None:
             super().showEvent(event)
+            self._user_resized = False
             self.apply_sharp_corners()
             self.update_content_widths([])
 
@@ -1404,19 +2207,10 @@ def launch_gui(args: argparse.Namespace) -> None:
                 pass
 
         def resizeEvent(self, event) -> None:
+            if not self._setting_initial_size and not self._resizing_to_content and self.isVisible():
+                self._user_resized = True
             super().resizeEvent(event)
             self.snap_height_to_rows()
-            if (
-                self.isVisible()
-                and not self._setting_initial_size
-                and not self._resizing_to_content
-                and getattr(self, '_required_content_width', 0) > self.width()
-            ):
-                self._resizing_to_content = True
-                self._setting_initial_size = True
-                self.resize(self._required_content_width, self.height())
-                self._setting_initial_size = False
-                self._resizing_to_content = False
             self.sync_row_slots()
             self.resize_columns()
 
@@ -1489,7 +2283,20 @@ def launch_gui(args: argparse.Namespace) -> None:
             mode = 'LIVE FROM' if snapshot['live'] else 'SCAN FROM'
             self.header.setText(f'OI FLOW MONITORING / {mode} {snapshot["anchor"]}')
             self.replay_line.setText('' if snapshot['live'] else f'ИСТОРИЧЕСКОЕ ВРЕМЯ {snapshot["clock"]} | СКОРОСТЬ {snapshot["speed"]:g}x')
-            self.current.setText(f'{snapshot["price"]} | {snapshot["clock"].split(" / ")[0]} | {snapshot["dominance"]} | {snapshot["oi_flow"]}')
+            buy_pct = snapshot.get('dominance_v2_buy_pct')
+            sell_pct = snapshot.get('dominance_v2_sell_pct')
+            buy_text = '--' if buy_pct is None else f'{buy_pct:.1f}%'
+            sell_text = '--' if sell_pct is None else f'{sell_pct:.1f}%'
+            self._current_plain_text = (
+                f'{snapshot["clock"].split(" / ")[0]} | '
+                f'DOMINANCE {buy_text} {sell_text} | {snapshot["oi_flow"]}'
+            )
+            self.current.setText(
+                f'{snapshot["clock"].split(" / ")[0]} | DOMINANCE '
+                f'<span style="color:#168a2f">{buy_text}</span> '
+                f'<span style="color:#c62828">{sell_text}</span> | '
+                f'{snapshot["oi_flow"]}'
+            )
             rows = snapshot['events']
             old_real_count = self._real_event_count
             anchor_changed = self._last_anchor != snapshot['anchor']
@@ -1567,7 +2374,17 @@ def main() -> None:
     parser.add_argument('--sound', choices=('on', 'off'), default='off')
     parser.add_argument('--log', type=Path)
     parser.add_argument('--gui', action='store_true', help='запустить PySide6 dashboard')
+    parser.add_argument('--neighbor-analysis', action='store_true',
+                        help='write causal neighboring OI/aggression diagnostics')
+    parser.add_argument('--raw-intensity-analysis', action='store_true',
+                        help='write causal raw OI intensity percentile diagnostics')
     args = parser.parse_args()
+    if args.neighbor_analysis:
+        run_neighbor_flow_analysis(args)
+        return
+    if args.raw_intensity_analysis:
+        run_raw_intensity_analysis(args)
+        return
     if args.gui:
         if args.mode not in ('replay-live', 'live'):
             parser.error('--gui поддерживается для --mode replay-live или --mode live')
