@@ -341,9 +341,9 @@ def publish_gui(bridge: GuiBridge | None, session: 'Session', clock: datetime,
     old_buy_pct, old_sell_pct = dominance_percentages(
         session.buy_dominance_weight_usdt, session.sell_dominance_weight_usdt
     )
-    v2_buy_pct, v2_sell_pct = dominance_percentages(
-        session.buy_dominance_v2_btc, session.sell_dominance_v2_btc
-    )
+    display_buy_dom = session.buy_dominance_v2_btc + session.provisional_buy_dominance_v2_btc
+    display_sell_dom = session.sell_dominance_v2_btc + session.provisional_sell_dominance_v2_btc
+    v2_buy_pct, v2_sell_pct = dominance_percentages(display_buy_dom, display_sell_dom)
     old_dominance = (
         f'DOMINANCE OLD BUY {old_buy_pct:.1f}% / SELL {old_sell_pct:.1f}%'
         if old_buy_pct is not None else 'DOMINANCE OLD BUY -- / SELL --'
@@ -362,7 +362,7 @@ def publish_gui(bridge: GuiBridge | None, session: 'Session', clock: datetime,
         'dominance_v2': v2_dominance,
         'dominance_v2_buy_pct': v2_buy_pct,
         'dominance_v2_sell_pct': v2_sell_pct,
-        'oi_flow': f'OI FLOW {compact(session.oi_event_flow)} BTC',
+        'oi_flow': f'OI FLOW {compact(session.oi_event_flow + session.provisional_oi_flow)} BTC',
         'events': events,
     })
 
@@ -1076,7 +1076,7 @@ def _raw_event_payload(summary: dict[str, Any], session: 'Session') -> dict[str,
         'raw_eff_ratio': _raw_float(summary.get('EFF_RATIO')),
         'raw_control': control,
         'control_label': control,
-        'display_control_text': f'{raw_class} {control_text} | {oi_flow} {oi_directionality_60s:.2f}' if oi_directionality_60s is not None else f'{raw_class} {control_text} | {oi_flow}',
+        'display_control_text': control_text,
         'aggr_side': aggr_side,
         'aggr_mag': aggr_mag,
         'aggr_share_pct': aggr_share,
@@ -1158,6 +1158,10 @@ class Session:
         self.sell_dominance_weight_usdt = 0.0
         self.buy_dominance_v2_btc = 0.0
         self.sell_dominance_v2_btc = 0.0
+        self.provisional_oi_flow = 0.0
+        self.provisional_buy_dominance_v2_btc = 0.0
+        self.provisional_sell_dominance_v2_btc = 0.0
+        self.raw_minute_ledgers: dict[datetime, dict[str, Any]] = {}
         self.buy_peak = self.sell_peak = 0.0
         self.last_control: str | None = None
         self.last_low: float | None = None
@@ -1178,6 +1182,109 @@ class Session:
 
     def reset(self, anchor: datetime) -> None:
         self.__init__(anchor)
+
+    def raw_ledger(self, minute: datetime) -> dict[str, Any]:
+        return self.raw_minute_ledgers.setdefault(minute, {
+            'minute': minute,
+            'raw_flow_counted': 0.0,
+            'raw_buy_dom_counted': 0.0,
+            'raw_sell_dom_counted': 0.0,
+            'raw_samples_counted': 0,
+            'raw_samples_seen': 0,
+            'sample_timestamps': set(),
+            'strong_finalized': False,
+            'final_flow_contribution': 0.0,
+            'final_buy_dom_contribution': 0.0,
+            'final_sell_dom_contribution': 0.0,
+        })
+
+    def apply_raw_sample(self, sample: dict[str, Any], raw_metric: dict[str, Any],
+                         partial_effort: dict[str, Any] | None = None,
+                         log_path: Path | None = None) -> dict[str, Any] | None:
+        """Apply only a causal, qualified sample to provisional accumulators."""
+        minute = sample['ts'].replace(second=0, microsecond=0)
+        ledger = self.raw_ledger(minute)
+        timestamp = sample['ts']
+        if timestamp in ledger['sample_timestamps']:
+            return None
+        ledger['sample_timestamps'].add(timestamp)
+        ledger['raw_samples_seen'] += 1
+        pctl = max((raw_metric.get(key) for key in ('impulse_pctl', 'burst_30_pctl', 'burst_60_pctl') if raw_metric.get(key) is not None), default=None)
+        if pctl is None or pctl < 97.5 or partial_effort is None:
+            return None
+        control = partial_effort.get('control', 'CONTROL UNCLEAR')
+        if not partial_effort.get('meaningful_aggression') or control == 'CONTROL UNCLEAR':
+            return None
+        ledger['raw_samples_counted'] += 1
+        d_oi = float(raw_metric.get('doi') or 0.0)
+        flow_delta = d_oi
+        positive_oi = max(d_oi, 0.0)
+        strength = 0.0
+        if control == 'CONTROL LIMIT BUY' or control == 'CONTROL LIMIT SELL':
+            strength = min(1.0, max(0.0, float(partial_effort.get('absorption_ratio') or 0.0)))
+        elif control == 'CONTROL MARKET BUY' or control == 'CONTROL MARKET SELL':
+            strength = min(1.0, max(0.0, float(partial_effort.get('eff_ratio') or 0.0)))
+        buy_delta = positive_oi * strength if control in ('CONTROL LIMIT BUY', 'CONTROL MARKET BUY') else 0.0
+        sell_delta = positive_oi * strength if control in ('CONTROL LIMIT SELL', 'CONTROL MARKET SELL') else 0.0
+        ledger['raw_flow_counted'] += flow_delta
+        ledger['raw_buy_dom_counted'] += buy_delta
+        ledger['raw_sell_dom_counted'] += sell_delta
+        self.provisional_oi_flow += flow_delta
+        self.provisional_buy_dominance_v2_btc += buy_delta
+        self.provisional_sell_dominance_v2_btc += sell_delta
+        detail = {
+            'time': timestamp, 'dOI': d_oi, 'pctl': pctl, 'control': control,
+            'strength': strength, 'flow_delta': flow_delta,
+            'buy_dom_delta': buy_delta, 'sell_dom_delta': sell_delta,
+            'display_flow': self.oi_event_flow + self.provisional_oi_flow,
+            'display_buy_dom': self.buy_dominance_v2_btc + self.provisional_buy_dominance_v2_btc,
+            'display_sell_dom': self.sell_dominance_v2_btc + self.provisional_sell_dominance_v2_btc,
+        }
+        if log_path is not None:
+            write_replay_log(log_path, 'RAW_ACCUM ' + json.dumps(detail, ensure_ascii=False, default=str))
+        return detail
+
+    def finalize_raw_minute(self, minute: datetime, strong_net: float | None = None,
+                            strong_finalized: bool = False,
+                            log_path: Path | None = None) -> dict[str, Any]:
+        ledger = self.raw_ledger(minute)
+        if ledger['strong_finalized']:
+            return ledger
+        raw_flow = ledger['raw_flow_counted']
+        raw_buy = ledger['raw_buy_dom_counted']
+        raw_sell = ledger['raw_sell_dom_counted']
+        if strong_finalized and strong_net is not None:
+            residual = float(strong_net) - raw_flow
+            self.oi_event_flow += raw_flow + residual
+            # The canonical STRONG event already contributed V2 through
+            # emit_event(); raw provisional V2 is discarded on reconciliation.
+            self.provisional_buy_dominance_v2_btc -= raw_buy
+            self.provisional_sell_dominance_v2_btc -= raw_sell
+            ledger['final_flow_contribution'] = raw_flow + residual
+            ledger['final_buy_dom_contribution'] = 0.0
+            ledger['final_sell_dom_contribution'] = 0.0
+        else:
+            self.oi_event_flow += raw_flow
+            self.buy_dominance_v2_btc += raw_buy
+            self.sell_dominance_v2_btc += raw_sell
+            self.provisional_buy_dominance_v2_btc -= raw_buy
+            self.provisional_sell_dominance_v2_btc -= raw_sell
+            self.provisional_oi_flow -= raw_flow
+            ledger['final_flow_contribution'] = raw_flow
+            ledger['final_buy_dom_contribution'] = raw_buy
+            ledger['final_sell_dom_contribution'] = raw_sell
+        if strong_finalized and strong_net is not None:
+            self.provisional_oi_flow -= raw_flow
+        ledger['strong_finalized'] = bool(strong_finalized)
+        if log_path is not None:
+            write_replay_log(log_path, 'RAW_MINUTE_FINALIZE ' + json.dumps({
+                'minute': minute.isoformat(),
+                'raw_samples_counted': ledger['raw_samples_counted'],
+                'flow_already_counted': raw_flow,
+                'strong_residual': (float(strong_net) - raw_flow) if strong_finalized and strong_net is not None else 0.0,
+                'double_count': 0,
+            }, ensure_ascii=False))
+        return ledger
 
     def apply_oi(self, row: dict[str, Any]) -> None:
         if row['minute'] < self.anchor:
@@ -1528,8 +1635,10 @@ class Session:
         v2 = self.apply_dominance_v2(float(minute.get('add', 0.0)), effort)
         current = dict(snap, time=minute['minute'], flow=flow, flow_adv=abs(flow_delta), price_change=price_change, classification=classification, control_label=control_label, event_oi_net=event_oi_net, event_oi_activity=event_oi_activity, display_flow=display_flow, display_flow_adv=abs(display_delta), display_price_change=display_price_change, display_event_price=event.get('display_event_price'), display_reference_price=event.get('display_reference_price'), display_taker_buy=event.get('display_taker_buy', 0.0), display_taker_sell=event.get('display_taker_sell', 0.0), display_flow_delta=event.get('display_flow_delta', display_delta), display_oi_add=float(minute.get('add', 0.0)), display_oi_exit=float(minute.get('exit', 0.0)), display_oi_jump=float(minute.get('jump', 0.0)), oi_add_mass=float(minute.get('add', 0.0)), **effort, **v2)
         current['event_flags'] = ['STRONG/MEGA']
-        self.oi_event_flow += float(event_oi_net or 0.0)
-        current['oi_flow_contribution'] = float(event_oi_net or 0.0)
+        raw_ledger = self.raw_minute_ledgers.get(minute['minute'])
+        raw_already_counted = float(raw_ledger.get('raw_flow_counted', 0.0)) if raw_ledger else 0.0
+        current['oi_flow_contribution'] = float(event_oi_net or 0.0) - raw_already_counted
+        self.oi_event_flow += current['oi_flow_contribution']
         current['oi_event_flow'] = self.oi_event_flow
         self.last_events.append(current)
         self.event_history.append(current)
@@ -1648,6 +1757,7 @@ def run_replay_live(args: argparse.Namespace, gui: GuiBridge | None = None) -> N
     annotate_minutes(all_minutes)
     raw_flow_summaries, _raw_flow_samples = _raw_intensity_summary(samples, all_minutes, market)
     raw_flow_by_time = {row['_time']: row for row in raw_flow_summaries}
+    raw_metric_by_timestamp = {row['ts']: row for row in _raw_flow_samples}
     common = recorded_range(samples, market)
     if common is None:
         raise SystemExit('Нет общего записанного диапазона между raw OI и market 1m.')
@@ -1692,6 +1802,7 @@ def run_replay_live(args: argparse.Namespace, gui: GuiBridge | None = None) -> N
     market_by_minute = {row['ts'].replace(second=0, microsecond=0): row for row in market}
     market_cursor = -1
     last_closed_market_price: float | None = None
+    partial_market_fallback_logged = False
 
     def latest_closed_market_price(clock: datetime) -> float | None:
         nonlocal market_cursor, last_closed_market_price
@@ -1702,6 +1813,40 @@ def run_replay_live(args: argparse.Namespace, gui: GuiBridge | None = None) -> N
             market_cursor += 1
             last_closed_market_price = candidate['close']
         return last_closed_market_price
+
+    def causal_partial_market(sample: dict[str, Any]) -> dict[str, Any] | None:
+        """Return a partial candle only when the source explicitly provides one.
+
+        The recorded CSV contains closed 1m taker totals only.  Its complete
+        candle must never be reused as if it were known at an earlier sample.
+        """
+        return None
+
+    def process_raw_sample(sample: dict[str, Any]) -> None:
+        nonlocal partial_market_fallback_logged
+        raw_metric = raw_metric_by_timestamp.get(sample['ts'])
+        if raw_metric is None or raw_metric.get('doi') is None:
+            return
+        partial = causal_partial_market(sample)
+        effort = None
+        if partial is not None:
+            diagnostic = Session(sample['ts'])
+            diagnostic.market_history = market
+            effort = diagnostic.effort_result_control(
+                sample['ts'], partial['buy'], partial['sell'],
+                partial['price'] - partial['open'], partial['open'],
+            )
+        elif not partial_market_fallback_logged:
+            write_replay_log(log_path, 'RAW_PARTIAL_MARKET_FALLBACK unavailable: recorded source has closed 1m taker totals only')
+            partial_market_fallback_logged = True
+        detail = session.apply_raw_sample(sample, raw_metric, effort, log_path)
+        if detail is not None:
+            write_replay_log(log_path, 'RAW_EVENT ' + json.dumps({
+                'time': detail['time'], 'class': 'RAW STRONG' if detail['pctl'] >= 99.0 else 'RAW WATCH',
+                'pctl': detail['pctl'], 'peak': max((('IMPULSE_5S', raw_metric.get('impulse_pctl')), ('BURST_30S', raw_metric.get('burst_30_pctl')), ('BURST_60S', raw_metric.get('burst_60_pctl'))), key=lambda pair: pair[1] if pair[1] is not None else -1)[0],
+                'flow': raw_metric.get('net_60'), 'directionality': raw_metric.get('directionality_60'),
+                'control': detail['control'],
+            }, ensure_ascii=False, default=str))
 
     def rebuild_session(new_anchor: datetime, clock: datetime) -> Session:
         rebuilt = Session(new_anchor)
@@ -1833,6 +1978,8 @@ def run_replay_live(args: argparse.Namespace, gui: GuiBridge | None = None) -> N
                 print(line); write_replay_log(log_path, line)
             if current['dominant'] in ('BUY', 'SELL'):
                 previous_flow = current['dominant']
+            strong_net_for_finalize = None
+            strong_finalized_for_finalize = False
             if minute_time in event_by_time and minute_time not in emitted_events:
                 event = dict(event_by_time[minute_time])
                 event['start_time'] = prefix_minutes[event['start']]['minute']
@@ -1843,6 +1990,8 @@ def run_replay_live(args: argparse.Namespace, gui: GuiBridge | None = None) -> N
                 if args.sound == 'on':
                     print('\a', end='', flush=True)
                 session.emit_event(event, minute, [market_row] if market_row else [])
+                strong_net_for_finalize = float(session.event_history[-1].get('event_oi_net', minute['net']) or 0.0)
+                strong_finalized_for_finalize = True
                 tv_event_history[minute_time] = dict(session.event_history[-1])
                 write_tv_events_pine(tv_path, list(tv_event_history.values()))
                 debug_event = session.last_events[-1]
@@ -1917,6 +2066,12 @@ def run_replay_live(args: argparse.Namespace, gui: GuiBridge | None = None) -> N
                         'control': raw_event.get('raw_control'),
                         'dominance_v2_contribution_btc': 0.0,
                     }, ensure_ascii=False))
+            session.finalize_raw_minute(
+                minute_time,
+                strong_net=strong_net_for_finalize,
+                strong_finalized=strong_finalized_for_finalize,
+                log_path=log_path,
+            )
             peaks = (session.sell_peak, session.buy_peak)
             state_changed = current['status'] != previous_status or peaks != previous_peaks
             if state_changed:
@@ -1939,6 +2094,7 @@ def run_replay_live(args: argparse.Namespace, gui: GuiBridge | None = None) -> N
         if previous_clock is not None and speed > 0:
             time.sleep(max(0.0, (sample['ts'] - previous_clock).total_seconds() / speed))
         raw_prefix.append(sample)
+        process_raw_sample(sample)
         process_until(sample['ts'])
         publish_gui(gui, session, sample['ts'], speed, live=False, market_price=latest_closed_market_price(sample['ts']))
         previous_clock = sample['ts']
@@ -1967,7 +2123,9 @@ def run_live(args: argparse.Namespace, gui: GuiBridge | None = None) -> None:
     anchor = datetime.now(PANAMA) if args.from_now or not args.from_time else parse_time(args.from_time)
     session = Session(anchor)
     processed: set[datetime] = set()
+    processed_raw_samples: set[datetime] = set()
     root = Path(__file__).resolve().parent
+    log_path = args.log or root / 'data' / 'research' / 'BTC_LRA_RECORDED_LIVE_REPLAY.log'
     tv_path = root / 'BTC_LRA_TV_EVENTS.pine'
     tv_event_history: dict[datetime, dict[str, Any]] = {}
     write_tv_events_pine(tv_path, [])
@@ -1977,15 +2135,17 @@ def run_live(args: argparse.Namespace, gui: GuiBridge | None = None) -> None:
         if gui is not None:
             for key, _value in gui.pop_commands():
                 if key == 'R':
-                    session.reset(datetime.now(PANAMA)); processed.clear()
+                    session.reset(datetime.now(PANAMA)); processed.clear(); processed_raw_samples.clear()
         if msvcrt and msvcrt.kbhit():
             key = msvcrt.getwch().upper()
             if key == 'R':
-                session.reset(datetime.now(PANAMA)); processed.clear()
+                session.reset(datetime.now(PANAMA)); processed.clear(); processed_raw_samples.clear()
                 print(f'\nОТСЧЁТ СБРОШЕН: {session.anchor.strftime("%H:%M:%S / %d.%m.%y -5")}')
         samples = load_raw(args.raw_oi)
         minutes = minute_oi(samples)
         annotate_minutes(minutes)
+        raw_metrics = _raw_intensity_metrics(samples)
+        raw_metric_by_timestamp = {row['ts']: row for row in raw_metrics}
         events = individual_events(minutes)
         event_by_time = {minutes[e['confirmed']]['minute']: e for e in events}
         for minute in minutes:
@@ -2000,8 +2160,20 @@ def run_live(args: argparse.Namespace, gui: GuiBridge | None = None) -> None:
                 decorate_event_interval(event, minutes, [])
                 print('\a', end='', flush=True)
                 session.emit_event(event, minute, [])
+                strong_net = float(session.event_history[-1].get('event_oi_net', minute['net']) or 0.0)
+                session.finalize_raw_minute(minute['minute'], strong_net=strong_net, strong_finalized=True, log_path=log_path)
                 tv_event_history[minute['minute']] = dict(session.event_history[-1])
                 write_tv_events_pine(tv_path, list(tv_event_history.values()))
+        # The live source currently exposes raw OI here but no causal partial
+        # taker candle.  Keep the sample ledger ready without attributing
+        # CONTROL/dominance from a future 1m total.
+        for sample in samples:
+            if sample['ts'] < session.anchor or sample['ts'] in processed_raw_samples:
+                continue
+            metric = raw_metric_by_timestamp.get(sample['ts'])
+            if metric is not None:
+                session.apply_raw_sample(sample, metric, partial_effort=None, log_path=log_path)
+            processed_raw_samples.add(sample['ts'])
         session.print_status('LIVE STATUS', current_time=datetime.now(PANAMA), live=True)
         publish_gui(gui, session, datetime.now(PANAMA), None, live=True)
         time.sleep(max(2, args.poll_seconds))
