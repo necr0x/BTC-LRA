@@ -520,3 +520,6 @@ LIVE_OI_SAMPLE time=00:14:57 / 02.10.26 -5 oi=100336.629000 dOI_gap_break=False 
 LIVE_OI_SAMPLE time=00:15:02 / 02.10.26 -5 oi=100337.665000 dOI_gap_break=False samples=5326
 LIVE_OI_SAMPLE time=00:15:09 / 02.10.26 -5 oi=100338.648000 dOI_gap_break=False samples=5326
 LIVE_OI_SAMPLE time=00:15:12 / 02.10.26 -5 oi=100339.194000 dOI_gap_break=False samples=5327
+LIVE_OI_SAMPLE time=00:15:23 / 02.10.26 -5 oi=100340.202000 dOI_gap_break=False samples=5328
+LIVE_OI_SAMPLE time=00:15:28 / 02.10.26 -5 oi=100340.823000 dOI_gap_break=False samples=5329
+LIVE_OI_SAMPLE time=00:15:33 / 02.10.26 -5 oi=100341.036000 dOI_gap_break=False samples=5329
