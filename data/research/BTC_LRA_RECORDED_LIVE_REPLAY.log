@@ -1,68 +1,205 @@
-RAW OI: 14:24:33 / 30.09.26 -5 -> 20:34:28 / 01.10.26 -5 | samples=14540
+RAW OI: 14:24:33 / 30.09.26 -5 -> 20:45:39 / 01.10.26 -5 | samples=14638
 MARKET 1M: 00:00:00 / 20.09.26 -5 -> 23:10:00 / 30.09.26 -5 | bars=14316
 COMMON RANGE: 14:24:00 / 30.09.26 -5 -> 23:10:00 / 30.09.26 -5 | anchor=14:24:00 / 30.09.26 -5
 INDIVIDUAL STRONG/MEGA EVENTS: 14:47, 14:48, 14:51, 14:52, 14:53, 14:54, 17:07, 18:51, 20:05, 20:31, 21:17, 22:37, 22:39, 22:44, 23:30, 23:46, 23:51, 00:44, 00:53, 02:24, 06:29, 07:41, 08:46, 08:49, 11:15, 12:12, 12:18, 13:35, 13:36, 13:48, 13:49, 14:22, 14:23, 14:25, 15:00, 15:11, 15:19, 16:20, 17:44, 18:35, 18:44, 19:23, 19:57, 20:21
 AGGREGATED CONFIRMED EPISODES: 14:48, 22:39, 06:30, 08:49, 11:16, 13:36, 13:49, 14:23, 15:14, 19:59
 INDIVIDUAL EVENT COUNT: 44
 AGGREGATED EPISODE COUNT: 10
+RAW_PARTIAL_MARKET_FALLBACK unavailable: recorded source has closed 1m taker totals only
+RAW_MINUTE_FINALIZE {"minute": "2026-09-30T14:24:00-05:00", "raw_samples_counted": 0, "flow_already_counted": 0.0, "strong_residual": 0.0, "double_count": 0}
+RAW_MINUTE_FINALIZE {"minute": "2026-09-30T14:25:00-05:00", "raw_samples_counted": 0, "flow_already_counted": 0.0, "strong_residual": 0.0, "double_count": 0}
+RAW_MINUTE_FINALIZE {"minute": "2026-09-30T14:26:00-05:00", "raw_samples_counted": 0, "flow_already_counted": 0.0, "strong_residual": 0.0, "double_count": 0}
+RAW_MINUTE_FINALIZE {"minute": "2026-09-30T14:27:00-05:00", "raw_samples_counted": 0, "flow_already_counted": 0.0, "strong_residual": 0.0, "double_count": 0}
+RAW_MINUTE_FINALIZE {"minute": "2026-09-30T14:28:00-05:00", "raw_samples_counted": 0, "flow_already_counted": 0.0, "strong_residual": 0.0, "double_count": 0}
+RAW_MINUTE_FINALIZE {"minute": "2026-09-30T14:29:00-05:00", "raw_samples_counted": 0, "flow_already_counted": 0.0, "strong_residual": 0.0, "double_count": 0}
+RAW_MINUTE_FINALIZE {"minute": "2026-09-30T14:30:00-05:00", "raw_samples_counted": 0, "flow_already_counted": 0.0, "strong_residual": 0.0, "double_count": 0}
+RAW_MINUTE_FINALIZE {"minute": "2026-09-30T14:31:00-05:00", "raw_samples_counted": 0, "flow_already_counted": 0.0, "strong_residual": 0.0, "double_count": 0}
+RAW_MINUTE_FINALIZE {"minute": "2026-09-30T14:32:00-05:00", "raw_samples_counted": 0, "flow_already_counted": 0.0, "strong_residual": 0.0, "double_count": 0}
+RAW_MINUTE_FINALIZE {"minute": "2026-09-30T14:33:00-05:00", "raw_samples_counted": 0, "flow_already_counted": 0.0, "strong_residual": 0.0, "double_count": 0}
+RAW_MINUTE_FINALIZE {"minute": "2026-09-30T14:34:00-05:00", "raw_samples_counted": 0, "flow_already_counted": 0.0, "strong_residual": 0.0, "double_count": 0}
+RAW_MINUTE_FINALIZE {"minute": "2026-09-30T14:35:00-05:00", "raw_samples_counted": 0, "flow_already_counted": 0.0, "strong_residual": 0.0, "double_count": 0}
+RAW_MINUTE_FINALIZE {"minute": "2026-09-30T14:36:00-05:00", "raw_samples_counted": 0, "flow_already_counted": 0.0, "strong_residual": 0.0, "double_count": 0}
+RAW_MINUTE_FINALIZE {"minute": "2026-09-30T14:37:00-05:00", "raw_samples_counted": 0, "flow_already_counted": 0.0, "strong_residual": 0.0, "double_count": 0}
+RAW_MINUTE_FINALIZE {"minute": "2026-09-30T14:38:00-05:00", "raw_samples_counted": 0, "flow_already_counted": 0.0, "strong_residual": 0.0, "double_count": 0}
+RAW_MINUTE_FINALIZE {"minute": "2026-09-30T14:39:00-05:00", "raw_samples_counted": 0, "flow_already_counted": 0.0, "strong_residual": 0.0, "double_count": 0}
+RAW_MINUTE_FINALIZE {"minute": "2026-09-30T14:40:00-05:00", "raw_samples_counted": 0, "flow_already_counted": 0.0, "strong_residual": 0.0, "double_count": 0}
+RAW_MINUTE_FINALIZE {"minute": "2026-09-30T14:41:00-05:00", "raw_samples_counted": 0, "flow_already_counted": 0.0, "strong_residual": 0.0, "double_count": 0}
+RAW_MINUTE_FINALIZE {"minute": "2026-09-30T14:42:00-05:00", "raw_samples_counted": 0, "flow_already_counted": 0.0, "strong_residual": 0.0, "double_count": 0}
+RAW_MINUTE_FINALIZE {"minute": "2026-09-30T14:43:00-05:00", "raw_samples_counted": 0, "flow_already_counted": 0.0, "strong_residual": 0.0, "double_count": 0}
+RAW_MINUTE_FINALIZE {"minute": "2026-09-30T14:44:00-05:00", "raw_samples_counted": 0, "flow_already_counted": 0.0, "strong_residual": 0.0, "double_count": 0}
+RAW_MINUTE_FINALIZE {"minute": "2026-09-30T14:45:00-05:00", "raw_samples_counted": 0, "flow_already_counted": 0.0, "strong_residual": 0.0, "double_count": 0}
 14:46:05 / 30.09.26 -5 | peak=(13.3, 0.0) | status=OBSERVATION
+RAW_MINUTE_FINALIZE {"minute": "2026-09-30T14:46:00-05:00", "raw_samples_counted": 0, "flow_already_counted": 0.0, "strong_residual": 0.0, "double_count": 0}
 14:47:02 / 30.09.26 -5 | peak=(13.3, 0.0) | status=SELL CONTROL
 EFFORT_RESULT {"timestamp": "2026-09-30T14:47:00-05:00", "taker_buy": 258.0, "taker_sell": 370.1, "aggr_side": "SELL", "aggr_share_pct": 58.92373825823913, "aggr_mag_btc": 112.10000000000002, "aggr_baseline_median_btc": 13.377500000000001, "aggr_mag_x": 8.379742104279575, "meaningful_aggression": true, "price_change": -99.89999999999418, "event_reference_price": 83789.2, "aggr_notional_usdt": 9392769.320000002, "price_change_bps": -11.922777637212695, "aligned_result_bps": 11.922777637212695, "baseline_impact_bps_per_1m": 1.219814014670982, "expected_aligned_bps": 11.457431653107632, "actual_impact_bps_per_1m": 1.2693570161278795, "eff_ratio": 1.0406152092540606, "absorption_ratio": 0.0, "absorbed_aggression_usdt": 0.0, "control": "CONTROL MARKET SELL", "buy_dominance_weight_usdt": 0.0, "sell_dominance_weight_usdt": 0.0, "buy_dominance_pct": null, "sell_dominance_pct": null, "oi_add_mass_btc": 208.12100000001374, "v2_side": "SELL", "v2_strength": 1.0, "v2_weight_btc": 208.12100000001374, "cum_buy_v2_btc": 0.0, "cum_sell_v2_btc": 208.12100000001374, "buy_v2_pct": 0.0, "sell_v2_pct": 100.0}
 14:48:01 / 30.09.26 -5 | СИЛЬНОЕ OI-СОБЫТИЕ | подтверждено 14:47
+RAW_MINUTE_FINALIZE {"minute": "2026-09-30T14:47:00-05:00", "raw_samples_counted": 0, "flow_already_counted": 0.0, "strong_residual": 189.25500000000466, "double_count": 0}
 14:48:01 / 30.09.26 -5 | peak=(113.20000000000005, 0.0) | status=SELL CONTROL
 EFFORT_RESULT {"timestamp": "2026-09-30T14:48:00-05:00", "taker_buy": 209.2, "taker_sell": 206.8, "aggr_side": "BUY", "aggr_share_pct": 50.28846153846154, "aggr_mag_btc": 2.3999999999999773, "aggr_baseline_median_btc": 13.377500000000001, "aggr_mag_x": 0.1794057185572773, "meaningful_aggression": false, "price_change": -36.89999999999418, "event_reference_price": 83689.2, "aggr_notional_usdt": 200854.0799999981, "price_change_bps": -4.4091710758370475, "aligned_result_bps": -4.4091710758370475, "baseline_impact_bps_per_1m": 2.1461370982058785, "expected_aligned_bps": 0.4310603924140073, "actual_impact_bps_per_1m": -21.95211108401228, "eff_ratio": -10.22866204696976, "absorption_ratio": 0.0, "absorbed_aggression_usdt": 0.0, "control": "CONTROL UNCLEAR", "buy_dominance_weight_usdt": 0.0, "sell_dominance_weight_usdt": 0.0, "buy_dominance_pct": null, "sell_dominance_pct": null, "oi_add_mass_btc": 109.80199999999604, "v2_side": "UNCLEAR", "v2_strength": 0.0, "v2_weight_btc": 0.0, "cum_buy_v2_btc": 0.0, "cum_sell_v2_btc": 208.12100000001374, "buy_v2_pct": 0.0, "sell_v2_pct": 100.0}
 14:49:00 / 30.09.26 -5 | СИЛЬНОЕ OI-СОБЫТИЕ | подтверждено 14:48
+RAW_MINUTE_FINALIZE {"minute": "2026-09-30T14:48:00-05:00", "raw_samples_counted": 0, "flow_already_counted": 0.0, "strong_residual": 105.88300000000163, "double_count": 0}
 14:49:00 / 30.09.26 -5 | peak=(113.20000000000005, 0.0) | status=SELL RESULT EFFICIENCY FALLING
+RAW_MINUTE_FINALIZE {"minute": "2026-09-30T14:49:00-05:00", "raw_samples_counted": 0, "flow_already_counted": 0.0, "strong_residual": 0.0, "double_count": 0}
+RAW_MINUTE_FINALIZE {"minute": "2026-09-30T14:50:00-05:00", "raw_samples_counted": 0, "flow_already_counted": 0.0, "strong_residual": 0.0, "double_count": 0}
 14:51:02 / 30.09.26 -5 | peak=(138.20000000000005, 0.0) | status=SELL RESULT EFFICIENCY FALLING
 EFFORT_RESULT {"timestamp": "2026-09-30T14:51:00-05:00", "taker_buy": 484.3, "taker_sell": 585.7, "aggr_side": "SELL", "aggr_share_pct": 54.73831775700935, "aggr_mag_btc": 101.40000000000003, "aggr_baseline_median_btc": 11.494499999999999, "aggr_mag_x": 8.821610335377793, "meaningful_aggression": true, "price_change": -87.30000000000291, "event_reference_price": 83607.8, "aggr_notional_usdt": 8477830.920000004, "price_change_bps": -10.441609514902066, "aligned_result_bps": 10.441609514902066, "baseline_impact_bps_per_1m": 1.2693570161278795, "expected_aligned_bps": 10.761394159847882, "actual_impact_bps_per_1m": 1.2316369143750345, "eff_ratio": 0.9702840877124478, "absorption_ratio": 0.0, "absorbed_aggression_usdt": 0.0, "control": "CONTROL MARKET SELL", "buy_dominance_weight_usdt": 0.0, "sell_dominance_weight_usdt": 0.0, "buy_dominance_pct": null, "sell_dominance_pct": null, "oi_add_mass_btc": 298.0200000000041, "v2_side": "SELL", "v2_strength": 0.9702840877124478, "v2_weight_btc": 289.16406382006767, "cum_buy_v2_btc": 0.0, "cum_sell_v2_btc": 497.2850638200814, "buy_v2_pct": 0.0, "sell_v2_pct": 100.0}
 14:52:01 / 30.09.26 -5 | СИЛЬНОЕ OI-СОБЫТИЕ | подтверждено 14:51
+RAW_MINUTE_FINALIZE {"minute": "2026-09-30T14:51:00-05:00", "raw_samples_counted": 0, "flow_already_counted": 0.0, "strong_residual": 290.7109999999957, "double_count": 0}
 14:52:01 / 30.09.26 -5 | peak=(239.60000000000014, 0.0) | status=SELL RESULT EFFICIENCY FALLING
 EFFORT_RESULT {"timestamp": "2026-09-30T14:52:00-05:00", "taker_buy": 118.4, "taker_sell": 118.1, "aggr_side": "BUY", "aggr_share_pct": 50.06342494714588, "aggr_mag_btc": 0.30000000000001137, "aggr_baseline_median_btc": 12.75, "aggr_mag_x": 0.023529411764706774, "meaningful_aggression": false, "price_change": -13.39999999999418, "event_reference_price": 83520.5, "aggr_notional_usdt": 25056.15000000095, "price_change_bps": -1.6043965254032457, "aligned_result_bps": -1.6043965254032457, "baseline_impact_bps_per_1m": 2.1736570508328437, "expected_aligned_bps": 0.05446347711422742, "actual_impact_bps_per_1m": -64.0320450429609, "eff_ratio": -29.458209618866427, "absorption_ratio": 0.0, "absorbed_aggression_usdt": 0.0, "control": "CONTROL UNCLEAR", "buy_dominance_weight_usdt": 0.0, "sell_dominance_weight_usdt": 0.0, "buy_dominance_pct": null, "sell_dominance_pct": null, "oi_add_mass_btc": 89.3119999999908, "v2_side": "UNCLEAR", "v2_strength": 0.0, "v2_weight_btc": 0.0, "cum_buy_v2_btc": 0.0, "cum_sell_v2_btc": 497.2850638200814, "buy_v2_pct": 0.0, "sell_v2_pct": 100.0}
 14:53:07 / 30.09.26 -5 | СИЛЬНОЕ OI-СОБЫТИЕ | подтверждено 14:52
+RAW_MINUTE_FINALIZE {"minute": "2026-09-30T14:52:00-05:00", "raw_samples_counted": 0, "flow_already_counted": 0.0, "strong_residual": 70.06599999999162, "double_count": 0}
 14:53:07 / 30.09.26 -5 | peak=(239.60000000000014, 0.0) | status=SELL PRESSURE HELD
 EFFORT_RESULT {"timestamp": "2026-09-30T14:53:00-05:00", "taker_buy": 191.6, "taker_sell": 155.2, "aggr_side": "BUY", "aggr_share_pct": 55.24798154555941, "aggr_mag_btc": 36.400000000000006, "aggr_baseline_median_btc": 11.494499999999999, "aggr_mag_x": 3.166731915263823, "meaningful_aggression": true, "price_change": -37.5, "event_reference_price": 83507.1, "aggr_notional_usdt": 3039658.440000001, "price_change_bps": -4.490636125551, "aligned_result_bps": -4.490636125551, "baseline_impact_bps_per_1m": 2.1736570508328437, "expected_aligned_bps": 6.607175000229565, "actual_impact_bps_per_1m": -1.4773489239636406, "eff_ratio": -0.6796605395490469, "absorption_ratio": 1.0, "absorbed_aggression_usdt": 3039658.440000001, "control": "CONTROL LIMIT SELL", "buy_dominance_weight_usdt": 0.0, "sell_dominance_weight_usdt": 3039658.440000001, "buy_dominance_pct": 0.0, "sell_dominance_pct": 100.0, "oi_add_mass_btc": 86.81699999999546, "v2_side": "SELL", "v2_strength": 1.0, "v2_weight_btc": 86.81699999999546, "cum_buy_v2_btc": 0.0, "cum_sell_v2_btc": 584.1020638200769, "buy_v2_pct": 0.0, "sell_v2_pct": 100.0}
 14:54:03 / 30.09.26 -5 | СИЛЬНОЕ OI-СОБЫТИЕ | подтверждено 14:53
+RAW_MINUTE_FINALIZE {"minute": "2026-09-30T14:53:00-05:00", "raw_samples_counted": 0, "flow_already_counted": 0.0, "strong_residual": 18.31600000000617, "double_count": 0}
 14:54:03 / 30.09.26 -5 | peak=(239.60000000000014, 0.0) | status=SELL RESULT EFFICIENCY FALLING
 EFFORT_RESULT {"timestamp": "2026-09-30T14:54:00-05:00", "taker_buy": 159.5, "taker_sell": 96.9, "aggr_side": "BUY", "aggr_share_pct": 62.20748829953199, "aggr_mag_btc": 62.599999999999994, "aggr_baseline_median_btc": 12.75, "aggr_mag_x": 4.909803921568627, "meaningful_aggression": true, "price_change": 4.600000000005821, "event_reference_price": 83469.7, "aggr_notional_usdt": 5225203.22, "price_change_bps": 0.551098182934145, "aligned_result_bps": 0.551098182934145, "baseline_impact_bps_per_1m": 2.1736570508328437, "expected_aligned_bps": 11.357799821187479, "actual_impact_bps_per_1m": 0.10546923434953885, "eff_ratio": 0.04852156153572063, "absorption_ratio": 0.9514784384642794, "absorbed_aggression_usdt": 4971668.2004241245, "control": "CONTROL LIMIT SELL", "buy_dominance_weight_usdt": 0.0, "sell_dominance_weight_usdt": 8011326.640424125, "buy_dominance_pct": 0.0, "sell_dominance_pct": 100.0, "oi_add_mass_btc": 78.99800000000687, "v2_side": "SELL", "v2_strength": 0.9514784384642794, "v2_weight_btc": 75.16489368180768, "cum_buy_v2_btc": 0.0, "cum_sell_v2_btc": 659.2669575018846, "buy_v2_pct": 0.0, "sell_v2_pct": 100.0}
 14:55:02 / 30.09.26 -5 | СИЛЬНОЕ OI-СОБЫТИЕ | подтверждено 14:54
+RAW_MINUTE_FINALIZE {"minute": "2026-09-30T14:54:00-05:00", "raw_samples_counted": 0, "flow_already_counted": 0.0, "strong_residual": 33.75999999999476, "double_count": 0}
+RAW_MINUTE_FINALIZE {"minute": "2026-09-30T14:55:00-05:00", "raw_samples_counted": 0, "flow_already_counted": 0.0, "strong_residual": 0.0, "double_count": 0}
+RAW_MINUTE_FINALIZE {"minute": "2026-09-30T14:56:00-05:00", "raw_samples_counted": 0, "flow_already_counted": 0.0, "strong_residual": 0.0, "double_count": 0}
 14:57:02 / 30.09.26 -5 | peak=(239.60000000000014, 0.0) | status=SELL PRESSURE HELD
+RAW_MINUTE_FINALIZE {"minute": "2026-09-30T14:57:00-05:00", "raw_samples_counted": 0, "flow_already_counted": 0.0, "strong_residual": 0.0, "double_count": 0}
+RAW_MINUTE_FINALIZE {"minute": "2026-09-30T14:58:00-05:00", "raw_samples_counted": 0, "flow_already_counted": 0.0, "strong_residual": 0.0, "double_count": 0}
 14:59:07 / 30.09.26 -5 | peak=(239.60000000000014, 0.0) | status=POSSIBLE EARLY BUY CONTROL SHIFT
+RAW_MINUTE_FINALIZE {"minute": "2026-09-30T14:59:00-05:00", "raw_samples_counted": 0, "flow_already_counted": 0.0, "strong_residual": 0.0, "double_count": 0}
 15:00:03 / 30.09.26 -5 | peak=(239.60000000000014, 0.0) | status=EARLY BUY CONTROL
 15:01:03 / 30.09.26 -5 | СМЕНА НАКОПИТЕЛЬНОГО ДОМИНАНТА: SELL -> BUY
+RAW_MINUTE_FINALIZE {"minute": "2026-09-30T15:00:00-05:00", "raw_samples_counted": 0, "flow_already_counted": 0.0, "strong_residual": 0.0, "double_count": 0}
 15:01:03 / 30.09.26 -5 | peak=(239.60000000000014, 68.29999999999995) | status=EARLY BUY CONTROL
+RAW_MINUTE_FINALIZE {"minute": "2026-09-30T15:01:00-05:00", "raw_samples_counted": 0, "flow_already_counted": 0.0, "strong_residual": 0.0, "double_count": 0}
 15:02:01 / 30.09.26 -5 | peak=(239.60000000000014, 68.29999999999995) | status=POSSIBLE EARLY SELL CONTROL SHIFT
+RAW_MINUTE_FINALIZE {"minute": "2026-09-30T15:02:00-05:00", "raw_samples_counted": 0, "flow_already_counted": 0.0, "strong_residual": 0.0, "double_count": 0}
 15:03:00 / 30.09.26 -5 | peak=(239.60000000000014, 68.29999999999995) | status=EARLY SELL CONTROL
+RAW_MINUTE_FINALIZE {"minute": "2026-09-30T15:03:00-05:00", "raw_samples_counted": 0, "flow_already_counted": 0.0, "strong_residual": 0.0, "double_count": 0}
 15:04:04 / 30.09.26 -5 | peak=(239.60000000000014, 68.29999999999995) | status=BUY PRESSURE HELD
+RAW_MINUTE_FINALIZE {"minute": "2026-09-30T15:04:00-05:00", "raw_samples_counted": 0, "flow_already_counted": 0.0, "strong_residual": 0.0, "double_count": 0}
 15:05:03 / 30.09.26 -5 | peak=(239.60000000000014, 70.40000000000009) | status=BUY PRESSURE HELD
+RAW_MINUTE_FINALIZE {"minute": "2026-09-30T15:05:00-05:00", "raw_samples_counted": 0, "flow_already_counted": 0.0, "strong_residual": 0.0, "double_count": 0}
 15:06:01 / 30.09.26 -5 | peak=(239.60000000000014, 97.59999999999991) | status=BUY PRESSURE HELD
+RAW_MINUTE_FINALIZE {"minute": "2026-09-30T15:06:00-05:00", "raw_samples_counted": 0, "flow_already_counted": 0.0, "strong_residual": 0.0, "double_count": 0}
 15:07:05 / 30.09.26 -5 | peak=(239.60000000000014, 116.69999999999982) | status=BUY PRESSURE HELD
+RAW_MINUTE_FINALIZE {"minute": "2026-09-30T15:07:00-05:00", "raw_samples_counted": 0, "flow_already_counted": 0.0, "strong_residual": 0.0, "double_count": 0}
 15:08:05 / 30.09.26 -5 | peak=(239.60000000000014, 147.39999999999964) | status=BUY PRESSURE HELD
+RAW_MINUTE_FINALIZE {"minute": "2026-09-30T15:08:00-05:00", "raw_samples_counted": 0, "flow_already_counted": 0.0, "strong_residual": 0.0, "double_count": 0}
 15:09:02 / 30.09.26 -5 | peak=(239.60000000000014, 158.79999999999927) | status=BUY PRESSURE HELD
+RAW_MINUTE_FINALIZE {"minute": "2026-09-30T15:09:00-05:00", "raw_samples_counted": 0, "flow_already_counted": 0.0, "strong_residual": 0.0, "double_count": 0}
 15:10:01 / 30.09.26 -5 | peak=(239.60000000000014, 158.79999999999927) | status=POSSIBLE EARLY SELL CONTROL SHIFT
+RAW_MINUTE_FINALIZE {"minute": "2026-09-30T15:10:00-05:00", "raw_samples_counted": 0, "flow_already_counted": 0.0, "strong_residual": 0.0, "double_count": 0}
 15:11:00 / 30.09.26 -5 | peak=(239.60000000000014, 165.99999999999955) | status=POSSIBLE EARLY SELL CONTROL SHIFT
+RAW_MINUTE_FINALIZE {"minute": "2026-09-30T15:11:00-05:00", "raw_samples_counted": 0, "flow_already_counted": 0.0, "strong_residual": 0.0, "double_count": 0}
 15:12:07 / 30.09.26 -5 | peak=(239.60000000000014, 180.29999999999973) | status=POSSIBLE EARLY SELL CONTROL SHIFT
+RAW_MINUTE_FINALIZE {"minute": "2026-09-30T15:12:00-05:00", "raw_samples_counted": 0, "flow_already_counted": 0.0, "strong_residual": 0.0, "double_count": 0}
 15:13:04 / 30.09.26 -5 | peak=(239.60000000000014, 186.79999999999973) | status=POSSIBLE EARLY SELL CONTROL SHIFT
+RAW_MINUTE_FINALIZE {"minute": "2026-09-30T15:13:00-05:00", "raw_samples_counted": 0, "flow_already_counted": 0.0, "strong_residual": 0.0, "double_count": 0}
 15:14:05 / 30.09.26 -5 | peak=(239.60000000000014, 186.79999999999973) | status=EARLY SELL CONTROL
+RAW_MINUTE_FINALIZE {"minute": "2026-09-30T15:14:00-05:00", "raw_samples_counted": 0, "flow_already_counted": 0.0, "strong_residual": 0.0, "double_count": 0}
 15:15:02 / 30.09.26 -5 | peak=(239.60000000000014, 187.69999999999936) | status=EARLY SELL CONTROL
+RAW_MINUTE_FINALIZE {"minute": "2026-09-30T15:15:00-05:00", "raw_samples_counted": 0, "flow_already_counted": 0.0, "strong_residual": 0.0, "double_count": 0}
 15:16:01 / 30.09.26 -5 | peak=(239.60000000000014, 187.69999999999936) | status=POSSIBLE EARLY SELL CONTROL SHIFT
+RAW_MINUTE_FINALIZE {"minute": "2026-09-30T15:16:00-05:00", "raw_samples_counted": 0, "flow_already_counted": 0.0, "strong_residual": 0.0, "double_count": 0}
 15:17:07 / 30.09.26 -5 | peak=(239.60000000000014, 187.69999999999936) | status=EARLY SELL CONTROL
+RAW_MINUTE_FINALIZE {"minute": "2026-09-30T15:17:00-05:00", "raw_samples_counted": 0, "flow_already_counted": 0.0, "strong_residual": 0.0, "double_count": 0}
 15:18:04 / 30.09.26 -5 | peak=(239.60000000000014, 187.69999999999936) | status=POSSIBLE EARLY SELL CONTROL SHIFT
+RAW_MINUTE_FINALIZE {"minute": "2026-09-30T15:18:00-05:00", "raw_samples_counted": 0, "flow_already_counted": 0.0, "strong_residual": 0.0, "double_count": 0}
 15:19:03 / 30.09.26 -5 | peak=(239.60000000000014, 187.69999999999936) | status=BUY PRESSURE HELD
+RAW_MINUTE_FINALIZE {"minute": "2026-09-30T15:19:00-05:00", "raw_samples_counted": 0, "flow_already_counted": 0.0, "strong_residual": 0.0, "double_count": 0}
+RAW_MINUTE_FINALIZE {"minute": "2026-09-30T15:20:00-05:00", "raw_samples_counted": 0, "flow_already_counted": 0.0, "strong_residual": 0.0, "double_count": 0}
 15:21:01 / 30.09.26 -5 | peak=(239.60000000000014, 187.69999999999936) | status=POSSIBLE EARLY SELL CONTROL SHIFT
+RAW_MINUTE_FINALIZE {"minute": "2026-09-30T15:21:00-05:00", "raw_samples_counted": 0, "flow_already_counted": 0.0, "strong_residual": 0.0, "double_count": 0}
 15:22:07 / 30.09.26 -5 | peak=(239.60000000000014, 202.599999999999) | status=POSSIBLE EARLY SELL CONTROL SHIFT
+RAW_MINUTE_FINALIZE {"minute": "2026-09-30T15:22:00-05:00", "raw_samples_counted": 0, "flow_already_counted": 0.0, "strong_residual": 0.0, "double_count": 0}
 15:23:04 / 30.09.26 -5 | peak=(239.60000000000014, 213.79999999999882) | status=POSSIBLE EARLY SELL CONTROL SHIFT
+RAW_MINUTE_FINALIZE {"minute": "2026-09-30T15:23:00-05:00", "raw_samples_counted": 0, "flow_already_counted": 0.0, "strong_residual": 0.0, "double_count": 0}
 15:24:04 / 30.09.26 -5 | peak=(239.60000000000014, 274.599999999999) | status=POSSIBLE EARLY SELL CONTROL SHIFT
+RAW_MINUTE_FINALIZE {"minute": "2026-09-30T15:24:00-05:00", "raw_samples_counted": 0, "flow_already_counted": 0.0, "strong_residual": 0.0, "double_count": 0}
 15:25:03 / 30.09.26 -5 | peak=(239.60000000000014, 274.599999999999) | status=EARLY SELL CONTROL
+RAW_MINUTE_FINALIZE {"minute": "2026-09-30T15:25:00-05:00", "raw_samples_counted": 0, "flow_already_counted": 0.0, "strong_residual": 0.0, "double_count": 0}
 15:26:01 / 30.09.26 -5 | peak=(239.60000000000014, 274.599999999999) | status=BUY PRESSURE HELD
+RAW_MINUTE_FINALIZE {"minute": "2026-09-30T15:26:00-05:00", "raw_samples_counted": 0, "flow_already_counted": 0.0, "strong_residual": 0.0, "double_count": 0}
 15:27:00 / 30.09.26 -5 | peak=(239.60000000000014, 287.8999999999987) | status=BUY PRESSURE HELD
+RAW_MINUTE_FINALIZE {"minute": "2026-09-30T15:27:00-05:00", "raw_samples_counted": 0, "flow_already_counted": 0.0, "strong_residual": 0.0, "double_count": 0}
 15:28:00 / 30.09.26 -5 | peak=(239.60000000000014, 357.2999999999988) | status=BUY PRESSURE HELD
+RAW_MINUTE_FINALIZE {"minute": "2026-09-30T15:28:00-05:00", "raw_samples_counted": 0, "flow_already_counted": 0.0, "strong_residual": 0.0, "double_count": 0}
 15:29:04 / 30.09.26 -5 | peak=(239.60000000000014, 357.2999999999988) | status=POSSIBLE EARLY SELL CONTROL SHIFT
+RAW_MINUTE_FINALIZE {"minute": "2026-09-30T15:29:00-05:00", "raw_samples_counted": 0, "flow_already_counted": 0.0, "strong_residual": 0.0, "double_count": 0}
 15:30:05 / 30.09.26 -5 | peak=(239.60000000000014, 357.2999999999988) | status=EARLY SELL CONTROL
+RAW_MINUTE_FINALIZE {"minute": "2026-09-30T15:30:00-05:00", "raw_samples_counted": 0, "flow_already_counted": 0.0, "strong_residual": 0.0, "double_count": 0}
 15:31:02 / 30.09.26 -5 | peak=(239.60000000000014, 357.2999999999988) | status=POSSIBLE EARLY SELL CONTROL SHIFT
+RAW_MINUTE_FINALIZE {"minute": "2026-09-30T15:31:00-05:00", "raw_samples_counted": 0, "flow_already_counted": 0.0, "strong_residual": 0.0, "double_count": 0}
 15:32:01 / 30.09.26 -5 | peak=(239.60000000000014, 357.2999999999988) | status=EARLY SELL CONTROL
+RAW_MINUTE_FINALIZE {"minute": "2026-09-30T15:32:00-05:00", "raw_samples_counted": 0, "flow_already_counted": 0.0, "strong_residual": 0.0, "double_count": 0}
 15:33:00 / 30.09.26 -5 | peak=(239.60000000000014, 357.2999999999988) | status=POSSIBLE EARLY SELL CONTROL SHIFT
+RAW_MINUTE_FINALIZE {"minute": "2026-09-30T15:33:00-05:00", "raw_samples_counted": 0, "flow_already_counted": 0.0, "strong_residual": 0.0, "double_count": 0}
 15:34:05 / 30.09.26 -5 | peak=(239.60000000000014, 357.2999999999988) | status=BUY PRESSURE HELD
+RAW_MINUTE_FINALIZE {"minute": "2026-09-30T15:34:00-05:00", "raw_samples_counted": 0, "flow_already_counted": 0.0, "strong_residual": 0.0, "double_count": 0}
 15:35:04 / 30.09.26 -5 | peak=(239.60000000000014, 357.2999999999988) | status=POSSIBLE EARLY SELL CONTROL SHIFT
+RAW_MINUTE_FINALIZE {"minute": "2026-09-30T15:35:00-05:00", "raw_samples_counted": 0, "flow_already_counted": 0.0, "strong_residual": 0.0, "double_count": 0}
 15:36:05 / 30.09.26 -5 | peak=(239.60000000000014, 357.2999999999988) | status=BUY PRESSURE HELD
+RAW_MINUTE_FINALIZE {"minute": "2026-09-30T15:36:00-05:00", "raw_samples_counted": 0, "flow_already_counted": 0.0, "strong_residual": 0.0, "double_count": 0}
 15:37:02 / 30.09.26 -5 | peak=(239.60000000000014, 357.2999999999988) | status=POSSIBLE EARLY SELL CONTROL SHIFT
+RAW_MINUTE_FINALIZE {"minute": "2026-09-30T15:37:00-05:00", "raw_samples_counted": 0, "flow_already_counted": 0.0, "strong_residual": 0.0, "double_count": 0}
 15:38:01 / 30.09.26 -5 | peak=(239.60000000000014, 357.2999999999988) | status=BUY PRESSURE HELD
+RAW_MINUTE_FINALIZE {"minute": "2026-09-30T15:38:00-05:00", "raw_samples_counted": 0, "flow_already_counted": 0.0, "strong_residual": 0.0, "double_count": 0}
+RAW_MINUTE_FINALIZE {"minute": "2026-09-30T15:39:00-05:00", "raw_samples_counted": 0, "flow_already_counted": 0.0, "strong_residual": 0.0, "double_count": 0}
+RAW_MINUTE_FINALIZE {"minute": "2026-09-30T15:40:00-05:00", "raw_samples_counted": 0, "flow_already_counted": 0.0, "strong_residual": 0.0, "double_count": 0}
+RAW_MINUTE_FINALIZE {"minute": "2026-09-30T15:41:00-05:00", "raw_samples_counted": 0, "flow_already_counted": 0.0, "strong_residual": 0.0, "double_count": 0}
+15:42:02 / 30.09.26 -5 | peak=(239.60000000000014, 357.2999999999988) | status=POSSIBLE EARLY SELL CONTROL SHIFT
+RAW_MINUTE_FINALIZE {"minute": "2026-09-30T15:42:00-05:00", "raw_samples_counted": 0, "flow_already_counted": 0.0, "strong_residual": 0.0, "double_count": 0}
+15:43:01 / 30.09.26 -5 | peak=(239.60000000000014, 357.2999999999988) | status=EARLY SELL CONTROL
+RAW_MINUTE_FINALIZE {"minute": "2026-09-30T15:43:00-05:00", "raw_samples_counted": 0, "flow_already_counted": 0.0, "strong_residual": 0.0, "double_count": 0}
+15:44:00 / 30.09.26 -5 | peak=(239.60000000000014, 357.2999999999988) | status=POSSIBLE EARLY SELL CONTROL SHIFT
+RAW_MINUTE_FINALIZE {"minute": "2026-09-30T15:44:00-05:00", "raw_samples_counted": 0, "flow_already_counted": 0.0, "strong_residual": 0.0, "double_count": 0}
+15:45:04 / 30.09.26 -5 | peak=(239.60000000000014, 357.2999999999988) | status=BUY PRESSURE HELD
+RAW_MINUTE_FINALIZE {"minute": "2026-09-30T15:45:00-05:00", "raw_samples_counted": 0, "flow_already_counted": 0.0, "strong_residual": 0.0, "double_count": 0}
+RAW_MINUTE_FINALIZE {"minute": "2026-09-30T15:46:00-05:00", "raw_samples_counted": 0, "flow_already_counted": 0.0, "strong_residual": 0.0, "double_count": 0}
+15:47:01 / 30.09.26 -5 | peak=(239.60000000000014, 357.2999999999988) | status=POSSIBLE EARLY SELL CONTROL SHIFT
+RAW_MINUTE_FINALIZE {"minute": "2026-09-30T15:47:00-05:00", "raw_samples_counted": 0, "flow_already_counted": 0.0, "strong_residual": 0.0, "double_count": 0}
+15:48:05 / 30.09.26 -5 | peak=(239.60000000000014, 357.2999999999988) | status=BUY PRESSURE HELD
+RAW_MINUTE_FINALIZE {"minute": "2026-09-30T15:48:00-05:00", "raw_samples_counted": 0, "flow_already_counted": 0.0, "strong_residual": 0.0, "double_count": 0}
+15:49:04 / 30.09.26 -5 | peak=(239.60000000000014, 357.2999999999988) | status=POSSIBLE EARLY SELL CONTROL SHIFT
+RAW_MINUTE_FINALIZE {"minute": "2026-09-30T15:49:00-05:00", "raw_samples_counted": 0, "flow_already_counted": 0.0, "strong_residual": 0.0, "double_count": 0}
+15:50:02 / 30.09.26 -5 | peak=(239.60000000000014, 357.2999999999988) | status=EARLY SELL CONTROL
+RAW_MINUTE_FINALIZE {"minute": "2026-09-30T15:50:00-05:00", "raw_samples_counted": 0, "flow_already_counted": 0.0, "strong_residual": 0.0, "double_count": 0}
+15:51:01 / 30.09.26 -5 | peak=(239.60000000000014, 357.2999999999988) | status=BUY PRESSURE HELD
+RAW_MINUTE_FINALIZE {"minute": "2026-09-30T15:51:00-05:00", "raw_samples_counted": 0, "flow_already_counted": 0.0, "strong_residual": 0.0, "double_count": 0}
+RAW_MINUTE_FINALIZE {"minute": "2026-09-30T15:52:00-05:00", "raw_samples_counted": 0, "flow_already_counted": 0.0, "strong_residual": 0.0, "double_count": 0}
+RAW_MINUTE_FINALIZE {"minute": "2026-09-30T15:53:00-05:00", "raw_samples_counted": 0, "flow_already_counted": 0.0, "strong_residual": 0.0, "double_count": 0}
+15:54:02 / 30.09.26 -5 | peak=(239.60000000000014, 357.2999999999988) | status=POSSIBLE EARLY SELL CONTROL SHIFT
+RAW_MINUTE_FINALIZE {"minute": "2026-09-30T15:54:00-05:00", "raw_samples_counted": 0, "flow_already_counted": 0.0, "strong_residual": 0.0, "double_count": 0}
+15:55:01 / 30.09.26 -5 | peak=(239.60000000000014, 357.2999999999988) | status=EARLY SELL CONTROL
+RAW_MINUTE_FINALIZE {"minute": "2026-09-30T15:55:00-05:00", "raw_samples_counted": 0, "flow_already_counted": 0.0, "strong_residual": 0.0, "double_count": 0}
+15:56:00 / 30.09.26 -5 | peak=(239.60000000000014, 357.2999999999988) | status=POSSIBLE EARLY SELL CONTROL SHIFT
+RAW_MINUTE_FINALIZE {"minute": "2026-09-30T15:56:00-05:00", "raw_samples_counted": 0, "flow_already_counted": 0.0, "strong_residual": 0.0, "double_count": 0}
+15:57:06 / 30.09.26 -5 | peak=(239.60000000000014, 357.2999999999988) | status=EARLY SELL CONTROL
+RAW_MINUTE_FINALIZE {"minute": "2026-09-30T15:57:00-05:00", "raw_samples_counted": 0, "flow_already_counted": 0.0, "strong_residual": 0.0, "double_count": 0}
+15:58:03 / 30.09.26 -5 | peak=(239.60000000000014, 357.2999999999988) | status=BUY PRESSURE HELD
+RAW_MINUTE_FINALIZE {"minute": "2026-09-30T15:58:00-05:00", "raw_samples_counted": 0, "flow_already_counted": 0.0, "strong_residual": 0.0, "double_count": 0}
+RAW_MINUTE_FINALIZE {"minute": "2026-09-30T15:59:00-05:00", "raw_samples_counted": 0, "flow_already_counted": 0.0, "strong_residual": 0.0, "double_count": 0}
+RAW_MINUTE_FINALIZE {"minute": "2026-09-30T16:00:00-05:00", "raw_samples_counted": 0, "flow_already_counted": 0.0, "strong_residual": 0.0, "double_count": 0}
+RAW_MINUTE_FINALIZE {"minute": "2026-09-30T16:01:00-05:00", "raw_samples_counted": 0, "flow_already_counted": 0.0, "strong_residual": 0.0, "double_count": 0}
+16:02:06 / 30.09.26 -5 | peak=(239.60000000000014, 357.2999999999988) | status=POSSIBLE EARLY SELL CONTROL SHIFT
+RAW_MINUTE_FINALIZE {"minute": "2026-09-30T16:02:00-05:00", "raw_samples_counted": 0, "flow_already_counted": 0.0, "strong_residual": 0.0, "double_count": 0}
+16:03:05 / 30.09.26 -5 | peak=(239.60000000000014, 357.2999999999988) | status=BUY PRESSURE HELD
+RAW_MINUTE_FINALIZE {"minute": "2026-09-30T16:03:00-05:00", "raw_samples_counted": 0, "flow_already_counted": 0.0, "strong_residual": 0.0, "double_count": 0}
+RAW_MINUTE_FINALIZE {"minute": "2026-09-30T16:04:00-05:00", "raw_samples_counted": 0, "flow_already_counted": 0.0, "strong_residual": 0.0, "double_count": 0}
+RAW_MINUTE_FINALIZE {"minute": "2026-09-30T16:05:00-05:00", "raw_samples_counted": 0, "flow_already_counted": 0.0, "strong_residual": 0.0, "double_count": 0}
+16:06:07 / 30.09.26 -5 | peak=(239.60000000000014, 357.2999999999988) | status=POSSIBLE EARLY SELL CONTROL SHIFT
+RAW_MINUTE_FINALIZE {"minute": "2026-09-30T16:06:00-05:00", "raw_samples_counted": 0, "flow_already_counted": 0.0, "strong_residual": 0.0, "double_count": 0}
+16:07:04 / 30.09.26 -5 | peak=(239.60000000000014, 357.2999999999988) | status=BUY PRESSURE HELD
+RAW_MINUTE_FINALIZE {"minute": "2026-09-30T16:07:00-05:00", "raw_samples_counted": 0, "flow_already_counted": 0.0, "strong_residual": 0.0, "double_count": 0}
+16:08:04 / 30.09.26 -5 | peak=(239.60000000000014, 357.2999999999988) | status=POSSIBLE EARLY SELL CONTROL SHIFT
+RAW_MINUTE_FINALIZE {"minute": "2026-09-30T16:08:00-05:00", "raw_samples_counted": 0, "flow_already_counted": 0.0, "strong_residual": 0.0, "double_count": 0}
+16:09:01 / 30.09.26 -5 | peak=(239.60000000000014, 357.2999999999988) | status=BUY PRESSURE HELD
+RAW_MINUTE_FINALIZE {"minute": "2026-09-30T16:09:00-05:00", "raw_samples_counted": 0, "flow_already_counted": 0.0, "strong_residual": 0.0, "double_count": 0}
+RAW_MINUTE_FINALIZE {"minute": "2026-09-30T16:10:00-05:00", "raw_samples_counted": 0, "flow_already_counted": 0.0, "strong_residual": 0.0, "double_count": 0}
+RAW_MINUTE_FINALIZE {"minute": "2026-09-30T16:11:00-05:00", "raw_samples_counted": 0, "flow_already_counted": 0.0, "strong_residual": 0.0, "double_count": 0}
+RAW_OI_EVENT {"timestamp": "2026-09-30T16:12:00-05:00", "classification": "RAW WATCH", "oi_intensity_pctl": 97.87234043, "peak_type": "IMPULSE_5S", "oi_net_60s": -19.935, "oi_directionality_60s": 0.7476653, "oi_flow": "CONTRACTION", "aggr": "BUY 62.9% +22.4 BTC", "eff_ratio": 0.56195387, "control": "CONTROL MARKET BUY", "dominance_v2_contribution_btc": 0.0}
+RAW_MINUTE_FINALIZE {"minute": "2026-09-30T16:12:00-05:00", "raw_samples_counted": 0, "flow_already_counted": 0.0, "strong_residual": 0.0, "double_count": 0}
+RAW_MINUTE_FINALIZE {"minute": "2026-09-30T16:13:00-05:00", "raw_samples_counted": 0, "flow_already_counted": 0.0, "strong_residual": 0.0, "double_count": 0}
+16:14:01 / 30.09.26 -5 | peak=(239.60000000000014, 357.2999999999988) | status=POSSIBLE EARLY SELL CONTROL SHIFT
+RAW_MINUTE_FINALIZE {"minute": "2026-09-30T16:14:00-05:00", "raw_samples_counted": 0, "flow_already_counted": 0.0, "strong_residual": 0.0, "double_count": 0}
+16:15:00 / 30.09.26 -5 | peak=(239.60000000000014, 357.2999999999988) | status=BUY PRESSURE HELD
+RAW_MINUTE_FINALIZE {"minute": "2026-09-30T16:15:00-05:00", "raw_samples_counted": 0, "flow_already_counted": 0.0, "strong_residual": 0.0, "double_count": 0}
+16:16:05 / 30.09.26 -5 | peak=(239.60000000000014, 357.2999999999988) | status=POSSIBLE EARLY SELL CONTROL SHIFT
