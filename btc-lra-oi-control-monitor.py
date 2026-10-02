@@ -22,6 +22,7 @@ import tempfile
 import sys
 import time
 import urllib.parse
+import urllib.error
 import urllib.request
 from collections import defaultdict, deque
 from datetime import datetime, timedelta, timezone
@@ -2686,8 +2687,30 @@ def run_replay_live(args: argparse.Namespace, gui: GuiBridge | None = None) -> N
             rebuilt.snapshot(minute_time)
         return rebuilt
 
+    def activate_rebuilt_session(new_anchor: datetime, clock: datetime) -> None:
+        nonlocal session
+        session = rebuild_session(new_anchor, clock)
+        # The rebuilt session already contains everything through `clock`.
+        # Rebuild the bookkeeping sets too, otherwise process_until() either
+        # skips the next data or emits old events again.
+        applied_minutes.clear()
+        applied_market.clear()
+        emitted_events.clear()
+        prefix_minutes = minute_oi(raw_prefix)
+        for minute in prefix_minutes:
+            if new_anchor <= minute['minute'] and minute['minute'] + timedelta(minutes=1) <= clock:
+                applied_minutes.add(minute['minute'])
+                if minute['minute'] in market_by_minute:
+                    applied_market.add(minute['minute'])
+        prefix_events = individual_events(prefix_minutes)
+        emitted_events.update(
+            prefix_minutes[event['confirmed']]['minute']
+            for event in prefix_events
+            if new_anchor <= prefix_minutes[event['confirmed']]['minute'] <= clock
+        )
+
     def poll_keys(clock: datetime) -> None:
-        nonlocal paused, speed, previous_flow, previous_status, previous_peaks, session
+        nonlocal paused, speed, previous_flow, previous_status, previous_peaks
         while msvcrt.kbhit():
             key = msvcrt.getwch()
             if key == ' ':
@@ -2714,7 +2737,7 @@ def run_replay_live(args: argparse.Namespace, gui: GuiBridge | None = None) -> N
                         requested = parse_time(value)
                     if requested < start or requested > clock:
                         raise ValueError('anchor вне доступного диапазона или позже текущего времени')
-                    session = rebuild_session(requested, clock)
+                    activate_rebuilt_session(requested, clock)
                     previous_flow = session.snapshot(clock).get('dominant')
                     previous_status = session.early_status
                     previous_peaks = (session.sell_peak, session.buy_peak)
@@ -2725,6 +2748,14 @@ def run_replay_live(args: argparse.Namespace, gui: GuiBridge | None = None) -> N
                 except (ValueError, TypeError) as exc:
                     print(f'ОШИБКА ОТСЧЁТА: {exc}')
                     print('Replay остаётся на паузе. Нажмите T для новой попытки или SPACE для продолжения.')
+            elif key in ('\x00', '\xe0'):
+                arrow = msvcrt.getwch()
+                if arrow == 'M':
+                    speed = min(120.0, {0: 1, 1: 5, 5: 10, 10: 20, 20: 30, 30: 60, 60: 120}.get(int(speed), speed * 2))
+                    print(f'SPEED: {speed:g}x')
+                elif arrow == 'K':
+                    speed = max(0.0, {120: 60, 60: 30, 30: 20, 20: 10, 10: 5, 5: 1, 1: 0}.get(int(speed), speed / 2))
+                    print(f'SPEED: {speed:g}x')
             elif key == '+' or key == '=':
                 speed = min(120.0, {0: 1, 1: 5, 5: 10, 10: 20, 20: 30, 30: 60, 60: 120}.get(int(speed), speed * 2))
                 print(f'SPEED: {speed:g}x')
@@ -2733,7 +2764,7 @@ def run_replay_live(args: argparse.Namespace, gui: GuiBridge | None = None) -> N
                 print(f'SPEED: {speed:g}x')
 
     def poll_gui_commands(clock: datetime) -> None:
-        nonlocal paused, speed, previous_flow, previous_status, previous_peaks, session
+        nonlocal paused, speed, previous_flow, previous_status, previous_peaks
         if gui is None:
             return
         for key, value in gui.pop_commands():
@@ -2748,6 +2779,10 @@ def run_replay_live(args: argparse.Namespace, gui: GuiBridge | None = None) -> N
                 speed = min(120.0, {0: 1, 1: 5, 5: 10, 10: 20, 20: 30, 30: 60, 60: 120}.get(int(speed), max(1.0, speed * 2)))
             elif key == '-':
                 speed = max(0.0, {120: 60, 60: 30, 30: 20, 20: 10, 10: 5, 5: 1, 1: 0}.get(int(speed), speed / 2))
+            elif key == 'RIGHT':
+                speed = min(120.0, {0: 1, 1: 5, 5: 10, 10: 20, 20: 30, 30: 60, 60: 120}.get(int(speed), max(1.0, speed * 2)))
+            elif key == 'LEFT':
+                speed = max(0.0, {120: 60, 60: 30, 30: 20, 20: 10, 10: 5, 5: 1, 1: 0}.get(int(speed), speed / 2))
             elif key == 'T' and value:
                 try:
                     if re.fullmatch(r'\d{1,2}:\d{2}', value):
@@ -2756,7 +2791,7 @@ def run_replay_live(args: argparse.Namespace, gui: GuiBridge | None = None) -> N
                         requested = parse_time(value)
                     if requested < start or requested > clock:
                         raise ValueError('anchor вне доступного диапазона или позже текущего времени')
-                    session = rebuild_session(requested, clock)
+                    activate_rebuilt_session(requested, clock)
                     previous_flow = session.snapshot(clock).get('dominant')
                     previous_status = session.early_status
                     previous_peaks = (session.sell_peak, session.buy_peak)
@@ -2995,17 +3030,179 @@ def run_live(args: argparse.Namespace, gui: GuiBridge | None = None) -> None:
         baseline_warmup_logged = True
     last_compact = startup_now
     atexit.register(lambda: compact_persistent_raw_history(persistent_raw_path, raw_samples, datetime.now(PANAMA)))
+
+    def parse_live_anchor(value: str, clock: datetime) -> datetime:
+        value = value.strip()
+        if re.fullmatch(r'\d{1,2}:\d{2}', value):
+            requested = datetime.strptime(value, '%H:%M').replace(
+                year=clock.year, month=clock.month, day=clock.day, tzinfo=PANAMA,
+            )
+            if requested > clock:
+                requested -= timedelta(days=1)
+            return requested
+        requested = parse_time(value)
+        if requested > clock:
+            raise ValueError('anchor позже текущего времени')
+        return requested
+
+    def rebuild_live_session(new_anchor: datetime, clock: datetime,
+                             rebuild_market: list[dict[str, Any]]) -> tuple[
+                                 Session, set[datetime], set[datetime], dict[datetime, dict[str, Any]]]:
+        """Causally rebuild session state without replaying raw sensors as new samples."""
+        closed_market = [row for row in rebuild_market if row['ts'] + timedelta(minutes=1) <= clock]
+        current_market_row = next(
+            (row for row in reversed(rebuild_market) if row['ts'] + timedelta(minutes=1) > clock),
+            None,
+        )
+        if not closed_market:
+            raise ValueError('нет закрытых Binance 1m свечей для rebuild')
+        if not any(row['ts'] <= new_anchor for row in closed_market):
+            raise ValueError('недостаточно Binance 1m истории для указанного anchor')
+        if closed_market[0]['ts'] > new_anchor - timedelta(minutes=30):
+            raise ValueError('недостаточно 30m закрытого market baseline для указанного anchor')
+
+        rebuilt = Session(new_anchor)
+        rebuilt.market_history = closed_market
+        rebuilt.raw_baseline_ready = baseline_ready
+        rebuilt.raw_baseline_span_minutes = history_span * 60
+        rebuilt_until = clock.replace(second=0, microsecond=0)
+        rebuild_minutes = minute_oi(raw_samples)
+        annotate_minutes(rebuild_minutes)
+        rebuild_metrics = _raw_intensity_metrics(raw_samples)
+        rebuild_metric_by_ts = {row['ts']: row for row in rebuild_metrics}
+        rebuild_summaries, _ = _raw_intensity_summary(raw_samples, rebuild_minutes, closed_market)
+        rebuild_raw_by_time = {row['_time']: row for row in rebuild_summaries}
+        rebuild_events = {
+            rebuild_minutes[event['confirmed']]['minute']: event
+            for event in individual_events(rebuild_minutes)
+        }
+        market_by_time = {row['ts']: row for row in closed_market}
+        rebuilt_processed: set[datetime] = set()
+        current_tv: dict[datetime, dict[str, Any]] = {}
+
+        for minute in rebuild_minutes:
+            minute_time = minute['minute']
+            if minute_time < new_anchor or minute_time >= rebuilt_until:
+                continue
+            if minute_time + timedelta(minutes=1) > clock:
+                continue
+            rebuilt.apply_oi(minute)
+            rebuilt_processed.add(minute_time)
+            market_row = market_by_time.get(minute_time)
+            if market_row is not None:
+                rebuilt.apply_market(market_row)
+            canonical_event: dict[str, Any] | None = None
+            raw_event: dict[str, Any] | None = None
+            if minute_time in rebuild_events:
+                event = dict(rebuild_events[minute_time])
+                event['start_time'] = rebuild_minutes[event['start']]['minute']
+                event['kind'] = 'MEGA' if rebuild_minutes[event['confirmed']]['mega'] else 'STRONG'
+                decorate_event_interval(event, rebuild_minutes, closed_market)
+                with contextlib.redirect_stdout(io.StringIO()):
+                    rebuilt.emit_event(event, minute, [market_row] if market_row else [])
+                canonical_event = rebuilt.event_history[-1]
+                current_tv[minute_time] = dict(canonical_event)
+            raw_summary = rebuild_raw_by_time.get(minute_time)
+            if raw_summary is not None:
+                raw_event = apply_raw_event_to_session(rebuilt, raw_summary)
+            if canonical_event is None and raw_event is not None:
+                canonical_event = raw_event
+            if canonical_event is not None:
+                rebuilt.finalize_raw_minute(minute_time, canonical_event)
+
+        # Samples in the current unfinished minute are restored only as a
+        # causal provisional state. Older samples are already represented by
+        # finalized minutes and must not be applied a second time.
+        processed_samples = {
+            sample['ts'] for sample in raw_samples
+            if new_anchor <= sample['ts'] < rebuilt_until
+        }
+        if current_market_row is not None:
+            diagnostic = Session(current_market_row['ts'])
+            diagnostic.market_history = closed_market
+            for sample in raw_samples:
+                if sample['ts'] < new_anchor or sample['ts'] >= rebuilt_until:
+                    continue
+                if sample['ts'].replace(second=0, microsecond=0) != current_market_row['ts']:
+                    continue
+                metric = rebuild_metric_by_ts.get(sample['ts'])
+                if metric is None:
+                    continue
+                partial_effort = diagnostic.effort_result_control(
+                    sample['ts'], current_market_row['buy'], current_market_row['sell'],
+                    current_market_row['close'] - current_market_row['open'], current_market_row['open'],
+                )
+                rebuilt.apply_raw_sample(sample, metric, partial_effort=partial_effort)
+
+        return rebuilt, rebuilt_processed, processed_samples, current_tv
+
     while True:
         if gui is not None:
-            for key, _value in gui.pop_commands():
+            for key, value in gui.pop_commands():
                 if key == 'R':
-                    session.reset(datetime.now(PANAMA)); processed.clear(); processed_raw_samples.clear(); raw_samples.clear(); last_oi_timestamp = None
+                    reset_time = datetime.now(PANAMA)
+                    session = Session(reset_time)
+                    session.raw_baseline_ready = baseline_ready
+                    session.raw_baseline_span_minutes = history_span * 60
+                    processed.clear()
+                    processed_raw_samples = {
+                        sample['ts'] for sample in raw_samples
+                        if sample['ts'] < reset_time.replace(second=0, microsecond=0)
+                    }
+                    tv_event_history.clear()
+                    write_tv_events_pine(tv_path, [])
+                    write_bounded_live_log(log_path, f'LIVE_RESET anchor={fmt_time(reset_time)} raw_baseline_preserved=YES')
+                elif key == 'T' and value:
+                    old_anchor = session.anchor
+                    clock = datetime.now(PANAMA)
+                    try:
+                        requested = parse_live_anchor(value, clock)
+                        earliest_exact = (raw_samples[0]['ts'] + timedelta(hours=6, minutes=30)) if raw_samples else None
+                        if earliest_exact is None or requested < earliest_exact:
+                            raise ValueError(
+                                f'insufficient_raw_reference earliest_exact={fmt_time(earliest_exact)}'
+                            )
+                        rebuild_market = fetch_binance_1m_klines(1000)
+                        rebuilt, rebuilt_processed, rebuilt_samples, rebuilt_tv = rebuild_live_session(
+                            requested, clock, rebuild_market,
+                        )
+                        session = rebuilt
+                        processed = rebuilt_processed
+                        processed_raw_samples = rebuilt_samples
+                        tv_event_history = {
+                            timestamp: event for timestamp, event in rebuilt_tv.items()
+                            if timestamp >= requested
+                        }
+                        write_tv_events_pine(tv_path, list(tv_event_history.values()))
+                        market_history = [
+                            row for row in rebuild_market
+                            if row['ts'] + timedelta(minutes=1) <= clock
+                        ][-120:]
+                        session.market_history = market_history
+                        write_bounded_live_log(log_path, f'LIVE_ANCHOR_CHANGED from={fmt_time(old_anchor)} to={fmt_time(requested)} rebuilt_until={fmt_time(clock)} events={len(session.event_history)} oi_flow={session.oi_event_flow + session.provisional_oi_flow:.6f} buy_dom={session.buy_dominance_v2_btc + session.provisional_buy_dominance_v2_btc:.6f} sell_dom={session.sell_dominance_v2_btc + session.provisional_sell_dominance_v2_btc:.6f}')
+                    except (ValueError, TypeError, OSError, urllib.error.URLError) as exc:
+                        write_bounded_live_log(log_path, f'LIVE_ANCHOR_REJECTED requested={value!r} reason={exc}')
+                elif key == 'RIGHT':
+                    args.speed = min(120.0, {0: 1, 1: 5, 5: 10, 10: 20, 20: 30, 30: 60, 60: 120}.get(int(args.speed), max(1.0, args.speed * 2)))
+                elif key == 'LEFT':
+                    args.speed = max(0.0, {120: 60, 60: 30, 30: 20, 20: 10, 10: 5, 5: 1, 1: 0}.get(int(args.speed), args.speed / 2))
         if msvcrt and msvcrt.kbhit():
             key = msvcrt.getwch().upper()
             if key == 'R':
-                session.reset(datetime.now(PANAMA)); processed.clear(); processed_raw_samples.clear()
-                raw_samples.clear(); last_oi_timestamp = None
+                reset_time = datetime.now(PANAMA)
+                session = Session(reset_time)
+                session.raw_baseline_ready = baseline_ready
+                session.raw_baseline_span_minutes = history_span * 60
+                processed.clear()
+                processed_raw_samples = {
+                    sample['ts'] for sample in raw_samples
+                    if sample['ts'] < reset_time.replace(second=0, microsecond=0)
+                }
+                tv_event_history.clear()
+                write_tv_events_pine(tv_path, [])
                 print(f'\nОТСЧЁТ СБРОШЕН: {session.anchor.strftime("%H:%M:%S / %d.%m.%y -5")}')
+            elif key == 'T':
+                print('LIVE T доступен через GUI: нажмите T и задайте HH:MM или YYYY-MM-DD HH:MM')
         try:
             live_klines = fetch_binance_1m_klines(122)
         except Exception as exc:
@@ -3031,7 +3228,9 @@ def run_live(args: argparse.Namespace, gui: GuiBridge | None = None) -> None:
             raw_samples = _raw_history_trim(raw_samples, oi_sample['ts'])
             span_minutes = ((raw_samples[-1]['ts'] - raw_samples[0]['ts']).total_seconds() / 60
                             if len(raw_samples) >= 2 else 0.0)
-            session.raw_baseline_ready = span_minutes >= RAW_BASELINE_MINUTES
+            history_span = span_minutes / 60.0
+            baseline_ready = span_minutes >= RAW_BASELINE_MINUTES
+            session.raw_baseline_ready = baseline_ready
             session.raw_baseline_span_minutes = span_minutes
             if not session.raw_baseline_ready and not baseline_warmup_logged:
                 warmup_line = f'RAW_BASELINE_WARMUP reason=available_span_{span_minutes:.1f}m_required_{RAW_BASELINE_MINUTES}m'
@@ -3386,6 +3585,10 @@ def launch_gui(args: argparse.Namespace) -> None:
                 bridge.command('+')
             elif key == Qt.Key.Key_Minus:
                 bridge.command('-')
+            elif key == Qt.Key.Key_Right:
+                bridge.command('RIGHT')
+            elif key == Qt.Key.Key_Left:
+                bridge.command('LEFT')
             elif key == Qt.Key.Key_T:
                 value, accepted = QInputDialog.getText(self, 'НОВЫЙ ОТСЧЁТ', 'Введите HH:MM или YYYY-MM-DD HH:MM')
                 if accepted and value.strip():

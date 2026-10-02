@@ -227,3 +227,293 @@ LIVE_OI_SAMPLE time=23:43:58 / 01.10.26 -5 oi=99879.663000 samples=94
 LIVE_OI_SAMPLE time=23:44:04 / 01.10.26 -5 oi=99881.427000 samples=95
 LIVE_OI_SAMPLE time=23:44:12 / 01.10.26 -5 oi=99881.835000 samples=96
 LIVE_OI_SAMPLE time=23:44:17 / 01.10.26 -5 oi=99879.249000 samples=97
+RAW_BASELINE_RESTORED samples=5283 oldest=11:47:54 / 01.10.26 -5 newest=23:41:06 / 01.10.26 -5 span_hours=11.89 source=OLD_002_BOOTSTRAP reference_ready=YES
+LIVE_OI_SAMPLE time=23:47:49 / 01.10.26 -5 oi=99898.797000 dOI_gap_break=True samples=5284
+LIVE_OI_SAMPLE time=23:47:56 / 01.10.26 -5 oi=99904.120000 dOI_gap_break=False samples=5284
+LIVE_OI_SAMPLE time=23:47:58 / 01.10.26 -5 oi=99906.618000 dOI_gap_break=False samples=5285
+LIVE_OI_SAMPLE time=23:48:04 / 01.10.26 -5 oi=99908.812000 dOI_gap_break=False samples=5285
+LIVE_OI_SAMPLE time=23:48:14 / 01.10.26 -5 oi=99913.492000 dOI_gap_break=False samples=5285
+LIVE_OI_SAMPLE time=23:48:15 / 01.10.26 -5 oi=99913.606000 dOI_gap_break=False samples=5286
+LIVE_OI_SAMPLE time=23:48:28 / 01.10.26 -5 oi=99921.915000 dOI_gap_break=False samples=5287
+LIVE_OI_SAMPLE time=23:48:32 / 01.10.26 -5 oi=99938.214000 dOI_gap_break=False samples=5288
+RAW_ACCUM {"time": "2026-10-01 23:48:32.061000-05:00", "dOI": 16.29900000001362, "pctl": 99.36779471922648, "control": "CONTROL MARKET BUY", "strength": 1.0, "flow_delta": 16.29900000001362, "buy_dom_delta": 16.29900000001362, "sell_dom_delta": 0.0, "display_flow": 16.29900000001362, "display_buy_dom": 16.29900000001362, "display_sell_dom": 0.0}
+LIVE_OI_SAMPLE time=23:48:42 / 01.10.26 -5 oi=99944.131000 dOI_gap_break=False samples=5287
+LIVE_OI_SAMPLE time=23:48:46 / 01.10.26 -5 oi=99943.661000 dOI_gap_break=False samples=5287
+LIVE_OI_SAMPLE time=23:48:52 / 01.10.26 -5 oi=99873.183000 dOI_gap_break=False samples=5287
+RAW_ACCUM {"time": "2026-10-01 23:48:52.352000-05:00", "dOI": -70.47799999998824, "pctl": 99.81398809523809, "control": "CONTROL LIMIT BUY", "strength": 1.0, "flow_delta": -70.47799999998824, "buy_dom_delta": 0.0, "sell_dom_delta": 0.0, "display_flow": -54.17899999997462, "display_buy_dom": 16.29900000001362, "display_sell_dom": 0.0}
+LIVE_OI_SAMPLE time=23:48:58 / 01.10.26 -5 oi=99878.386000 dOI_gap_break=False samples=5287
+RAW_MINUTE_FINALIZE {"minute": "2026-10-01T23:48:00-05:00", "raw_samples_counted": 2, "flow_already_counted": -54.17899999997462, "canonical_flow": -30.426, "strong_residual": 0.0, "double_count": 0}
+ACCUM_FINAL {"time": "2026-10-01T23:48:00-05:00", "source": "RAW_ONLY", "net": -30.426, "oi_add": 42.7159999999858, "control": "CONTROL LIMIT BUY", "strength": 1.0, "flow_final": -30.426, "buy_dom_final": 42.716, "sell_dom_final": 0.0, "double_count": 0}
+LIVE_OI_SAMPLE time=23:49:04 / 01.10.26 -5 oi=99877.918000 dOI_gap_break=False samples=5287
+RAW_ACCUM {"time": "2026-10-01 23:49:04.014000-05:00", "dOI": -0.46799999999348074, "pctl": 98.88392857142857, "control": "CONTROL MARKET SELL", "strength": 1.0, "flow_delta": -0.46799999999348074, "buy_dom_delta": 0.0, "sell_dom_delta": 0.0, "display_flow": -30.89399999999348, "display_buy_dom": 42.716, "display_sell_dom": 0.0}
+LIVE_OI_SAMPLE time=23:49:08 / 01.10.26 -5 oi=99940.692000 dOI_gap_break=False samples=5288
+RAW_ACCUM {"time": "2026-10-01 23:49:08.377000-05:00", "dOI": 62.77399999999034, "pctl": 99.81405727036073, "control": "CONTROL MARKET BUY", "strength": 0.7160147855756435, "flow_delta": 62.77399999999034, "buy_dom_delta": 44.94711214971852, "sell_dom_delta": 0.0, "display_flow": 31.87999999999686, "display_buy_dom": 87.66311214971853, "display_sell_dom": 0.0}
+LIVE_OI_SAMPLE time=23:49:19 / 01.10.26 -5 oi=99940.370000 dOI_gap_break=False samples=5289
+RAW_ACCUM {"time": "2026-10-01 23:49:19.089000-05:00", "dOI": -0.3220000000001164, "pctl": 99.62797619047619, "control": "CONTROL MARKET BUY", "strength": 1.0, "flow_delta": -0.3220000000001164, "buy_dom_delta": 0.0, "sell_dom_delta": 0.0, "display_flow": 31.557999999996742, "display_buy_dom": 87.66311214971853, "display_sell_dom": 0.0}
+LIVE_OI_SAMPLE time=23:49:22 / 01.10.26 -5 oi=99936.449000 dOI_gap_break=False samples=5290
+RAW_ACCUM {"time": "2026-10-01 23:49:22.834000-05:00", "dOI": -3.9210000000020955, "pctl": 99.47916666666666, "control": "CONTROL MARKET BUY", "strength": 1.0, "flow_delta": -3.9210000000020955, "buy_dom_delta": 0.0, "sell_dom_delta": 0.0, "display_flow": 27.636999999994647, "display_buy_dom": 87.66311214971853, "display_sell_dom": 0.0}
+LIVE_OI_SAMPLE time=23:49:30 / 01.10.26 -5 oi=99947.797000 dOI_gap_break=False samples=5290
+RAW_ACCUM {"time": "2026-10-01 23:49:30.770000-05:00", "dOI": 11.34800000001269, "pctl": 99.47877885331347, "control": "CONTROL MARKET BUY", "strength": 1.0, "flow_delta": 11.34800000001269, "buy_dom_delta": 11.34800000001269, "sell_dom_delta": 0.0, "display_flow": 38.98500000000733, "display_buy_dom": 99.01111214973122, "display_sell_dom": 0.0}
+LIVE_OI_SAMPLE time=23:49:35 / 01.10.26 -5 oi=99943.896000 dOI_gap_break=False samples=5290
+RAW_ACCUM {"time": "2026-10-01 23:49:35.155000-05:00", "dOI": -3.901000000012573, "pctl": 99.36708860759494, "control": "CONTROL MARKET BUY", "strength": 1.0, "flow_delta": -3.901000000012573, "buy_dom_delta": 0.0, "sell_dom_delta": 0.0, "display_flow": 35.08399999999476, "display_buy_dom": 99.01111214973122, "display_sell_dom": 0.0}
+LIVE_OI_SAMPLE time=23:49:45 / 01.10.26 -5 oi=99929.728000 dOI_gap_break=False samples=5290
+RAW_ACCUM {"time": "2026-10-01 23:49:45.820000-05:00", "dOI": -14.16799999999057, "pctl": 99.4413407821229, "control": "CONTROL MARKET BUY", "strength": 1.0, "flow_delta": -14.16799999999057, "buy_dom_delta": 0.0, "sell_dom_delta": 0.0, "display_flow": 20.916000000004193, "display_buy_dom": 99.01111214973122, "display_sell_dom": 0.0}
+LIVE_OI_SAMPLE time=23:49:52 / 01.10.26 -5 oi=99934.937000 dOI_gap_break=False samples=5289
+RAW_ACCUM {"time": "2026-10-01 23:49:52.227000-05:00", "dOI": 5.209000000002561, "pctl": 99.47858472998138, "control": "CONTROL MARKET BUY", "strength": 0.6005442304281507, "flow_delta": 5.209000000002561, "buy_dom_delta": 3.1282348963017754, "sell_dom_delta": 0.0, "display_flow": 26.125000000006754, "display_buy_dom": 102.13934704603298, "display_sell_dom": 0.0}
+LIVE_OI_SAMPLE time=23:50:02 / 01.10.26 -5 oi=99963.308000 dOI_gap_break=False samples=5289
+RAW_MINUTE_FINALIZE {"minute": "2026-10-01T23:49:00-05:00", "raw_samples_counted": 8, "flow_already_counted": 56.55100000000675, "canonical_flow": 57.019, "strong_residual": 0.0, "double_count": 0}
+ACCUM_FINAL {"time": "2026-10-01T23:49:00-05:00", "source": "RAW_ONLY", "net": 57.019, "oi_add": 79.33100000000559, "control": "CONTROL LIMIT SELL", "strength": 0.65188753, "flow_final": 57.019, "buy_dom_final": 0.0, "sell_dom_final": 51.71488964243, "double_count": 0}
+LIVE_OI_SAMPLE time=23:50:07 / 01.10.26 -5 oi=99962.809000 dOI_gap_break=False samples=5289
+RAW_ACCUM {"time": "2026-10-01 23:50:07.177000-05:00", "dOI": -0.4990000000107102, "pctl": 98.6214605067064, "control": "CONTROL MARKET BUY", "strength": 1.0, "flow_delta": -0.4990000000107102, "buy_dom_delta": 0.0, "sell_dom_delta": 0.0, "display_flow": 26.09399999998929, "display_buy_dom": 42.716, "display_sell_dom": 51.71488964243}
+LIVE_OI_SAMPLE time=23:50:10 / 01.10.26 -5 oi=99962.496000 dOI_gap_break=False samples=5290
+LIVE_OI_SAMPLE time=23:50:18 / 01.10.26 -5 oi=99960.044000 dOI_gap_break=False samples=5291
+LIVE_OI_SAMPLE time=23:50:28 / 01.10.26 -5 oi=99956.109000 dOI_gap_break=False samples=5292
+LIVE_OI_SAMPLE time=23:50:32 / 01.10.26 -5 oi=99954.953000 dOI_gap_break=False samples=5292
+LIVE_OI_SAMPLE time=23:50:44 / 01.10.26 -5 oi=99914.939000 dOI_gap_break=False samples=5291
+RAW_ACCUM {"time": "2026-10-01 23:50:44.399000-05:00", "dOI": -40.013999999995576, "pctl": 98.62197392923649, "control": "CONTROL MARKET BUY", "strength": 1.0, "flow_delta": -40.013999999995576, "buy_dom_delta": 0.0, "sell_dom_delta": 0.0, "display_flow": -13.920000000006286, "display_buy_dom": 42.716, "display_sell_dom": 51.71488964243}
+LIVE_OI_SAMPLE time=23:50:49 / 01.10.26 -5 oi=99918.612000 dOI_gap_break=False samples=5291
+RAW_ACCUM {"time": "2026-10-01 23:50:49.739000-05:00", "dOI": 3.672999999995227, "pctl": 97.5046554934823, "control": "CONTROL MARKET BUY", "strength": 1.0, "flow_delta": 3.672999999995227, "buy_dom_delta": 3.672999999995227, "sell_dom_delta": 0.0, "display_flow": -10.24700000001106, "display_buy_dom": 46.38899999999523, "display_sell_dom": 51.71488964243}
+LIVE_OI_SAMPLE time=23:50:55 / 01.10.26 -5 oi=99923.521000 dOI_gap_break=False samples=5291
+RAW_MINUTE_FINALIZE {"minute": "2026-10-01T23:50:00-05:00", "raw_samples_counted": 3, "flow_already_counted": -36.84000000001106, "canonical_flow": -39.787, "strong_residual": 0.0, "double_count": 0}
+ACCUM_FINAL {"time": "2026-10-01T23:50:00-05:00", "source": "RAW_ONLY", "net": -39.787, "oi_add": 36.95299999999406, "control": "CONTROL MARKET BUY", "strength": 1.0, "flow_final": -39.787, "buy_dom_final": 36.953, "sell_dom_final": 0.0, "double_count": 0}
+LIVE_OI_SAMPLE time=23:51:05 / 01.10.26 -5 oi=99932.016000 dOI_gap_break=False samples=5290
+RAW_ACCUM {"time": "2026-10-01 23:51:05.419000-05:00", "dOI": 8.495000000009895, "pctl": 97.5046554934823, "control": "CONTROL MARKET SELL", "strength": 1.0, "flow_delta": 8.495000000009895, "buy_dom_delta": 0.0, "sell_dom_delta": 8.495000000009895, "display_flow": -4.698999999990104, "display_buy_dom": 79.66900000000001, "display_sell_dom": 60.2098896424399}
+LIVE_OI_SAMPLE time=23:51:13 / 01.10.26 -5 oi=99930.206000 dOI_gap_break=False samples=5291
+RAW_ACCUM {"time": "2026-10-01 23:51:13.106000-05:00", "dOI": -1.8099999999976717, "pctl": 97.54189944134079, "control": "CONTROL MARKET SELL", "strength": 1.0, "flow_delta": -1.8099999999976717, "buy_dom_delta": 0.0, "sell_dom_delta": 0.0, "display_flow": -6.5089999999877755, "display_buy_dom": 79.66900000000001, "display_sell_dom": 60.2098896424399}
+LIVE_OI_SAMPLE time=23:51:16 / 01.10.26 -5 oi=99931.086000 dOI_gap_break=False samples=5292
+LIVE_OI_SAMPLE time=23:51:21 / 01.10.26 -5 oi=99934.909000 dOI_gap_break=False samples=5293
+LIVE_OI_SAMPLE time=23:51:29 / 01.10.26 -5 oi=99936.726000 dOI_gap_break=False samples=5294
+LIVE_OI_SAMPLE time=23:51:36 / 01.10.26 -5 oi=99970.327000 dOI_gap_break=False samples=5294
+LIVE_OI_SAMPLE time=23:51:45 / 01.10.26 -5 oi=99973.295000 dOI_gap_break=False samples=5293
+LIVE_OI_SAMPLE time=23:51:48 / 01.10.26 -5 oi=99978.162000 dOI_gap_break=False samples=5294
+LIVE_OI_SAMPLE time=23:51:58 / 01.10.26 -5 oi=99985.206000 dOI_gap_break=False samples=5293
+RAW_MINUTE_FINALIZE {"minute": "2026-10-01T23:51:00-05:00", "raw_samples_counted": 2, "flow_already_counted": 6.685000000012224, "canonical_flow": 53.19, "strong_residual": 0.0, "double_count": 0}
+ACCUM_FINAL {"time": "2026-10-01T23:51:00-05:00", "source": "RAW_ONLY", "net": 53.19, "oi_add": 63.495000000009895, "control": "CONTROL LIMIT SELL", "strength": 1.0, "flow_final": 53.19, "buy_dom_final": 0.0, "sell_dom_final": 63.495, "double_count": 0}
+LIVE_OI_SAMPLE time=23:52:08 / 01.10.26 -5 oi=99990.284000 dOI_gap_break=False samples=5292
+LIVE_OI_SAMPLE time=23:52:11 / 01.10.26 -5 oi=100000.650000 dOI_gap_break=False samples=5293
+RAW_ACCUM {"time": "2026-10-01 23:52:11.651000-05:00", "dOI": 10.365999999994528, "pctl": 98.58420268256334, "control": "CONTROL MARKET BUY", "strength": 1.0, "flow_delta": 10.365999999994528, "buy_dom_delta": 10.365999999994528, "sell_dom_delta": 0.0, "display_flow": 50.361999999994524, "display_buy_dom": 90.03499999999454, "display_sell_dom": 115.20988964243}
+LIVE_OI_SAMPLE time=23:52:16 / 01.10.26 -5 oi=100006.504000 dOI_gap_break=False samples=5294
+LIVE_OI_SAMPLE time=23:52:24 / 01.10.26 -5 oi=100030.621000 dOI_gap_break=False samples=5295
+LIVE_OI_SAMPLE time=23:52:32 / 01.10.26 -5 oi=100031.903000 dOI_gap_break=False samples=5296
+LIVE_OI_SAMPLE time=23:52:40 / 01.10.26 -5 oi=100038.813000 dOI_gap_break=False samples=5296
+LIVE_OI_SAMPLE time=23:52:46 / 01.10.26 -5 oi=100043.011000 dOI_gap_break=False samples=5296
+LIVE_OI_SAMPLE time=23:52:54 / 01.10.26 -5 oi=100053.858000 dOI_gap_break=False samples=5296
+LIVE_OI_SAMPLE time=23:53:02 / 01.10.26 -5 oi=100058.152000 dOI_gap_break=False samples=5295
+LIVE_OI_SAMPLE time=23:53:07 / 01.10.26 -5 oi=100055.115000 dOI_gap_break=False samples=5295
+LIVE_OI_SAMPLE time=23:53:15 / 01.10.26 -5 oi=100063.806000 dOI_gap_break=False samples=5296
+LIVE_OI_SAMPLE time=23:53:20 / 01.10.26 -5 oi=100064.605000 dOI_gap_break=False samples=5297
+LIVE_OI_SAMPLE time=23:53:23 / 01.10.26 -5 oi=100070.550000 dOI_gap_break=False samples=5298
+LIVE_OI_SAMPLE time=23:53:31 / 01.10.26 -5 oi=100080.659000 dOI_gap_break=False samples=5299
+LIVE_OI_SAMPLE time=23:53:39 / 01.10.26 -5 oi=100082.608000 dOI_gap_break=False samples=5299
+LIVE_OI_SAMPLE time=23:53:45 / 01.10.26 -5 oi=100084.547000 dOI_gap_break=False samples=5299
+LIVE_OI_SAMPLE time=23:53:55 / 01.10.26 -5 oi=100086.588000 dOI_gap_break=False samples=5298
+LIVE_OI_SAMPLE time=23:54:01 / 01.10.26 -5 oi=100086.326000 dOI_gap_break=False samples=5298
+LIVE_OI_SAMPLE time=23:54:11 / 01.10.26 -5 oi=100103.180000 dOI_gap_break=False samples=5298
+LIVE_OI_SAMPLE time=23:54:14 / 01.10.26 -5 oi=100101.208000 dOI_gap_break=False samples=5299
+LIVE_OI_SAMPLE time=23:54:22 / 01.10.26 -5 oi=100101.804000 dOI_gap_break=False samples=5300
+LIVE_OI_SAMPLE time=23:54:29 / 01.10.26 -5 oi=100096.960000 dOI_gap_break=False samples=5301
+LIVE_OI_SAMPLE time=23:54:35 / 01.10.26 -5 oi=100100.043000 dOI_gap_break=False samples=5301
+LIVE_OI_SAMPLE time=23:54:43 / 01.10.26 -5 oi=100102.134000 dOI_gap_break=False samples=5300
+LIVE_OI_SAMPLE time=23:54:54 / 01.10.26 -5 oi=100107.050000 dOI_gap_break=False samples=5300
+LIVE_OI_SAMPLE time=23:54:59 / 01.10.26 -5 oi=100105.296000 dOI_gap_break=False samples=5300
+LIVE_OI_SAMPLE time=23:55:07 / 01.10.26 -5 oi=100113.731000 dOI_gap_break=False samples=5299
+LIVE_OI_SAMPLE time=23:55:15 / 01.10.26 -5 oi=100118.695000 dOI_gap_break=False samples=5300
+LIVE_OI_SAMPLE time=23:55:20 / 01.10.26 -5 oi=100124.996000 dOI_gap_break=False samples=5301
+LIVE_OI_SAMPLE time=23:55:26 / 01.10.26 -5 oi=100124.562000 dOI_gap_break=False samples=5302
+LIVE_OI_SAMPLE time=23:55:34 / 01.10.26 -5 oi=100124.773000 dOI_gap_break=False samples=5302
+LIVE_OI_SAMPLE time=23:55:42 / 01.10.26 -5 oi=100120.163000 dOI_gap_break=False samples=5302
+LIVE_OI_SAMPLE time=23:55:47 / 01.10.26 -5 oi=100122.285000 dOI_gap_break=False samples=5302
+LIVE_OI_SAMPLE time=23:55:53 / 01.10.26 -5 oi=100123.018000 dOI_gap_break=False samples=5302
+LIVE_OI_SAMPLE time=23:55:58 / 01.10.26 -5 oi=100122.811000 dOI_gap_break=False samples=5302
+LIVE_OI_SAMPLE time=23:56:09 / 01.10.26 -5 oi=100124.609000 dOI_gap_break=False samples=5302
+LIVE_OI_SAMPLE time=23:56:14 / 01.10.26 -5 oi=100126.886000 dOI_gap_break=False samples=5303
+LIVE_OI_SAMPLE time=23:56:22 / 01.10.26 -5 oi=100128.458000 dOI_gap_break=False samples=5303
+LIVE_OI_SAMPLE time=23:56:29 / 01.10.26 -5 oi=100129.202000 dOI_gap_break=False samples=5303
+LIVE_OI_SAMPLE time=23:56:35 / 01.10.26 -5 oi=100129.716000 dOI_gap_break=False samples=5303
+LIVE_OI_SAMPLE time=23:56:40 / 01.10.26 -5 oi=100124.650000 dOI_gap_break=False samples=5303
+LIVE_OI_SAMPLE time=23:56:51 / 01.10.26 -5 oi=100130.566000 dOI_gap_break=False samples=5302
+LIVE_OI_SAMPLE time=23:56:56 / 01.10.26 -5 oi=100150.386000 dOI_gap_break=False samples=5302
+LIVE_OI_SAMPLE time=23:57:01 / 01.10.26 -5 oi=100151.266000 dOI_gap_break=False samples=5302
+LIVE_OI_SAMPLE time=23:57:13 / 01.10.26 -5 oi=100155.969000 dOI_gap_break=False samples=5302
+LIVE_OI_SAMPLE time=23:57:17 / 01.10.26 -5 oi=100155.065000 dOI_gap_break=False samples=5303
+LIVE_OI_SAMPLE time=23:57:23 / 01.10.26 -5 oi=100155.102000 dOI_gap_break=False samples=5304
+LIVE_OI_SAMPLE time=23:57:33 / 01.10.26 -5 oi=100156.575000 dOI_gap_break=False samples=5305
+LIVE_OI_SAMPLE time=23:57:39 / 01.10.26 -5 oi=100157.605000 dOI_gap_break=False samples=5305
+LIVE_OI_SAMPLE time=23:57:49 / 01.10.26 -5 oi=100163.448000 dOI_gap_break=False samples=5304
+LIVE_OI_SAMPLE time=23:57:55 / 01.10.26 -5 oi=100162.550000 dOI_gap_break=False samples=5304
+RAW_BASELINE_RESTORED samples=5302 oldest=11:58:30 / 01.10.26 -5 newest=23:57:55 / 01.10.26 -5 span_hours=11.99 source=PERSISTENT reference_ready=YES
+LIVE_OI_SAMPLE time=23:58:07 / 01.10.26 -5 oi=100165.101000 dOI_gap_break=False samples=5303
+LIVE_OI_SAMPLE time=23:58:10 / 01.10.26 -5 oi=100165.468000 dOI_gap_break=False samples=5304
+LIVE_OI_SAMPLE time=23:58:17 / 01.10.26 -5 oi=100166.945000 dOI_gap_break=False samples=5305
+LIVE_OI_SAMPLE time=23:58:27 / 01.10.26 -5 oi=100168.977000 dOI_gap_break=False samples=5306
+LIVE_OI_SAMPLE time=23:58:34 / 01.10.26 -5 oi=100163.603000 dOI_gap_break=False samples=5306
+LIVE_OI_SAMPLE time=23:58:38 / 01.10.26 -5 oi=100153.079000 dOI_gap_break=False samples=5306
+RAW_ACCUM {"time": "2026-10-01 23:58:38.445000-05:00", "dOI": -10.52400000000489, "pctl": 97.57190885319388, "control": "CONTROL MARKET SELL", "strength": 1.0, "flow_delta": -10.52400000000489, "buy_dom_delta": 0.0, "sell_dom_delta": 0.0, "display_flow": -10.52400000000489, "display_buy_dom": 0.0, "display_sell_dom": 0.0}
+LIVE_OI_SAMPLE time=23:58:47 / 01.10.26 -5 oi=100154.322000 dOI_gap_break=False samples=5305
+LIVE_OI_SAMPLE time=23:58:54 / 01.10.26 -5 oi=100162.141000 dOI_gap_break=False samples=5305
+LIVE_OI_SAMPLE time=23:58:59 / 01.10.26 -5 oi=100163.060000 dOI_gap_break=False samples=5305
+LIVE_OI_SAMPLE time=23:59:04 / 01.10.26 -5 oi=100148.026000 dOI_gap_break=False samples=5305
+RAW_ACCUM {"time": "2026-10-01 23:59:04.772000-05:00", "dOI": -15.03399999999965, "pctl": 98.16890881913304, "control": "CONTROL LIMIT BUY", "strength": 1.0, "flow_delta": -15.03399999999965, "buy_dom_delta": 0.0, "sell_dom_delta": 0.0, "display_flow": -25.55800000000454, "display_buy_dom": 0.0, "display_sell_dom": 0.0}
+LIVE_OI_SAMPLE time=23:59:12 / 01.10.26 -5 oi=100151.501000 dOI_gap_break=False samples=5306
+LIVE_OI_SAMPLE time=23:59:17 / 01.10.26 -5 oi=100155.435000 dOI_gap_break=False samples=5307
+LIVE_OI_SAMPLE time=23:59:28 / 01.10.26 -5 oi=100161.745000 dOI_gap_break=False samples=5307
+LIVE_OI_SAMPLE time=23:59:30 / 01.10.26 -5 oi=100161.606000 dOI_gap_break=False samples=5308
+LIVE_OI_SAMPLE time=23:59:39 / 01.10.26 -5 oi=100161.299000 dOI_gap_break=False samples=5307
+LIVE_OI_SAMPLE time=23:59:42 / 01.10.26 -5 oi=100159.250000 dOI_gap_break=False samples=5308
+LIVE_OI_SAMPLE time=23:59:52 / 01.10.26 -5 oi=100160.464000 dOI_gap_break=False samples=5307
+LIVE_OI_SAMPLE time=23:59:55 / 01.10.26 -5 oi=100160.437000 dOI_gap_break=False samples=5308
+RAW_MINUTE_FINALIZE {"minute": "2026-10-01T23:59:00-05:00", "raw_samples_counted": 1, "flow_already_counted": -15.03399999999965, "canonical_flow": 12.411, "strong_residual": 0.0, "double_count": 0}
+ACCUM_FINAL {"time": "2026-10-01T23:59:00-05:00", "source": "RAW_ONLY", "net": 12.411, "oi_add": 14.93300000000454, "control": "CONTROL LIMIT BUY", "strength": 1.0, "flow_final": 12.411, "buy_dom_final": 14.933, "sell_dom_final": 0.0, "double_count": 0}
+LIVE_OI_SAMPLE time=00:00:06 / 02.10.26 -5 oi=100168.765000 dOI_gap_break=False samples=5307
+LIVE_OI_SAMPLE time=00:00:11 / 02.10.26 -5 oi=100168.802000 dOI_gap_break=False samples=5307
+LIVE_OI_SAMPLE time=00:00:19 / 02.10.26 -5 oi=100171.167000 dOI_gap_break=False samples=5308
+LIVE_OI_SAMPLE time=00:00:25 / 02.10.26 -5 oi=100177.736000 dOI_gap_break=False samples=5309
+LIVE_OI_SAMPLE time=00:00:36 / 02.10.26 -5 oi=100180.444000 dOI_gap_break=False samples=5308
+LIVE_OI_SAMPLE time=00:00:39 / 02.10.26 -5 oi=100177.242000 dOI_gap_break=False samples=5308
+LIVE_OI_SAMPLE time=00:00:46 / 02.10.26 -5 oi=100176.357000 dOI_gap_break=False samples=5308
+LIVE_OI_SAMPLE time=00:00:50 / 02.10.26 -5 oi=100178.070000 dOI_gap_break=False samples=5308
+LIVE_OI_SAMPLE time=00:00:58 / 02.10.26 -5 oi=100198.346000 dOI_gap_break=False samples=5308
+LIVE_OI_SAMPLE time=00:01:09 / 02.10.26 -5 oi=100203.032000 dOI_gap_break=False samples=5307
+LIVE_OI_SAMPLE time=00:01:12 / 02.10.26 -5 oi=100204.121000 dOI_gap_break=False samples=5308
+LIVE_OI_SAMPLE time=00:01:17 / 02.10.26 -5 oi=100204.285000 dOI_gap_break=False samples=5309
+LIVE_OI_SAMPLE time=00:01:24 / 02.10.26 -5 oi=100214.762000 dOI_gap_break=False samples=5310
+LIVE_OI_SAMPLE time=00:01:30 / 02.10.26 -5 oi=100218.028000 dOI_gap_break=False samples=5311
+LIVE_OI_SAMPLE time=00:01:40 / 02.10.26 -5 oi=100222.618000 dOI_gap_break=False samples=5311
+LIVE_OI_SAMPLE time=00:01:43 / 02.10.26 -5 oi=100222.832000 dOI_gap_break=False samples=5311
+LIVE_OI_SAMPLE time=00:01:51 / 02.10.26 -5 oi=100229.735000 dOI_gap_break=False samples=5311
+LIVE_OI_SAMPLE time=00:01:57 / 02.10.26 -5 oi=100230.472000 dOI_gap_break=False samples=5311
+LIVE_OI_SAMPLE time=00:02:07 / 02.10.26 -5 oi=100230.166000 dOI_gap_break=False samples=5310
+LIVE_OI_SAMPLE time=00:02:12 / 02.10.26 -5 oi=100230.985000 dOI_gap_break=False samples=5310
+LIVE_OI_SAMPLE time=00:02:23 / 02.10.26 -5 oi=100232.040000 dOI_gap_break=False samples=5311
+LIVE_OI_SAMPLE time=00:02:25 / 02.10.26 -5 oi=100217.989000 dOI_gap_break=False samples=5312
+LIVE_OI_SAMPLE time=00:02:31 / 02.10.26 -5 oi=100218.874000 dOI_gap_break=False samples=5312
+LIVE_OI_SAMPLE time=00:02:37 / 02.10.26 -5 oi=100219.582000 dOI_gap_break=False samples=5312
+LIVE_OI_SAMPLE time=00:02:44 / 02.10.26 -5 oi=100198.641000 dOI_gap_break=False samples=5312
+RAW_ACCUM {"time": "2026-10-02 00:02:44.549000-05:00", "dOI": -20.940999999991618, "pctl": 97.72388059701493, "control": "CONTROL MARKET SELL", "strength": 1.0, "flow_delta": -20.940999999991618, "buy_dom_delta": 0.0, "sell_dom_delta": 0.0, "display_flow": -19.053999999996506, "display_buy_dom": 14.933, "display_sell_dom": 0.0}
+LIVE_OI_SAMPLE time=00:02:52 / 02.10.26 -5 oi=100170.188000 dOI_gap_break=False samples=5311
+RAW_ACCUM {"time": "2026-10-02 00:02:52.035000-05:00", "dOI": -28.453000000008615, "pctl": 98.54477611940298, "control": "CONTROL MARKET SELL", "strength": 1.0, "flow_delta": -28.453000000008615, "buy_dom_delta": 0.0, "sell_dom_delta": 0.0, "display_flow": -47.50700000000512, "display_buy_dom": 14.933, "display_sell_dom": 0.0}
+LIVE_OI_SAMPLE time=00:03:02 / 02.10.26 -5 oi=100172.392000 dOI_gap_break=False samples=5311
+RAW_MINUTE_FINALIZE {"minute": "2026-10-02T00:02:00-05:00", "raw_samples_counted": 2, "flow_already_counted": -49.39400000000023, "canonical_flow": -59.978, "strong_residual": 0.0, "double_count": 0}
+ACCUM_FINAL {"time": "2026-10-02T00:02:00-05:00", "source": "RAW_ONLY", "net": -59.978, "oi_add": 3.466999999989639, "control": "CONTROL MARKET SELL", "strength": 1.0, "flow_final": -59.978, "buy_dom_final": 0.0, "sell_dom_final": 3.467, "double_count": 0}
+LIVE_OI_SAMPLE time=00:03:08 / 02.10.26 -5 oi=100174.861000 dOI_gap_break=False samples=5311
+LIVE_OI_SAMPLE time=00:03:18 / 02.10.26 -5 oi=100178.548000 dOI_gap_break=False samples=5312
+LIVE_OI_SAMPLE time=00:03:24 / 02.10.26 -5 oi=100180.359000 dOI_gap_break=False samples=5312
+LIVE_OI_SAMPLE time=00:03:29 / 02.10.26 -5 oi=100180.974000 dOI_gap_break=False samples=5312
+LIVE_OI_SAMPLE time=00:03:37 / 02.10.26 -5 oi=100178.603000 dOI_gap_break=False samples=5311
+LIVE_OI_SAMPLE time=00:03:42 / 02.10.26 -5 oi=100177.857000 dOI_gap_break=False samples=5312
+LIVE_OI_SAMPLE time=00:03:51 / 02.10.26 -5 oi=100179.254000 dOI_gap_break=False samples=5311
+LIVE_OI_SAMPLE time=00:03:56 / 02.10.26 -5 oi=100179.282000 dOI_gap_break=False samples=5311
+LIVE_OI_SAMPLE time=00:04:07 / 02.10.26 -5 oi=100184.477000 dOI_gap_break=False samples=5310
+LIVE_OI_SAMPLE time=00:04:12 / 02.10.26 -5 oi=100185.692000 dOI_gap_break=False samples=5311
+LIVE_OI_SAMPLE time=00:04:23 / 02.10.26 -5 oi=100190.056000 dOI_gap_break=False samples=5311
+LIVE_OI_SAMPLE time=00:04:28 / 02.10.26 -5 oi=100198.240000 dOI_gap_break=False samples=5311
+LIVE_OI_SAMPLE time=00:04:33 / 02.10.26 -5 oi=100201.978000 dOI_gap_break=False samples=5312
+LIVE_OI_SAMPLE time=00:04:40 / 02.10.26 -5 oi=100205.102000 dOI_gap_break=False samples=5311
+LIVE_OI_SAMPLE time=00:04:45 / 02.10.26 -5 oi=100190.959000 dOI_gap_break=False samples=5312
+RAW_ACCUM {"time": "2026-10-02 00:04:45.338000-05:00", "dOI": -14.142999999996391, "pctl": 97.91356184798808, "control": "CONTROL MARKET SELL", "strength": 1.0, "flow_delta": -14.142999999996391, "buy_dom_delta": 0.0, "sell_dom_delta": 0.0, "display_flow": -72.23400000000129, "display_buy_dom": 14.933, "display_sell_dom": 3.467}
+LIVE_OI_SAMPLE time=00:04:54 / 02.10.26 -5 oi=100191.027000 dOI_gap_break=False samples=5311
+LIVE_OI_SAMPLE time=00:05:01 / 02.10.26 -5 oi=100192.684000 dOI_gap_break=False samples=5311
+RAW_MINUTE_FINALIZE {"minute": "2026-10-02T00:04:00-05:00", "raw_samples_counted": 1, "flow_already_counted": -14.142999999996391, "canonical_flow": 6.55, "strong_residual": 0.0, "double_count": 0}
+ACCUM_FINAL {"time": "2026-10-02T00:04:00-05:00", "source": "RAW_ONLY", "net": 6.55, "oi_add": 25.887999999991735, "control": "CONTROL MARKET SELL", "strength": 1.0, "flow_final": 6.55, "buy_dom_final": 0.0, "sell_dom_final": 25.888, "double_count": 0}
+LIVE_OI_SAMPLE time=00:05:06 / 02.10.26 -5 oi=100197.667000 dOI_gap_break=False samples=5311
+LIVE_OI_SAMPLE time=00:05:17 / 02.10.26 -5 oi=100201.033000 dOI_gap_break=False samples=5312
+LIVE_OI_SAMPLE time=00:05:21 / 02.10.26 -5 oi=100202.303000 dOI_gap_break=False samples=5312
+LIVE_OI_SAMPLE time=00:05:28 / 02.10.26 -5 oi=100203.123000 dOI_gap_break=False samples=5312
+LIVE_OI_SAMPLE time=00:05:33 / 02.10.26 -5 oi=100202.763000 dOI_gap_break=False samples=5312
+LIVE_OI_SAMPLE time=00:05:37 / 02.10.26 -5 oi=100206.133000 dOI_gap_break=False samples=5313
+LIVE_OI_SAMPLE time=00:05:44 / 02.10.26 -5 oi=100222.369000 dOI_gap_break=False samples=5312
+LIVE_OI_SAMPLE time=00:05:55 / 02.10.26 -5 oi=100229.397000 dOI_gap_break=False samples=5312
+LIVE_OI_SAMPLE time=00:05:59 / 02.10.26 -5 oi=100231.726000 dOI_gap_break=False samples=5312
+LIVE_OI_SAMPLE time=00:06:11 / 02.10.26 -5 oi=100242.158000 dOI_gap_break=False samples=5311
+LIVE_OI_SAMPLE time=00:06:16 / 02.10.26 -5 oi=100245.849000 dOI_gap_break=False samples=5312
+LIVE_OI_SAMPLE time=00:06:20 / 02.10.26 -5 oi=100248.540000 dOI_gap_break=False samples=5313
+LIVE_OI_SAMPLE time=00:06:28 / 02.10.26 -5 oi=100249.810000 dOI_gap_break=False samples=5313
+LIVE_OI_SAMPLE time=00:06:33 / 02.10.26 -5 oi=100248.962000 dOI_gap_break=False samples=5313
+LIVE_OI_SAMPLE time=00:06:41 / 02.10.26 -5 oi=100254.720000 dOI_gap_break=False samples=5313
+LIVE_OI_SAMPLE time=00:06:49 / 02.10.26 -5 oi=100255.983000 dOI_gap_break=False samples=5312
+LIVE_OI_SAMPLE time=00:06:54 / 02.10.26 -5 oi=100256.188000 dOI_gap_break=False samples=5313
+LIVE_OI_SAMPLE time=00:07:02 / 02.10.26 -5 oi=100258.682000 dOI_gap_break=False samples=5312
+LIVE_OI_SAMPLE time=00:07:12 / 02.10.26 -5 oi=100258.957000 dOI_gap_break=False samples=5313
+LIVE_OI_SAMPLE time=00:07:18 / 02.10.26 -5 oi=100260.667000 dOI_gap_break=False samples=5314
+LIVE_OI_SAMPLE time=00:07:23 / 02.10.26 -5 oi=100261.550000 dOI_gap_break=False samples=5315
+LIVE_OI_SAMPLE time=00:07:29 / 02.10.26 -5 oi=100262.417000 dOI_gap_break=False samples=5316
+LIVE_OI_SAMPLE time=00:07:38 / 02.10.26 -5 oi=100264.102000 dOI_gap_break=False samples=5316
+LIVE_OI_SAMPLE time=00:07:44 / 02.10.26 -5 oi=100267.295000 dOI_gap_break=False samples=5315
+LIVE_OI_SAMPLE time=00:07:50 / 02.10.26 -5 oi=100285.062000 dOI_gap_break=False samples=5315
+RAW_ACCUM {"time": "2026-10-02 00:07:50.573000-05:00", "dOI": 17.7670000000071, "pctl": 97.69259397097134, "control": "CONTROL MARKET BUY", "strength": 1.0, "flow_delta": 17.7670000000071, "buy_dom_delta": 17.7670000000071, "sell_dom_delta": 0.0, "display_flow": -33.77399999999779, "display_buy_dom": 32.7000000000071, "display_sell_dom": 29.355}
+LIVE_OI_SAMPLE time=00:07:55 / 02.10.26 -5 oi=100287.638000 dOI_gap_break=False samples=5316
+RAW_MINUTE_FINALIZE {"minute": "2026-10-02T00:07:00-05:00", "raw_samples_counted": 1, "flow_already_counted": 17.7670000000071, "canonical_flow": 28.956, "strong_residual": 0.0, "double_count": 0}
+ACCUM_FINAL {"time": "2026-10-02T00:07:00-05:00", "source": "RAW_ONLY", "net": 28.956, "oi_add": 31.45000000001164, "control": "CONTROL MARKET BUY", "strength": 0.72708972, "flow_final": 28.956, "buy_dom_final": 22.866971694, "sell_dom_final": 0.0, "double_count": 0}
+LIVE_OI_SAMPLE time=00:08:05 / 02.10.26 -5 oi=100289.360000 dOI_gap_break=False samples=5315
+LIVE_OI_SAMPLE time=00:08:11 / 02.10.26 -5 oi=100291.157000 dOI_gap_break=False samples=5315
+LIVE_OI_SAMPLE time=00:08:20 / 02.10.26 -5 oi=100301.316000 dOI_gap_break=False samples=5316
+LIVE_OI_SAMPLE time=00:08:27 / 02.10.26 -5 oi=100300.959000 dOI_gap_break=False samples=5317
+LIVE_OI_SAMPLE time=00:08:32 / 02.10.26 -5 oi=100304.966000 dOI_gap_break=False samples=5318
+LIVE_OI_SAMPLE time=00:08:42 / 02.10.26 -5 oi=100308.473000 dOI_gap_break=False samples=5317
+LIVE_OI_SAMPLE time=00:08:47 / 02.10.26 -5 oi=100309.092000 dOI_gap_break=False samples=5317
+LIVE_OI_SAMPLE time=00:08:52 / 02.10.26 -5 oi=100309.245000 dOI_gap_break=False samples=5317
+LIVE_OI_SAMPLE time=00:08:58 / 02.10.26 -5 oi=100310.960000 dOI_gap_break=False samples=5317
+LIVE_OI_SAMPLE time=00:09:08 / 02.10.26 -5 oi=100310.557000 dOI_gap_break=False samples=5317
+LIVE_OI_SAMPLE time=00:09:15 / 02.10.26 -5 oi=100314.951000 dOI_gap_break=False samples=5318
+LIVE_OI_SAMPLE time=00:09:20 / 02.10.26 -5 oi=100315.420000 dOI_gap_break=False samples=5319
+LIVE_OI_SAMPLE time=00:09:31 / 02.10.26 -5 oi=100326.889000 dOI_gap_break=False samples=5320
+LIVE_OI_SAMPLE time=00:09:36 / 02.10.26 -5 oi=100327.978000 dOI_gap_break=False samples=5320
+LIVE_OI_SAMPLE time=00:09:41 / 02.10.26 -5 oi=100327.792000 dOI_gap_break=False samples=5320
+LIVE_OI_SAMPLE time=00:09:47 / 02.10.26 -5 oi=100328.341000 dOI_gap_break=False samples=5320
+LIVE_OI_SAMPLE time=00:09:57 / 02.10.26 -5 oi=100330.442000 dOI_gap_break=False samples=5319
+LIVE_OI_SAMPLE time=00:10:03 / 02.10.26 -5 oi=100331.991000 dOI_gap_break=False samples=5319
+LIVE_OI_SAMPLE time=00:10:08 / 02.10.26 -5 oi=100332.727000 dOI_gap_break=False samples=5319
+LIVE_OI_SAMPLE time=00:10:13 / 02.10.26 -5 oi=100332.579000 dOI_gap_break=False samples=5320
+LIVE_OI_SAMPLE time=00:10:24 / 02.10.26 -5 oi=100337.934000 dOI_gap_break=False samples=5321
+LIVE_OI_SAMPLE time=00:10:29 / 02.10.26 -5 oi=100342.700000 dOI_gap_break=False samples=5322
+LIVE_OI_SAMPLE time=00:10:36 / 02.10.26 -5 oi=100243.554000 dOI_gap_break=False samples=5321
+RAW_ACCUM {"time": "2026-10-02 00:10:36.731000-05:00", "dOI": -99.14599999999336, "pctl": 99.62839093273877, "control": "CONTROL LIMIT BUY", "strength": 0.9802521063016719, "flow_delta": -99.14599999999336, "buy_dom_delta": 0.0, "sell_dom_delta": 0.0, "display_flow": -121.73099999999826, "display_buy_dom": 37.799971694, "display_sell_dom": 29.355}
+LIVE_OI_SAMPLE time=00:10:46 / 02.10.26 -5 oi=100255.169000 dOI_gap_break=False samples=5321
+RAW_ACCUM {"time": "2026-10-02 00:10:46.034000-05:00", "dOI": 11.614999999990687, "pctl": 98.43982169390787, "control": "CONTROL LIMIT BUY", "strength": 0.6818544355194538, "flow_delta": 11.614999999990687, "buy_dom_delta": 7.919739268552106, "sell_dom_delta": 0.0, "display_flow": -110.11600000000757, "display_buy_dom": 45.71971096255211, "display_sell_dom": 29.355}
+LIVE_OI_SAMPLE time=00:10:50 / 02.10.26 -5 oi=100254.305000 dOI_gap_break=False samples=5321
+RAW_ACCUM {"time": "2026-10-02 00:10:50.957000-05:00", "dOI": -0.864000000001397, "pctl": 98.43982169390787, "control": "CONTROL LIMIT BUY", "strength": 0.6717609974696049, "flow_delta": -0.864000000001397, "buy_dom_delta": 0.0, "sell_dom_delta": 0.0, "display_flow": -110.98000000000897, "display_buy_dom": 45.71971096255211, "display_sell_dom": 29.355}
+LIVE_OI_SAMPLE time=00:11:01 / 02.10.26 -5 oi=100250.354000 dOI_gap_break=False samples=5320
+RAW_MINUTE_FINALIZE {"minute": "2026-10-02T00:10:00-05:00", "raw_samples_counted": 3, "flow_already_counted": -88.39500000000407, "canonical_flow": -77.686, "strong_residual": 0.0, "double_count": 0}
+ACCUM_FINAL {"time": "2026-10-02T00:10:00-05:00", "source": "RAW_ONLY", "net": -77.686, "oi_add": 24.020999999993364, "control": "CONTROL LIMIT BUY", "strength": 0.78805802, "flow_final": -77.686, "buy_dom_final": 18.929941698420002, "sell_dom_final": 0.0, "double_count": 0}
+LIVE_OI_SAMPLE time=00:11:03 / 02.10.26 -5 oi=100249.324000 dOI_gap_break=False samples=5321
+RAW_ACCUM {"time": "2026-10-02 00:11:03.357000-05:00", "dOI": -1.0300000000133878, "pctl": 98.21693907875185, "control": "CONTROL MARKET SELL", "strength": 1.0, "flow_delta": -1.0300000000133878, "buy_dom_delta": 0.0, "sell_dom_delta": 0.0, "display_flow": -101.30100000001829, "display_buy_dom": 56.72991339242, "display_sell_dom": 29.355}
+LIVE_OI_SAMPLE time=00:11:12 / 02.10.26 -5 oi=100247.927000 dOI_gap_break=False samples=5321
+LIVE_OI_SAMPLE time=00:11:19 / 02.10.26 -5 oi=100250.924000 dOI_gap_break=False samples=5322
+LIVE_OI_SAMPLE time=00:11:23 / 02.10.26 -5 oi=100251.100000 dOI_gap_break=False samples=5323
+LIVE_OI_SAMPLE time=00:11:34 / 02.10.26 -5 oi=100303.630000 dOI_gap_break=False samples=5322
+RAW_ACCUM {"time": "2026-10-02 00:11:34.094000-05:00", "dOI": 52.529999999998836, "pctl": 98.81129271916791, "control": "CONTROL LIMIT SELL", "strength": 0.7977074906951188, "flow_delta": 52.529999999998836, "buy_dom_delta": 0.0, "sell_dom_delta": 41.903574486213664, "display_flow": -48.771000000019455, "display_buy_dom": 56.72991339242, "display_sell_dom": 71.25857448621366}
+LIVE_OI_SAMPLE time=00:11:38 / 02.10.26 -5 oi=100305.123000 dOI_gap_break=False samples=5322
+LIVE_OI_SAMPLE time=00:11:44 / 02.10.26 -5 oi=100305.653000 dOI_gap_break=False samples=5322
+LIVE_OI_SAMPLE time=00:11:51 / 02.10.26 -5 oi=100312.343000 dOI_gap_break=False samples=5322
+LIVE_OI_SAMPLE time=00:12:00 / 02.10.26 -5 oi=100312.111000 dOI_gap_break=False samples=5322
+RAW_MINUTE_FINALIZE {"minute": "2026-10-02T00:11:00-05:00", "raw_samples_counted": 2, "flow_already_counted": 51.49999999998545, "canonical_flow": 61.989, "strong_residual": 0.0, "double_count": 0}
+ACCUM_FINAL {"time": "2026-10-02T00:11:00-05:00", "source": "RAW_ONLY", "net": 61.989, "oi_add": 64.41599999999744, "control": "CONTROL LIMIT SELL", "strength": 0.55176052, "flow_final": 61.989, "buy_dom_final": 0.0, "sell_dom_final": 35.54220565632, "double_count": 0}
+RAW_BASELINE_RESTORED samples=5320 oldest=12:12:31 / 01.10.26 -5 newest=00:12:00 / 02.10.26 -5 span_hours=11.99 source=PERSISTENT reference_ready=YES
+LIVE_OI_SAMPLE time=00:12:18 / 02.10.26 -5 oi=100313.150000 dOI_gap_break=True samples=5321
+LIVE_OI_SAMPLE time=00:12:21 / 02.10.26 -5 oi=100313.163000 dOI_gap_break=False samples=5322
+LIVE_RESET anchor=00:12:33 / 02.10.26 -5 raw_baseline_preserved=YES
+LIVE_RESET anchor=00:12:33 / 02.10.26 -5 raw_baseline_preserved=YES
+LIVE_OI_SAMPLE time=00:12:32 / 02.10.26 -5 oi=100316.963000 dOI_gap_break=False samples=5322
+LIVE_OI_SAMPLE time=00:12:37 / 02.10.26 -5 oi=100315.001000 dOI_gap_break=False samples=5323
+LIVE_OI_SAMPLE time=00:12:44 / 02.10.26 -5 oi=100315.095000 dOI_gap_break=False samples=5322
+LIVE_OI_SAMPLE time=00:12:48 / 02.10.26 -5 oi=100315.250000 dOI_gap_break=False samples=5323
+LIVE_OI_SAMPLE time=00:12:55 / 02.10.26 -5 oi=100315.531000 dOI_gap_break=False samples=5323
+LIVE_OI_SAMPLE time=00:13:00 / 02.10.26 -5 oi=100315.663000 dOI_gap_break=False samples=5323
+LIVE_OI_SAMPLE time=00:13:05 / 02.10.26 -5 oi=100315.420000 dOI_gap_break=False samples=5323
+LIVE_OI_SAMPLE time=00:13:15 / 02.10.26 -5 oi=100319.155000 dOI_gap_break=False samples=5323
+LIVE_OI_SAMPLE time=00:13:21 / 02.10.26 -5 oi=100321.974000 dOI_gap_break=False samples=5324
+LIVE_OI_SAMPLE time=00:13:26 / 02.10.26 -5 oi=100323.250000 dOI_gap_break=False samples=5325
+LIVE_OI_SAMPLE time=00:13:32 / 02.10.26 -5 oi=100322.997000 dOI_gap_break=False samples=5326
+LIVE_OI_SAMPLE time=00:13:42 / 02.10.26 -5 oi=100317.619000 dOI_gap_break=False samples=5325
+LIVE_OI_SAMPLE time=00:13:47 / 02.10.26 -5 oi=100318.136000 dOI_gap_break=False samples=5325
+LIVE_ANCHOR_REJECTED requested='2026-10-02 22:55' reason=anchor позже текущего времени
+LIVE_OI_SAMPLE time=00:13:53 / 02.10.26 -5 oi=100325.319000 dOI_gap_break=False samples=5325
+LIVE_OI_SAMPLE time=00:13:58 / 02.10.26 -5 oi=100327.188000 dOI_gap_break=False samples=5325
+LIVE_OI_SAMPLE time=00:14:04 / 02.10.26 -5 oi=100328.602000 dOI_gap_break=False samples=5325
+LIVE_OI_SAMPLE time=00:14:14 / 02.10.26 -5 oi=100328.547000 dOI_gap_break=False samples=5325
+LIVE_OI_SAMPLE time=00:14:20 / 02.10.26 -5 oi=100328.938000 dOI_gap_break=False samples=5326
+LIVE_OI_SAMPLE time=00:14:24 / 02.10.26 -5 oi=100329.720000 dOI_gap_break=False samples=5327
+LIVE_OI_SAMPLE time=00:14:35 / 02.10.26 -5 oi=100332.025000 dOI_gap_break=False samples=5327
+LIVE_OI_SAMPLE time=00:14:41 / 02.10.26 -5 oi=100334.042000 dOI_gap_break=False samples=5327
+LIVE_OI_SAMPLE time=00:14:46 / 02.10.26 -5 oi=100334.777000 dOI_gap_break=False samples=5327
+LIVE_OI_SAMPLE time=00:14:57 / 02.10.26 -5 oi=100336.629000 dOI_gap_break=False samples=5326
