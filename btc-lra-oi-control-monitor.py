@@ -222,8 +222,10 @@ def parse_t_window(text: str, now: datetime) -> dict[str, Any]:
             raise ValueError(f'недопустимая календарная дата в {token}') from exc
 
     if '-' not in value:
+        time_only = False
         if re.fullmatch(r'\d{4}', value):
             start = date_clock(value)
+            time_only = True
         elif re.fullmatch(r'\d{8}', value):
             start = date_clock(value)
         elif re.fullmatch(r'\d{1,2}:\d{2}', value) or re.fullmatch(
@@ -237,7 +239,9 @@ def parse_t_window(text: str, now: datetime) -> dict[str, Any]:
                 start = parse_time(value)
         else:
             raise ValueError('используйте HHMM или DDMMHHMM')
-        if start > now:
+        if time_only and start > now:
+            start -= timedelta(days=1)
+        elif not time_only and start > now:
             raise ValueError('FROM позже текущего времени')
         return {'mode': 'LIVE_FROM', 'start': start, 'end': None}
 
@@ -249,12 +253,15 @@ def parse_t_window(text: str, now: datetime) -> dict[str, Any]:
         raise ValueError('FROM диапазона должен быть HHMM или DDMMHHMM')
     if not re.fullmatch(r'\d{4}', right):
         raise ValueError('TO диапазона должен быть HHMM')
+    time_only = len(left) == 4
     start = date_clock(left)
+    if time_only and start > now:
+        start -= timedelta(days=1)
     end_hour, end_minute = clock_token(right)
     end = start.replace(hour=end_hour, minute=end_minute)
     if end <= start:
         end += timedelta(days=1)
-    if end > now:
+    if not time_only and end > now:
         raise ValueError('TO позже текущего времени')
     return {'mode': 'FIXED_RANGE', 'start': start, 'end': end}
 
@@ -722,12 +729,14 @@ def publish_gui(bridge: GuiBridge | None, session: 'Session', clock: datetime,
     continuous_buy_pct = session.continuous_buy_pct
     continuous_sell_pct = session.continuous_sell_pct
     continuous_partition = session.continuous_dominance_partition()
-    partition_buy_error = session.continuous_buy_dominance_btc - (
-        continuous_partition['event_buy_btc'] + continuous_partition['rest_buy_btc']
-    )
-    partition_sell_error = session.continuous_sell_dominance_btc - (
-        continuous_partition['event_sell_btc'] + continuous_partition['rest_sell_btc']
-    )
+    partition_buy_error = partition_sell_error = None
+    if session.event_exact_available:
+        partition_buy_error = session.continuous_buy_dominance_btc - (
+            continuous_partition['event_buy_btc'] + continuous_partition['rest_buy_btc']
+        )
+        partition_sell_error = session.continuous_sell_dominance_btc - (
+            continuous_partition['event_sell_btc'] + continuous_partition['rest_sell_btc']
+        )
     dominance_relative = session.dominance_relative_snapshot(
         continuous_buy_pct, continuous_sell_pct, clock
     )
@@ -822,6 +831,7 @@ def publish_gui(bridge: GuiBridge | None, session: 'Session', clock: datetime,
         'dominance_v2_sell_pct': continuous_sell_pct,
         'continuous_buy_pct': continuous_buy_pct,
         'continuous_sell_pct': continuous_sell_pct,
+        'event_exact_available': session.event_exact_available,
         'continuous_buy_dominance_btc': session.continuous_buy_dominance_btc,
         'continuous_sell_dominance_btc': session.continuous_sell_dominance_btc,
         'event_buy_dominance_btc': continuous_partition['event_buy_btc'],
@@ -3844,6 +3854,7 @@ class Session:
         self.continuous_unclear_minutes = 0
         self.continuous_valid_closed_minutes = 0
         self.continuous_contributions_by_minute: dict[datetime, dict[str, float]] = {}
+        self.event_exact_available = True
         self.continuous_market_history: list[dict[str, Any]] = []
         self.continuous_baseline_initialized = False
         self.continuous_last_result: dict[str, Any] | None = None
@@ -3934,6 +3945,17 @@ class Session:
 
     def continuous_dominance_partition(self) -> dict[str, float | None]:
         """Split the existing continuous contributions by canonical event minute."""
+        if not self.event_exact_available:
+            return {
+                'event_buy_btc': None,
+                'event_sell_btc': None,
+                'event_buy_pct': None,
+                'event_sell_pct': None,
+                'rest_buy_btc': None,
+                'rest_sell_btc': None,
+                'rest_buy_pct': None,
+                'rest_sell_pct': None,
+            }
         event_times = {
             event.get('time') for event in self.event_history
             if isinstance(event.get('time'), datetime)
@@ -5111,7 +5133,8 @@ def run_live(args: argparse.Namespace, gui: GuiBridge | None = None) -> None:
     def rebuild_live_session(new_anchor: datetime, clock: datetime,
                              rebuild_market: list[dict[str, Any]],
                              window_mode: str = 'LIVE_FROM',
-                             window_end: datetime | None = None) -> tuple[
+                             window_end: datetime | None = None,
+                             event_exact_available: bool = True) -> tuple[
                                  Session, set[datetime], set[datetime], dict[datetime, dict[str, Any]]]:
         """Causally rebuild session state without replaying raw sensors as new samples."""
         target_end = window_end or clock
@@ -5126,6 +5149,7 @@ def run_live(args: argparse.Namespace, gui: GuiBridge | None = None) -> None:
         rebuilt = Session(new_anchor)
         rebuilt.window_mode = window_mode
         rebuilt.window_end = window_end
+        rebuilt.event_exact_available = event_exact_available
         rebuilt.market_history = closed_market
         rebuilt.initialize_continuous_baseline(rebuild_market)
         rebuilt.raw_baseline_ready = baseline_ready
@@ -5138,7 +5162,7 @@ def run_live(args: argparse.Namespace, gui: GuiBridge | None = None) -> None:
         rebuild_events = {
             rebuild_minutes[event['confirmed']]['minute']: event
             for event in individual_events(rebuild_minutes)
-        }
+        } if event_exact_available else {}
         market_by_time = {row['ts']: row for row in closed_market}
         rebuilt_processed: set[datetime] = set()
         current_tv: dict[datetime, dict[str, Any]] = {}
@@ -5175,7 +5199,7 @@ def run_live(args: argparse.Namespace, gui: GuiBridge | None = None) -> None:
                     rebuilt.emit_event(event, minute, [market_row] if market_row else [])
                 canonical_event = rebuilt.event_history[-1]
                 current_tv[minute_time] = dict(canonical_event)
-            raw_summary = rebuild_raw_by_time.get(minute_time)
+            raw_summary = rebuild_raw_by_time.get(minute_time) if event_exact_available else None
             if raw_summary is not None:
                 raw_event = apply_raw_event_to_session(rebuilt, raw_summary)
             if canonical_event is None and raw_event is not None:
@@ -5229,31 +5253,47 @@ def run_live(args: argparse.Namespace, gui: GuiBridge | None = None) -> None:
                         requested = window['start']
                         requested_end = window['end'] or clock
                         earliest_exact = (raw_samples[0]['ts'] + timedelta(hours=6, minutes=30)) if raw_samples else None
-                        if earliest_exact is None or requested < earliest_exact:
-                            raise ValueError(
-                                f'insufficient_raw_reference earliest_exact={fmt_time(earliest_exact)}'
-                            )
+                        event_exact_available = (
+                            earliest_exact is not None and requested >= earliest_exact
+                        )
+                        oi_available = (
+                            f'{fmt_time(raw_samples[0]["ts"])} -> {fmt_time(raw_samples[-1]["ts"])}'
+                            if raw_samples else '--'
+                        )
                         rebuild_market = merge_market_rows(
                             migration_market,
                             load_collector_market_history(collector_market_path, clock, 24.0),
                         )
                         if len(rebuild_market) < 31:
                             rebuild_market = merge_market_rows(fetch_binance_1m_klines(1000), rebuild_market)
+                        market_available = (
+                            f'{fmt_time(rebuild_market[0]["ts"])} -> {fmt_time(rebuild_market[-1]["ts"])}'
+                            if rebuild_market else '--'
+                        )
+                        if not raw_samples or raw_samples[0]['ts'] > requested or not any(
+                                sample['ts'] >= requested for sample in raw_samples):
+                            raise ValueError(
+                                f'T NOT AVAILABLE requested={fmt_time(requested)} '
+                                f'OI available={oi_available} MARKET available={market_available} '
+                                f'EVENT exact from={fmt_time(earliest_exact)}'
+                            )
                         if window['mode'] == 'FIXED_RANGE':
-                            oi_available = f'{fmt_time(raw_samples[0]["ts"])} -> {fmt_time(raw_samples[-1]["ts"])}' if raw_samples else '--'
-                            market_available = f'{fmt_time(rebuild_market[0]["ts"])} -> {fmt_time(rebuild_market[-1]["ts"])}' if rebuild_market else '--'
-                            if not raw_samples or raw_samples[0]['ts'] > requested or raw_samples[-1]['ts'] < requested_end:
+                            if raw_samples[-1]['ts'] < requested_end:
                                 raise ValueError(
-                                    f'RANGE NOT AVAILABLE requested={fmt_time(requested)} -> {fmt_time(requested_end)} '
-                                    f'OI available={oi_available} MARKET available={market_available}'
+                                    f'T NOT AVAILABLE requested={fmt_time(requested)} -> {fmt_time(requested_end)} '
+                                    f'OI available={oi_available} MARKET available={market_available} '
+                                    f'EVENT exact from={fmt_time(earliest_exact)}'
                                 )
                             if not rebuild_market or rebuild_market[0]['ts'] > requested - timedelta(minutes=30) or rebuild_market[-1]['ts'] + timedelta(minutes=1) < requested_end:
                                 raise ValueError(
-                                    f'RANGE NOT AVAILABLE requested={fmt_time(requested)} -> {fmt_time(requested_end)} '
-                                    f'OI available={oi_available} MARKET available={market_available}'
+                                    f'T NOT AVAILABLE requested={fmt_time(requested)} -> {fmt_time(requested_end)} '
+                                    f'OI available={oi_available} MARKET available={market_available} '
+                                    f'EVENT exact from={fmt_time(earliest_exact)}'
                                 )
                         rebuilt, rebuilt_processed, rebuilt_samples, rebuilt_tv = rebuild_live_session(
-                            requested, clock, rebuild_market, window['mode'], requested_end if window['mode'] == 'FIXED_RANGE' else None,
+                            requested, clock, rebuild_market, window['mode'],
+                            requested_end if window['mode'] == 'FIXED_RANGE' else None,
+                            event_exact_available,
                         )
                         preserved_depth_history = list(session.pre_release.depth_history)
                         session = rebuilt
@@ -5326,6 +5366,13 @@ def run_live(args: argparse.Namespace, gui: GuiBridge | None = None) -> None:
         session.collector_market_last_age_sec = ((now - market_latest).total_seconds() if market_latest else None)
         session.raw_baseline_ready = baseline_ready
         session.raw_baseline_span_minutes = history_span * 60
+        earliest_exact = (
+            raw_samples[0]['ts'] + timedelta(hours=6, minutes=30)
+            if raw_samples else None
+        )
+        session.event_exact_available = (
+            earliest_exact is not None and session.anchor >= earliest_exact
+        )
         if not session.raw_baseline_ready and not baseline_warmup_logged:
             warmup_line = f'RAW_BASELINE_WARMUP reason=available_span_{history_span * 60:.1f}m_required_{RAW_BASELINE_MINUTES}m'
             write_bounded_live_log(log_path, warmup_line)
@@ -5348,7 +5395,7 @@ def run_live(args: argparse.Namespace, gui: GuiBridge | None = None) -> None:
         raw_summaries, _ = _raw_intensity_summary(samples, minutes, market_history)
         raw_flow_by_time = {row['_time']: row for row in raw_summaries}
         session.update_total_oi(raw_samples, processing_end)
-        events = individual_events(minutes)
+        events = individual_events(minutes) if session.event_exact_available else []
         event_by_time = {minutes[e['confirmed']]['minute']: e for e in events}
         for minute in minutes:
             if minute['minute'] < session.anchor or minute['minute'] in processed:
@@ -5397,7 +5444,10 @@ def run_live(args: argparse.Namespace, gui: GuiBridge | None = None) -> None:
                 # Live Pine export keeps the existing STRONG/MEGA stream;
                 # RAW-only observations are intentionally not exported yet.
                 write_tv_events_pine(tv_path, list(tv_event_history.values()))
-            raw_summary = raw_flow_by_time.get(minute['minute'])
+            raw_summary = (
+                raw_flow_by_time.get(minute['minute'])
+                if session.event_exact_available else None
+            )
             raw_event = apply_raw_event_to_session(session, raw_summary) if raw_summary is not None else None
             if canonical_event is None and raw_event is not None:
                 canonical_event = raw_event
@@ -5822,18 +5872,25 @@ def launch_gui(args: argparse.Namespace) -> None:
                     f'<span style="color:#168a2f">{buy_text}</span> vs '
                     f'<span style="color:#c62828">{sell_text}</span>'
                 )
-            event_html = (
-                f'<span style="color:#168a2f">{event_buy_text}</span> vs '
-                f'<span style="color:#c62828">{event_sell_text}</span>'
-            )
-            rest_html = (
-                f'<span style="color:#168a2f">{rest_buy_text}</span> vs '
-                f'<span style="color:#c62828">{rest_sell_text}</span>'
-            )
+            if snapshot.get('event_exact_available', True):
+                event_html = (
+                    f'<span style="color:#168a2f">{event_buy_text}</span> vs '
+                    f'<span style="color:#c62828">{event_sell_text}</span>'
+                )
+                rest_html = (
+                    f'<span style="color:#168a2f">{rest_buy_text}</span> vs '
+                    f'<span style="color:#c62828">{rest_sell_text}</span>'
+                )
+                event_plain = f'{event_buy_text} vs {event_sell_text}'
+                rest_plain = f'{rest_buy_text} vs {rest_sell_text}'
+            else:
+                event_html = '<span style="color:#000000">INCOMPLETE</span>'
+                rest_html = '<span style="color:#000000">INCOMPLETE</span>'
+                event_plain = rest_plain = 'INCOMPLETE'
             plain_dominance = (
                 f'F-DOMINANCE {full_plain} | {snapshot["oi_flow"]}\n'
-                f'E-DOMINANCE {event_buy_text} vs {event_sell_text}\n'
-                f'R-DOMINANCE {rest_buy_text} vs {rest_sell_text}'
+                f'E-DOMINANCE {event_plain}\n'
+                f'R-DOMINANCE {rest_plain}'
             )
             html_dominance = (
                 f'F-DOMINANCE {full_html} | {snapshot["oi_flow"]}<br>'
