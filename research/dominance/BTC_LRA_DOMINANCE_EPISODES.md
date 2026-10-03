@@ -2,9 +2,10 @@
 
 Primary source: `BTC_LRA_DOMINANCE_EPISODES.jsonl`. This report is generated from that JSONL schema.
 
-| Episode | Status | Range (Panama) | F BUY/SELL | E BUY/SELL | R BUY/SELL | OI FLOW BTC | Events | Price Δ USDT | E−R SELL pp | 5m / 15m / 30m / 60m close |
-|---|---|---|---:|---:|---:|---:|---:|---:|---:|---:|
-| DOM-2026-10-02-1600-1920 | BENCHMARK_ONLY | 2026-10-02 16:00:00 → 19:20 | 50.2 / 49.8 | 27.3 / 72.7 | 58.3 / 41.7 | -781.6 | 14 | +80.2 | +30.9 | 84493.6 / 84590.0 / 84648.1 / 84589.1 |
+| EPISODE | STATUS | START | END | F BUY/SELL | E BUY/SELL | R BUY/SELL | E-R DIVERGENCE | OI FLOW | PRICE RESULT DURING | OUTCOME 15M | OUTCOME 30M | OUTCOME 60M | NOTES |
+|---|---|---|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---|
+| DOM-20261002-1600-1920 | BENCHMARK_ONLY | 2026-10-02 16:00:00 | 19:20 | 50.2 / 49.8 | 27.3 / 72.7 | 58.3 / 41.7 | +30.9 pp | -781.6 BTC | +80.2 USDT | 84590.0 | 84648.1 | 84589.1 | benchmark evidence; comparative validation required |
+| DOM-20261003-0149-LIVE | LIVE_CANDIDATE | 2026-10-03 01:49:00 | OPEN | 51.7 / 48.3 | 44.9 / 55.1 | 54.0 / 46.0 | +9.0 pp | -968.4 BTC | OPEN | OPEN | OPEN | OPEN | unfinished; no result |
 
 ## Causal observation
 

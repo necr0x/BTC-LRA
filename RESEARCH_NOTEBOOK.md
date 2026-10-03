@@ -115,11 +115,11 @@ The 1m engine derives 5m, 15m, 1h, and 4h context. Higher-timeframe context is a
 
 ## WORKING HYPOTHESIS — F/E/R DOMINANCE DIVERGENCE
 
-The canonical benchmark episode store is [`research/dominance/BTC_LRA_DOMINANCE_EPISODES.jsonl`](research/dominance/BTC_LRA_DOMINANCE_EPISODES.jsonl). It keeps causal F/E/R observations separate from future outcomes and supports `BENCHMARK_ONLY` and `LIVE_CANDIDATE` statuses.
+The canonical store is [`research/dominance/BTC_LRA_DOMINANCE_EPISODES.jsonl`](research/dominance/BTC_LRA_DOMINANCE_EPISODES.jsonl). It keeps causal F/E/R observations separate from future outcomes and supports `BENCHMARK_ONLY` and `LIVE_CANDIDATE` statuses.
 
-The first episode is benchmark evidence only: EVENT flow was strongly SELL-dominant while REST flow was BUY-dominant, FULL dominance remained near balance, and OI contracted materially while downside price progress remained limited relative to observed SELL-side event dominance. SELL-side event aggression during OI contraction may represent closing/pressure that is being accepted without proportional downside continuation.
+Event dominance and rest dominance can diverge strongly while full dominance remains near balance. The 02.10 16:00–19:20 benchmark showed EVENT SELL / REST BUY, OI contraction, limited downside result, and later upside outcome. The 03.10 01:49 live candidate followed prolonged OI contraction with a large OI build during SELL aggression under LIMIT BUY control.
 
-This is a working hypothesis, not a confirmed causal explanation. Opposite-side and control cases are required before any stronger interpretation.
+Comparative validation is required; neither case is a trading rule.
 
 ## Decision history
 
