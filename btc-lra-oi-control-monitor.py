@@ -734,6 +734,14 @@ def publish_gui(bridge: GuiBridge | None, session: 'Session', clock: datetime,
         control = event.get('display_control_text', control)
         if control.startswith('CONTROL '):
             control = control.removeprefix('CONTROL ')
+        pattern = risk_build_collision_candidate(event)
+        pattern_id = pattern.get('pattern_id') if pattern else event.get('pattern_id')
+        pattern_variant = pattern.get('pattern_variant') if pattern else event.get('pattern_variant')
+        stronger_side = pattern.get('stronger_side') if pattern else event.get('stronger_side')
+        is_p1 = pattern_id == P1_PATTERN_ID
+        if is_p1 and control in {'LIMIT BUY', 'LIMIT SELL'}:
+            control = f'{control} [P1]'
+        pattern_config = load_important_patterns_config()['patterns'].get(P1_PATTERN_ID, {})
         events.append({
             'time': event['time'].strftime('%H:%M'),
             'btc_price': price_display(event.get("display_event_price")),
@@ -742,10 +750,14 @@ def publish_gui(bridge: GuiBridge | None, session: 'Session', clock: datetime,
             'aggr': f'{event.get("aggr_side", "HELD")} {event.get("aggr_share_pct", 0.0):.1f}% {compact(event.get("aggr_mag", 0.0))} BTC',
             'delta_price': f'{compact(event.get("display_price_change", event.get("price_change")))} USDT',
             'control': control,
-            'pattern_id': event.get('pattern_id'),
-            'pattern_variant': event.get('pattern_variant'),
-            'stronger_side': event.get('stronger_side'),
-            'gui_highlight': event.get('gui_highlight', False),
+            'pattern_id': pattern_id,
+            'pattern_variant': pattern_variant,
+            'stronger_side': stronger_side,
+            'gui_highlight': bool(
+                is_p1
+                and pattern_config.get('enabled', False)
+                and pattern_config.get('gui_highlight', False)
+            ),
         })
     old_buy_pct, old_sell_pct = dominance_percentages(
         session.buy_dominance_weight_usdt, session.sell_dominance_weight_usdt
