@@ -1226,6 +1226,379 @@ class RiskBuildCollisionArchive:
         return {**row, **candidate}
 
 
+class P1OutcomeArchive:
+    """Append-only lifecycle store for post-trigger P1 research outcomes.
+
+    This class is deliberately downstream of the operational P1 classifier.  It
+    only records an already-qualified event and never feeds future observations
+    back into detection or alert routing.
+    """
+
+    HORIZONS = (1, 3, 5, 15, 30, 60)
+    LEVELS = (10, 20, 30, 50)
+
+    def __init__(self, path: Path, diagnostic_log: Path | None = None) -> None:
+        self.path = path
+        self.md_path = path.with_suffix('.md')
+        self.diagnostic_log = diagnostic_log
+        self.states: dict[str, dict[str, Any]] = {}
+        self.event_context: list[dict[str, Any]] = []
+        self._load_event_context()
+        self._load_states()
+        self.write_md()
+
+    def _diagnose(self, message: str) -> None:
+        if self.diagnostic_log is None:
+            return
+        try:
+            write_bounded_live_log(self.diagnostic_log, message)
+        except OSError:
+            pass
+
+    def _load_event_context(self) -> None:
+        event_path = self.path.parents[2] / 'runtime' / 'monitor' / 'BTC_LRA_EVENT_ROWS.jsonl'
+        if not event_path.is_file():
+            return
+        try:
+            with event_path.open(encoding='utf-8') as handle:
+                for line in handle:
+                    try:
+                        row = json.loads(line)
+                    except (json.JSONDecodeError, TypeError):
+                        continue
+                    if isinstance(row, dict) and isinstance(row.get('time'), str):
+                        self.event_context.append(row)
+        except OSError as exc:
+            self._diagnose(f'P1_OUTCOME_EVENT_CONTEXT_READ_ERROR {type(exc).__name__}: {exc}')
+
+    def register_event(self, event: dict[str, Any]) -> None:
+        event_time = _event_datetime(event.get('time'))
+        if event_time is None:
+            return
+        event_id = event_time.isoformat()
+        if not any(row.get('time') == event_id for row in self.event_context):
+            self.event_context.append({
+                'time': event_id,
+                'price': event.get('display_event_price', event.get('price')),
+                'oi_net_btc': event.get('event_oi_net'),
+                'aggr_side': event.get('aggr_side'),
+                'aggr_share_pct': event.get('aggr_share_pct'),
+                'aggr_mag_btc': event.get('aggr_mag'),
+                'control': event.get('control') or event.get('control_label'),
+            })
+
+    @staticmethod
+    def _number(value: Any) -> float | None:
+        try:
+            return None if value is None else float(value)
+        except (TypeError, ValueError):
+            return None
+
+    @staticmethod
+    def _bars_between(market: list[dict[str, Any]], start: datetime,
+                      end: datetime) -> list[dict[str, Any]]:
+        return [row for row in market if start < row.get('ts', start) <= end]
+
+    @staticmethod
+    def _minutes_between(minutes: list[dict[str, Any]], start: datetime,
+                         end: datetime) -> list[dict[str, Any]]:
+        return [row for row in minutes if start < row.get('minute', start) <= end]
+
+    def _pre_context(self, event_time: datetime, market: list[dict[str, Any]],
+                     minutes: list[dict[str, Any]]) -> dict[str, Any]:
+        pre_start = event_time - timedelta(minutes=15)
+        bars = [row for row in market if pre_start <= row.get('ts', event_time) < event_time]
+        oi_rows = [row for row in minutes if pre_start <= row.get('minute', event_time) < event_time]
+        context = [row for row in self.event_context if isinstance(row.get('time'), str)]
+        prior = []
+        for row in context:
+            try:
+                row_time = datetime.fromisoformat(row['time'])
+            except (TypeError, ValueError):
+                continue
+            if pre_start <= row_time < event_time:
+                prior.append(row)
+        counts = {key: 0 for key in ('MARKET BUY', 'MARKET SELL', 'LIMIT BUY', 'LIMIT SELL')}
+        for row in prior:
+            control = str(row.get('control') or '').removeprefix('CONTROL ')
+            if control in counts:
+                counts[control] += 1
+        first_open = self._number(bars[0].get('open')) if bars else None
+        last_close = self._number(bars[-1].get('close')) if bars else None
+        highs = [self._number(row.get('high')) for row in bars]
+        lows = [self._number(row.get('low')) for row in bars]
+        highs = [value for value in highs if value is not None]
+        lows = [value for value in lows if value is not None]
+        return {
+            'start': pre_start.isoformat(),
+            'price_pre_15m': first_open,
+            'price_change_pre_15m': last_close - first_open if first_open is not None and last_close is not None else None,
+            'high_pre_15m': max(highs) if highs else None,
+            'low_pre_15m': min(lows) if lows else None,
+            'range_pre_15m': max(highs) - min(lows) if highs and lows else None,
+            'oi_flow_change_pre_15m': sum(self._number(row.get('net')) or 0.0 for row in oi_rows),
+            'canonical_event_count_pre_15m': len(prior),
+            'market_buy_count_pre_15m': counts['MARKET BUY'],
+            'market_sell_count_pre_15m': counts['MARKET SELL'],
+            'limit_buy_count_pre_15m': counts['LIMIT BUY'],
+            'limit_sell_count_pre_15m': counts['LIMIT SELL'],
+            'f_e_r_at_pre_15m': None,
+            'f_e_r_change_to_trigger': None,
+        }
+
+    def ensure_trigger(self, event: dict[str, Any], candidate: dict[str, Any],
+                       session: 'Session', minute: dict[str, Any],
+                       market: list[dict[str, Any]],
+                       minutes: list[dict[str, Any]]) -> dict[str, Any] | None:
+        event_time = _event_datetime(event.get('time'))
+        if event_time is None or candidate.get('pattern_id') != P1_PATTERN_ID:
+            return None
+        event_id = event_time.isoformat()
+        self.register_event(event)
+        if event_id in self.states:
+            return self.states[event_id]
+        partition = session.continuous_dominance_partition()
+        trigger_price = self._number(event.get('display_event_price', event.get('price')))
+        control = event.get('control') or event.get('control_label')
+        state = {
+            'event_id': event_id,
+            'time': event_id,
+            'status': 'OPEN',
+            'record_type': 'TRIGGER',
+            'recorded_at': datetime.now(PANAMA).isoformat(),
+            'trigger_snapshot': {
+                'event_id': event_id,
+                'time': event_id,
+                'price': trigger_price,
+                'variant': candidate.get('pattern_variant'),
+                'stronger_side': candidate.get('stronger_side'),
+                'oi_activity_btc': self._number(event.get('event_oi_activity')),
+                'oi_net_btc': self._number(event.get('event_oi_net')),
+                'purity': self._number(candidate.get('oi_build_purity')),
+                'aggr_side': event.get('aggr_side'),
+                'aggr_share_pct': self._number(event.get('aggr_share_pct')),
+                'aggr_mag_btc': self._number(event.get('aggr_mag')),
+                'aggr_mag_x': self._number(candidate.get('aggr_mag_x')),
+                'net_x': self._number(minute.get('net_x')),
+                'activity_x': self._number(minute.get('activity_x')),
+                'jump_x': self._number(minute.get('jump_x')),
+                'price_change_usdt': self._number(event.get('display_price_change', event.get('price_change'))),
+                'control': control,
+                'f_buy_pct': self._number(session.continuous_buy_pct),
+                'f_sell_pct': self._number(session.continuous_sell_pct),
+                'e_buy_pct': self._number(partition.get('event_buy_pct')),
+                'e_sell_pct': self._number(partition.get('event_sell_pct')),
+                'r_buy_pct': self._number(partition.get('rest_buy_pct')),
+                'r_sell_pct': self._number(partition.get('rest_sell_pct')),
+                'total_oi_flow_btc': self._number(session.total_oi_flow_btc),
+            },
+            'pre_context': self._pre_context(event_time, market, minutes),
+            'horizons': {},
+            'time_to_result': {
+                **{f'time_to_{level}_usdt': None for level in self.LEVELS},
+                **{f'time_to_adverse_{level}': None for level in self.LEVELS},
+            },
+            'aggressor_extension_usdt': None,
+            'time_to_stronger_side_reclaim': None,
+            'post_events': [],
+            'oi_post': {},
+            'outcome_classification': None,
+        }
+        self.states[event_id] = state
+        self._append(state)
+        return state
+
+    def _append(self, state: dict[str, Any]) -> None:
+        try:
+            self.path.parent.mkdir(parents=True, exist_ok=True)
+            with self.path.open('a', encoding='utf-8') as handle:
+                handle.write(json.dumps(state, ensure_ascii=False, separators=(',', ':')) + '\n')
+                handle.flush()
+        except (OSError, TypeError, ValueError) as exc:
+            self._diagnose(f'P1_OUTCOME_WRITE_ERROR {type(exc).__name__}: {exc}')
+
+    def _load_states(self) -> None:
+        if not self.path.is_file():
+            return
+        try:
+            with self.path.open(encoding='utf-8') as handle:
+                for line in handle:
+                    try:
+                        state = json.loads(line)
+                    except (json.JSONDecodeError, TypeError):
+                        continue
+                    if isinstance(state, dict) and isinstance(state.get('event_id'), str):
+                        self.states[state['event_id']] = state
+        except OSError as exc:
+            self._diagnose(f'P1_OUTCOME_READ_ERROR {type(exc).__name__}: {exc}')
+
+    def update(self, now: datetime, market: list[dict[str, Any]],
+               minutes: list[dict[str, Any]]) -> None:
+        any_changed = False
+        for state in self.states.values():
+            if state.get('status') == 'COMPLETE':
+                continue
+            state_changed = False
+            try:
+                event_time = datetime.fromisoformat(state['time'])
+            except (KeyError, TypeError, ValueError):
+                continue
+            old_status = state.get('status')
+            trigger = state.get('trigger_snapshot', {})
+            price = self._number(trigger.get('price'))
+            stronger = trigger.get('stronger_side')
+            if price is None or stronger not in {'BUY', 'SELL'}:
+                continue
+            for horizon in self.HORIZONS:
+                target = event_time + timedelta(minutes=horizon)
+                # A closed 1m bar becomes usable only after its minute closes.
+                if now < target + timedelta(minutes=1) or str(horizon) in state['horizons']:
+                    continue
+                bars = self._bars_between(market, event_time, target)
+                oi_rows = self._minutes_between(minutes, event_time, target)
+                if not bars:
+                    continue
+                highs = [self._number(row.get('high')) for row in bars]
+                lows = [self._number(row.get('low')) for row in bars]
+                highs = [value for value in highs if value is not None]
+                lows = [value for value in lows if value is not None]
+                last_close = self._number(bars[-1].get('close'))
+                max_high = max(highs) if highs else price
+                min_low = min(lows) if lows else price
+                if stronger == 'BUY':
+                    mfe = max_high - price
+                    mae = price - min_low
+                else:
+                    mfe = price - min_low
+                    mae = max_high - price
+                state['horizons'][str(horizon)] = {
+                    'price_at_horizon': last_close,
+                    'price_change_usdt': last_close - price if last_close is not None else None,
+                    'high_since_trigger': max_high,
+                    'low_since_trigger': min_low,
+                    'mfe': mfe,
+                    'mae': mae,
+                    'oi_flow_change_btc': sum(self._number(row.get('net')) or 0.0 for row in oi_rows),
+                    'canonical_event_count_since_trigger': sum(
+                        1 for row in self.event_context
+                        if self._event_in_window(row, event_time, target)
+                    ),
+                }
+                state_changed = True
+            self._update_derived(state, event_time, price, stronger, now, market, minutes)
+            if now >= event_time + timedelta(minutes=60) + timedelta(minutes=1):
+                state['status'] = 'COMPLETE' if '60' in state['horizons'] else 'PARTIAL'
+            elif state['horizons']:
+                state['status'] = 'OPEN'
+            if state.get('status') != old_status:
+                state_changed = True
+            if state_changed:
+                any_changed = True
+                state['record_type'] = f'UPDATE_{max((int(key) for key in state["horizons"]), default=0)}M'
+                state['recorded_at'] = datetime.now(PANAMA).isoformat()
+                self._append(state)
+        if any_changed:
+            self.write_md()
+
+    @staticmethod
+    def _event_in_window(row: dict[str, Any], start: datetime, end: datetime) -> bool:
+        try:
+            value = datetime.fromisoformat(row['time'])
+        except (KeyError, TypeError, ValueError):
+            return False
+        return start < value <= end
+
+    def _update_derived(self, state: dict[str, Any], event_time: datetime,
+                        price: float, stronger: str, now: datetime,
+                        market: list[dict[str, Any]], minutes: list[dict[str, Any]]) -> None:
+        bars = self._bars_between(market, event_time, event_time + timedelta(minutes=60))
+        bars = [row for row in bars if row.get('ts', event_time) + timedelta(minutes=1) <= now]
+        if not bars:
+            return
+        aggressor = state['trigger_snapshot'].get('aggr_side')
+        favorable_levels = state['time_to_result']
+        prior_reclaim = state.get('time_to_stronger_side_reclaim')
+        reclaim_index: int | None = int(prior_reclaim) if isinstance(prior_reclaim, int) else None
+        for index, row in enumerate(bars, start=1):
+            high = self._number(row.get('high'))
+            low = self._number(row.get('low'))
+            if high is None or low is None:
+                continue
+            favorable = (high - price) if stronger == 'BUY' else (price - low)
+            adverse = (price - low) if stronger == 'BUY' else (high - price)
+            for level in self.LEVELS:
+                key = f'time_to_{level}_usdt'
+                if favorable >= level and favorable_levels.get(key) is None:
+                    favorable_levels[key] = index
+                key = f'time_to_adverse_{level}'
+                if adverse >= level and favorable_levels.get(key) is None:
+                    favorable_levels[key] = index
+            reclaim = (high >= price) if stronger == 'BUY' else (low <= price)
+            if reclaim and state.get('time_to_stronger_side_reclaim') is None:
+                state['time_to_stronger_side_reclaim'] = index
+                reclaim_index = index
+        extension_bars = bars[:reclaim_index] if reclaim_index is not None else bars
+        if aggressor == 'SELL':
+            state['aggressor_extension_usdt'] = max(
+                (price - (self._number(row.get('low')) or price) for row in extension_bars), default=0.0
+            )
+        elif aggressor == 'BUY':
+            state['aggressor_extension_usdt'] = max(
+                ((self._number(row.get('high')) or price) - price for row in extension_bars), default=0.0
+            )
+        state['oi_post'] = {
+            f'oi_flow_change_{h}m': sum(
+                self._number(row.get('net')) or 0.0
+                for row in self._minutes_between(minutes, event_time, event_time + timedelta(minutes=h))
+            ) if now >= event_time + timedelta(minutes=h) + timedelta(minutes=1) else None
+            for h in self.HORIZONS
+        }
+        state['oi_post']['oi_net_sum_post_5m'] = state['oi_post'].get('oi_flow_change_5m')
+        state['oi_post']['oi_net_sum_post_15m'] = state['oi_post'].get('oi_flow_change_15m')
+        state['post_events'] = [
+            {
+                'time': row.get('time'), 'price': row.get('price'),
+                'oi_net_btc': row.get('oi_net_btc'), 'aggr': row.get('aggr_side'),
+                'price_change_usdt': row.get('price_change_usdt'),
+                'control': row.get('control'),
+            }
+            for row in sorted(self.event_context, key=lambda item: item.get('time', ''))
+            if self._event_in_window(row, event_time, event_time + timedelta(minutes=15))
+        ][:20]
+
+    def write_md(self) -> None:
+        lines = [
+            '# BTC LRA P1 Outcomes', '',
+            'Derived from `BTC_LRA_P1_OUTCOMES.jsonl`; one row per P1 event.', '',
+            '| TIME | SIDE | PRICE | OI NET | AGGR | CONTROL | PRE 15M | +5M MFE/MAE | +15M MFE/MAE | +30M MFE/MAE | +60M MFE/MAE | TIME +20 | TIME +50 | AGGR EXTENSION | OI Δ15M | OI Δ60M | STATUS |',
+            '|---|---:|---:|---:|---|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---|',
+        ]
+        for state in sorted(self.states.values(), key=lambda item: item.get('time', '')):
+            trigger = state.get('trigger_snapshot', {})
+            pre = state.get('pre_context', {})
+            horizons = state.get('horizons', {})
+            def pair(key: str) -> str:
+                row = horizons.get(key, {})
+                return f'{row.get("mfe", "OPEN")}/{row.get("mae", "OPEN")}'
+            lines.append(
+                f'| {state.get("time", "")} | {trigger.get("stronger_side", "")} | '
+                f'{trigger.get("price", "")} | {trigger.get("oi_net_btc", "")} | '
+                f'{trigger.get("aggr_side", "")} {trigger.get("aggr_share_pct", "")}% | '
+                f'{str(trigger.get("control", "")).removeprefix("CONTROL ")} | '
+                f'{pre.get("price_change_pre_15m", "")} | {pair("5")} | {pair("15")} | {pair("30")} | {pair("60")} | '
+                f'{state.get("time_to_result", {}).get("time_to_20_usdt", "")} | '
+                f'{state.get("time_to_result", {}).get("time_to_50_usdt", "")} | '
+                f'{state.get("aggressor_extension_usdt", "")} | '
+                f'{state.get("oi_post", {}).get("oi_flow_change_15m", "")} | '
+                f'{state.get("oi_post", {}).get("oi_flow_change_60m", "")} | {state.get("status", "")} |'
+            )
+        try:
+            self.md_path.parent.mkdir(parents=True, exist_ok=True)
+            self.md_path.write_text('\n'.join(lines) + '\n', encoding='utf-8')
+        except OSError as exc:
+            self._diagnose(f'P1_OUTCOME_MD_WRITE_ERROR {type(exc).__name__}: {exc}')
+
+
 def dispatch_important_pattern(pattern: str, candidate: dict[str, Any],
                                session: 'Session', args: argparse.Namespace,
                                *, record_origin: str,
@@ -4917,6 +5290,7 @@ def run_replay_live(args: argparse.Namespace, gui: GuiBridge | None = None) -> N
     log_path = args.log or root / 'data' / 'research' / 'BTC_LRA_RECORDED_LIVE_REPLAY.log'
     event_archive = EventRowArchive(root / 'runtime' / 'monitor' / 'BTC_LRA_EVENT_ROWS.jsonl', log_path)
     risk_archive = RiskBuildCollisionArchive(root / 'research' / 'dominance' / 'BTC_LRA_RISK_BUILD_COLLISIONS.jsonl', log_path)
+    outcome_archive = P1OutcomeArchive(root / 'research' / 'dominance' / 'BTC_LRA_P1_OUTCOMES.jsonl', log_path)
     tv_path = root / 'BTC_LRA_TV_EVENTS.pine'
     tv_event_history: dict[datetime, dict[str, Any]] = {}
     v2_report_path = root / 'data' / 'research' / 'BTC_LRA_DOMINANCE_V2_REPLAY.txt'
@@ -5050,11 +5424,21 @@ def run_replay_live(args: argparse.Namespace, gui: GuiBridge | None = None) -> N
                 if canonical_event is None and raw_event is not None:
                     canonical_event = raw_event
             if canonical_event is not None:
+                outcome_archive.register_event(canonical_event)
                 if minute_time in rebuild_events:
-                    risk_archive.persist(canonical_event, rebuilt, 'STRONG+RAW' if raw_event is not None else 'STRONG')
+                    source = 'STRONG+RAW' if raw_event is not None else 'STRONG'
+                    risk_archive.persist(canonical_event, rebuilt, source)
+                    operational_candidate = risk_build_collision_candidate(canonical_event)
+                    if operational_candidate is not None:
+                        outcome_archive.ensure_trigger(
+                            canonical_event, operational_candidate, rebuilt,
+                            minute, closed_market, rebuild_minutes,
+                        )
                 rebuilt.finalize_raw_minute(minute_time, canonical_event)
                 event_archive.persist(canonical_event, rebuilt, 'BACKFILL')
+
             rebuilt.snapshot(minute_time)
+        outcome_archive.update(target_end, closed_market, rebuild_minutes)
         return rebuilt
 
     def activate_rebuilt_session(new_anchor: datetime, clock: datetime) -> None:
@@ -5287,9 +5671,16 @@ def run_replay_live(args: argparse.Namespace, gui: GuiBridge | None = None) -> N
             # P1 source population is explicitly existing STRONG/MEGA canonical
             # events only; RAW_ONLY rows never enter this branch.
             if canonical_event_for_finalize is not None:
+                outcome_archive.register_event(canonical_event_for_finalize)
                 source = 'STRONG+RAW' if canonical_event_for_finalize.get('event_source') != 'RAW_OI_INTENSITY' and raw_summary is not None and raw_event is not None else 'STRONG' if canonical_event_for_finalize.get('event_source') != 'RAW_OI_INTENSITY' else 'RAW_ONLY'
                 if minute_time in event_by_time:
                     candidate = risk_archive.persist(canonical_event_for_finalize, session, source)
+                    operational_candidate = risk_build_collision_candidate(canonical_event_for_finalize)
+                    if operational_candidate is not None:
+                        outcome_archive.ensure_trigger(
+                            canonical_event_for_finalize, operational_candidate, session,
+                            minute, market, prefix_minutes,
+                        )
                     if candidate is not None:
                         dispatch_important_pattern(
                             P1_PATTERN_ID, candidate, session, args,
@@ -5316,6 +5707,7 @@ def run_replay_live(args: argparse.Namespace, gui: GuiBridge | None = None) -> N
                 write_replay_log(log_path, f'{fmt_time(clock)} | peak={peaks} | status={current["status"]}')
                 previous_status = current['status']
                 previous_peaks = peaks
+        outcome_archive.update(clock, market, prefix_minutes)
 
     for sample in samples:
         if sample['ts'] < start:
@@ -5369,6 +5761,7 @@ def run_live(args: argparse.Namespace, gui: GuiBridge | None = None) -> None:
     log_path = root / 'runtime' / 'monitor' / 'BTC_LRA_LIVE_MONITOR.log'
     event_archive = EventRowArchive(root / 'runtime' / 'monitor' / 'BTC_LRA_EVENT_ROWS.jsonl', log_path)
     risk_archive = RiskBuildCollisionArchive(root / 'research' / 'dominance' / 'BTC_LRA_RISK_BUILD_COLLISIONS.jsonl', log_path)
+    outcome_archive = P1OutcomeArchive(root / 'research' / 'dominance' / 'BTC_LRA_P1_OUTCOMES.jsonl', log_path)
     live_event_cutoff = startup_now.replace(second=0, microsecond=0)
     collector_directory = root / 'runtime' / 'collector'
     collector_raw_path = collector_directory / 'BTC_LRA_OI_RAW.jsonl'
@@ -5771,9 +6164,16 @@ def run_live(args: argparse.Namespace, gui: GuiBridge | None = None) -> None:
             if canonical_event is None and raw_event is not None:
                 canonical_event = raw_event
             if canonical_event is not None:
+                outcome_archive.register_event(canonical_event)
                 if minute['minute'] in event_by_time:
                     source = 'STRONG+RAW' if raw_event is not None else 'STRONG'
                     candidate = risk_archive.persist(canonical_event, session, source)
+                    operational_candidate = risk_build_collision_candidate(canonical_event)
+                    if operational_candidate is not None:
+                        outcome_archive.ensure_trigger(
+                            canonical_event, operational_candidate, session,
+                            minute, market_history, minutes,
+                        )
                     if candidate is not None:
                         dispatch_important_pattern(
                             P1_PATTERN_ID, candidate, session, args,
@@ -5837,6 +6237,7 @@ def run_live(args: argparse.Namespace, gui: GuiBridge | None = None) -> None:
             processed_raw_samples.add(sample['ts'])
         session.print_status('LIVE STATUS', current_time=processing_end, live=True)
         session.update_total_oi(raw_samples, processing_end)
+        outcome_archive.update(processing_end, market_history, minutes)
         publish_gui(gui, session, processing_end, None, live=True)
         time.sleep(max(2, args.poll_seconds))
 
