@@ -615,6 +615,34 @@ def assess_event_exact_coverage(samples: list[dict[str, Any]], anchor: datetime,
     return True, 'OK', None
 
 
+def assess_canonical_event_coverage(samples: list[dict[str, Any]], anchor: datetime,
+                                    processing_end: datetime) -> tuple[bool, str, str | None]:
+    """Verify the closed-minute window needed by the STRONG/MEGA detector."""
+    required_start = anchor - timedelta(minutes=30)
+    if not samples:
+        return False, 'NO_RAW_HISTORY', None
+    ordered = sorted(
+        (sample for sample in samples if isinstance(sample.get('ts'), datetime)),
+        key=lambda row: row['ts'],
+    )
+    if not ordered or ordered[0]['ts'] > required_start:
+        return False, 'INSUFFICIENT_CANONICAL_PREHISTORY', (
+            f'{fmt_time(ordered[0]["ts"]) if ordered else "--"} > {fmt_time(required_start)}'
+        )
+    anchor_minute = anchor.replace(second=0, microsecond=0)
+    minute_rows = {row['minute']: row for row in minute_oi(ordered)}
+    required_minutes = [
+        required_start.replace(second=0, microsecond=0) + timedelta(minutes=offset)
+        for offset in range(30)
+    ]
+    missing = next((minute for minute in required_minutes if minute not in minute_rows), None)
+    if missing is not None:
+        return False, 'CANONICAL_RAW_GAP', f'missing closed minute {fmt_time(missing)}'
+    if anchor_minute not in minute_rows and processing_end >= anchor_minute + timedelta(minutes=1):
+        return False, 'CANONICAL_RAW_GAP', f'missing analyzed minute {fmt_time(anchor_minute)}'
+    return True, 'OK', None
+
+
 def set_event_exact_state(session: 'Session', available: bool, reason: str,
                           gap: str | None, raw_samples: list[dict[str, Any]],
                           required_start: datetime, log_path: Path) -> None:
@@ -921,6 +949,9 @@ def publish_gui(bridge: GuiBridge | None, session: 'Session', clock: datetime,
         'event_exact_available': session.event_exact_available,
         'event_exact_reason': getattr(session, 'event_exact_reason', 'OK'),
         'event_exact_gap': getattr(session, 'event_exact_gap', None),
+        'canonical_event_available': getattr(session, 'canonical_event_available', True),
+        'canonical_event_reason': getattr(session, 'canonical_event_reason', 'OK'),
+        'canonical_event_gap': getattr(session, 'canonical_event_gap', None),
         'continuous_buy_dominance_btc': session.continuous_buy_dominance_btc,
         'continuous_sell_dominance_btc': session.continuous_sell_dominance_btc,
         'event_buy_dominance_btc': continuous_partition['event_buy_btc'],
@@ -4580,6 +4611,9 @@ class Session:
         self.event_exact_available = True
         self.event_exact_reason = 'OK'
         self.event_exact_gap: str | None = None
+        self.canonical_event_available = True
+        self.canonical_event_reason = 'OK'
+        self.canonical_event_gap: str | None = None
         self.continuous_market_history: list[dict[str, Any]] = []
         self.continuous_baseline_initialized = False
         self.continuous_last_result: dict[str, Any] | None = None
@@ -5863,6 +5897,12 @@ def run_live(args: argparse.Namespace, gui: GuiBridge | None = None) -> None:
     session.raw_baseline_ready = baseline_ready
     session.raw_baseline_span_minutes = history_span * 60
     initial_exact, initial_reason, initial_gap = assess_event_exact_coverage(raw_samples, session.anchor, startup_now)
+    initial_canonical, initial_canonical_reason, initial_canonical_gap = assess_canonical_event_coverage(
+        raw_samples, session.anchor, startup_now,
+    )
+    session.canonical_event_available = initial_canonical
+    session.canonical_event_reason = initial_canonical_reason
+    session.canonical_event_gap = initial_canonical_gap
     set_event_exact_state(
         session, initial_exact, initial_reason, initial_gap, raw_samples,
         session.anchor - timedelta(hours=EVENT_PREHISTORY_HOURS), log_path,
@@ -5898,7 +5938,8 @@ def run_live(args: argparse.Namespace, gui: GuiBridge | None = None) -> None:
                              rebuild_market: list[dict[str, Any]],
                              window_mode: str = 'LIVE_FROM',
                              window_end: datetime | None = None,
-                             event_exact_available: bool = True) -> tuple[
+                             event_exact_available: bool = True,
+                             canonical_event_available: bool = True) -> tuple[
                                  Session, set[datetime], set[datetime], dict[datetime, dict[str, Any]]]:
         """Causally rebuild session state without replaying raw sensors as new samples."""
         target_end = window_end or clock
@@ -5914,6 +5955,7 @@ def run_live(args: argparse.Namespace, gui: GuiBridge | None = None) -> None:
         rebuilt.window_mode = window_mode
         rebuilt.window_end = window_end
         rebuilt.event_exact_available = event_exact_available
+        rebuilt.canonical_event_available = canonical_event_available
         rebuilt.market_history = closed_market
         rebuilt.initialize_continuous_baseline(rebuild_market)
         rebuilt.raw_baseline_ready = baseline_ready
@@ -5926,7 +5968,7 @@ def run_live(args: argparse.Namespace, gui: GuiBridge | None = None) -> None:
         rebuild_events = {
             rebuild_minutes[event['confirmed']]['minute']: event
             for event in individual_events(rebuild_minutes)
-        } if event_exact_available else {}
+        } if canonical_event_available else {}
         market_by_time = {row['ts']: row for row in closed_market}
         rebuilt_processed: set[datetime] = set()
         current_tv: dict[datetime, dict[str, Any]] = {}
@@ -6030,6 +6072,9 @@ def run_live(args: argparse.Namespace, gui: GuiBridge | None = None) -> None:
                         event_exact_available, event_exact_reason, event_exact_gap = assess_event_exact_coverage(
                             raw_samples, requested, processing_end_for_coverage,
                         )
+                        canonical_event_available, canonical_event_reason, canonical_event_gap = assess_canonical_event_coverage(
+                            raw_samples, requested, processing_end_for_coverage,
+                        )
                         earliest_exact = (
                             raw_samples[0]['ts'] + timedelta(hours=EVENT_PREHISTORY_HOURS)
                             if raw_samples else None
@@ -6072,11 +6117,15 @@ def run_live(args: argparse.Namespace, gui: GuiBridge | None = None) -> None:
                             requested, clock, rebuild_market, window['mode'],
                             requested_end if window['mode'] == 'FIXED_RANGE' else None,
                             event_exact_available,
+                            canonical_event_available,
                         )
                         preserved_depth_history = list(session.pre_release.depth_history)
                         previous_exact = session.event_exact_available
                         session = rebuilt
                         session.event_exact_available = previous_exact
+                        session.canonical_event_available = canonical_event_available
+                        session.canonical_event_reason = canonical_event_reason
+                        session.canonical_event_gap = canonical_event_gap
                         set_event_exact_state(
                             session, event_exact_available, event_exact_reason, event_exact_gap,
                             raw_samples, requested - timedelta(hours=EVENT_PREHISTORY_HOURS), log_path,
@@ -6154,6 +6203,12 @@ def run_live(args: argparse.Namespace, gui: GuiBridge | None = None) -> None:
         event_exact_available, event_exact_reason, event_exact_gap = assess_event_exact_coverage(
             raw_samples, session.anchor, processing_end,
         )
+        canonical_event_available, canonical_event_reason, canonical_event_gap = assess_canonical_event_coverage(
+            raw_samples, session.anchor, processing_end,
+        )
+        session.canonical_event_available = canonical_event_available
+        session.canonical_event_reason = canonical_event_reason
+        session.canonical_event_gap = canonical_event_gap
         set_event_exact_state(
             session, event_exact_available, event_exact_reason, event_exact_gap,
             raw_samples, session.anchor - timedelta(hours=EVENT_PREHISTORY_HOURS), log_path,
@@ -6179,7 +6234,7 @@ def run_live(args: argparse.Namespace, gui: GuiBridge | None = None) -> None:
         raw_summaries, _ = _raw_intensity_summary(samples, minutes, market_history)
         raw_flow_by_time = {row['_time']: row for row in raw_summaries}
         session.update_total_oi(raw_samples, processing_end)
-        events = individual_events(minutes) if session.event_exact_available else []
+        events = individual_events(minutes) if session.canonical_event_available else []
         event_by_time = {minutes[e['confirmed']]['minute']: e for e in events}
         for minute in minutes:
             if minute['minute'] < session.anchor or minute['minute'] in processed:
