@@ -1,0 +1,10 @@
+{
+  "sound_mode": "important_patterns_only",
+  "patterns": {
+    "P1_RISK_BUILD_COLLISION": {
+      "enabled": true,
+      "sound": true,
+      "gui_highlight": true
+    }
+  }
+}

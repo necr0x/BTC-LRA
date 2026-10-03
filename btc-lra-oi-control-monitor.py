@@ -42,6 +42,30 @@ RAW_BASELINE_MINUTES = 60
 USER_HISTORY_HOURS = 48.0
 EVENT_PREHISTORY_HOURS = 6.5
 RAW_RETENTION_HOURS = USER_HISTORY_HOURS + EVENT_PREHISTORY_HOURS
+P1_PATTERN_ID = 'P1_RISK_BUILD_COLLISION'
+P1_SOURCE_POPULATION = 'STRONG_MEGA_CANONICAL'
+IMPORTANT_PATTERNS_CONFIG = Path(__file__).resolve().parent / 'config' / 'BTC_LRA_IMPORTANT_PATTERNS.json'
+
+
+def load_important_patterns_config() -> dict[str, Any]:
+    """Read known pattern presentation/sound switches; never evaluate JSON."""
+    defaults = {
+        'sound_mode': 'important_patterns_only',
+        'patterns': {
+            P1_PATTERN_ID: {'enabled': True, 'sound': True, 'gui_highlight': True},
+        },
+    }
+    try:
+        loaded = json.loads(IMPORTANT_PATTERNS_CONFIG.read_text(encoding='utf-8'))
+    except (OSError, TypeError, ValueError):
+        return defaults
+    pattern = loaded.get('patterns', {}).get(P1_PATTERN_ID, {}) if isinstance(loaded, dict) else {}
+    defaults['patterns'][P1_PATTERN_ID] = {
+        key: bool(pattern.get(key, defaults['patterns'][P1_PATTERN_ID][key]))
+        for key in ('enabled', 'sound', 'gui_highlight')
+    }
+    defaults['sound_mode'] = loaded.get('sound_mode', defaults['sound_mode']) if isinstance(loaded, dict) else defaults['sound_mode']
+    return defaults
 
 
 def play_event_sound(sound_file: Path | None) -> None:
@@ -718,6 +742,10 @@ def publish_gui(bridge: GuiBridge | None, session: 'Session', clock: datetime,
             'aggr': f'{event.get("aggr_side", "HELD")} {event.get("aggr_share_pct", 0.0):.1f}% {compact(event.get("aggr_mag", 0.0))} BTC',
             'delta_price': f'{compact(event.get("display_price_change", event.get("price_change")))} USDT',
             'control': control,
+            'pattern_id': event.get('pattern_id'),
+            'pattern_variant': event.get('pattern_variant'),
+            'stronger_side': event.get('stronger_side'),
+            'gui_highlight': event.get('gui_highlight', False),
         })
     old_buy_pct, old_sell_pct = dominance_percentages(
         session.buy_dominance_weight_usdt, session.sell_dominance_weight_usdt
@@ -856,6 +884,7 @@ def publish_gui(bridge: GuiBridge | None, session: 'Session', clock: datetime,
         'pre_release': pre_release,
         'pre_release_text': pre_release_text,
         'research_alert_text': getattr(session, 'research_alert_text', None),
+        'important_pattern_alert': getattr(session, 'research_alert', None),
         'depth_rows': depth_rows[-12:],
         'events': events,
     })
@@ -996,14 +1025,21 @@ def risk_build_collision_candidate(event: dict[str, Any]) -> dict[str, Any] | No
     aggr_side = event.get('aggr_side')
     control = event.get('control') or event.get('control_label')
     collision_type = None
+    pattern_variant = None
+    stronger_side = None
     if aggr_side == 'SELL' and control == 'CONTROL LIMIT BUY':
-        collision_type = 'SELL_RISK_BUILD_COLLISION'
+        pattern_variant = 'SELL_TO_LIMIT_BUY'
+        stronger_side = 'BUY'
     elif aggr_side == 'BUY' and control == 'CONTROL LIMIT SELL':
-        collision_type = 'BUY_RISK_BUILD_COLLISION'
-    if collision_type is None:
+        pattern_variant = 'BUY_TO_LIMIT_SELL'
+        stronger_side = 'SELL'
+    if pattern_variant is None:
         return None
     return {
-        'collision_type': collision_type,
+        'pattern_id': P1_PATTERN_ID,
+        'pattern_variant': pattern_variant,
+        'stronger_side': stronger_side,
+        'source_population': P1_SOURCE_POPULATION,
         'oi_build_purity': purity,
         'human_text': 'RISK BUILD COLLISION\\n'
                       f'{aggr_side} → {control.removeprefix("CONTROL ")}',
@@ -1026,7 +1062,11 @@ class RiskBuildCollisionArchive:
             with self.path.open('r', encoding='utf-8') as handle:
                 for line in handle:
                     try:
-                        event_id = json.loads(line).get('event_id')
+                        row = json.loads(line)
+                        event_id = row.get('pattern_event_id')
+                        if not isinstance(event_id, str):
+                            canonical_event_id = row.get('canonical_event_id') or row.get('event_id')
+                            event_id = f'{P1_PATTERN_ID}|{canonical_event_id}' if isinstance(canonical_event_id, str) else None
                     except (json.JSONDecodeError, AttributeError):
                         continue
                     if isinstance(event_id, str):
@@ -1051,22 +1091,47 @@ class RiskBuildCollisionArchive:
         except (TypeError, ValueError):
             return None
 
+    @staticmethod
+    def annotate_event(event: dict[str, Any]) -> dict[str, Any] | None:
+        candidate = risk_build_collision_candidate(event)
+        if candidate is not None:
+            pattern_config = load_important_patterns_config()['patterns'].get(
+                candidate['pattern_id'], {}
+            )
+            event.update({
+                'pattern_id': candidate['pattern_id'],
+                'pattern_variant': candidate['pattern_variant'],
+                'stronger_side': candidate['stronger_side'],
+                'source_population': candidate['source_population'],
+                'gui_highlight': bool(
+                    pattern_config.get('enabled', False)
+                    and pattern_config.get('gui_highlight', False)
+                ),
+            })
+        return candidate
+
     def persist(self, event: dict[str, Any], session: 'Session',
                 event_source: str | None = None) -> dict[str, Any] | None:
         event_time = _event_datetime(event.get('time'))
-        candidate = risk_build_collision_candidate(event)
+        candidate = self.annotate_event(event)
         if event_time is None or candidate is None:
             return None
-        event_id = event_time.isoformat()
-        if event_id in self.event_ids:
+        canonical_event_id = event_time.isoformat()
+        pattern_event_id = f'{candidate["pattern_id"]}|{canonical_event_id}'
+        if pattern_event_id in self.event_ids:
             return None
         control = event.get('control') or event.get('control_label')
         price = event.get('display_event_price', event.get('price'))
         price_change = event.get('display_price_change', event.get('price_change'))
         row = {
-            'event_id': event_id,
-            'time': event_id,
-            'collision_type': candidate['collision_type'],
+            'event_id': canonical_event_id,
+            'canonical_event_id': canonical_event_id,
+            'pattern_event_id': pattern_event_id,
+            'pattern_id': candidate['pattern_id'],
+            'pattern_variant': candidate['pattern_variant'],
+            'stronger_side': candidate['stronger_side'],
+            'source_population': candidate['source_population'],
+            'time': canonical_event_id,
             'price': self._number(price),
             'side': event.get('aggr_side'),
             'oi_activity_btc': self._number(event.get('event_oi_activity')),
@@ -1104,16 +1169,35 @@ class RiskBuildCollisionArchive:
         except (OSError, TypeError, ValueError) as exc:
             self._diagnose(f'RISK_COLLISION_WRITE_ERROR {type(exc).__name__}: {exc}')
             return None
-        self.event_ids.add(event_id)
+        self.event_ids.add(pattern_event_id)
         return {**row, **candidate}
 
 
 def dispatch_important_pattern(pattern: str, candidate: dict[str, Any],
                                session: 'Session', args: argparse.Namespace,
-                               *, live_alert: bool) -> None:
+                               *, record_origin: str,
+                               live_event_cutoff: datetime | None) -> None:
     """Central dispatcher for research-only important-pattern alerts."""
-    if pattern != 'RISK_BUILD_COLLISION':
+    config = load_important_patterns_config()
+    pattern_config = config['patterns'].get(pattern, {})
+    if pattern != P1_PATTERN_ID or not pattern_config.get('enabled', False):
         return
+    event_time = datetime.fromisoformat(candidate['canonical_event_id'])
+    presentation = {
+        'pattern_id': candidate['pattern_id'],
+        'pattern_variant': candidate['pattern_variant'],
+        'stronger_side': candidate['stronger_side'],
+        'gui_highlight': bool(pattern_config.get('gui_highlight', False)),
+    }
+    session.research_alert = {
+        'text': (
+            f'P1 {event_time.strftime("%H:%M")} | '
+            f'{candidate["aggr_side"]} → {str(candidate["control"]).removeprefix("CONTROL ")} | '
+            f'OI {compact(candidate["oi_net_btc"])} | '
+            f'PURITY {candidate["oi_build_purity"] * 100:.1f}%'
+        ),
+        **presentation,
+    }
     side = candidate['aggr_side']
     control = str(candidate['control']).removeprefix('CONTROL ')
     line = (
@@ -1125,9 +1209,17 @@ def dispatch_important_pattern(pattern: str, candidate: dict[str, Any],
         f'ΔP {compact(candidate["price_change_usdt"])}'
     )
     print(line)
-    session.research_alert_text = line
-    if live_alert and getattr(args, 'sound', 'off') == 'on':
+    session.research_alert_text = session.research_alert['text']
+    is_new_live = (
+        record_origin == 'LIVE'
+        and live_event_cutoff is not None
+        and event_time >= live_event_cutoff
+        and candidate['pattern_event_id'] not in session.sound_emitted_pattern_ids
+    )
+    if (is_new_live and getattr(args, 'sound', 'off') == 'on'
+            and pattern_config.get('sound', False)):
         play_event_sound(getattr(args, 'risk_collision_sound_file', None) or args.sound_file)
+        session.sound_emitted_pattern_ids.add(candidate['pattern_event_id'])
 
 
 def pine_quote(value: str) -> str:
@@ -4030,6 +4122,8 @@ class Session:
         self.buy_peak = self.sell_peak = 0.0
         self.last_control: str | None = None
         self.research_alert_text: str | None = None
+        self.research_alert: dict[str, Any] | None = None
+        self.sound_emitted_pattern_ids: set[str] = set()
         self.last_low: float | None = None
         self.last_high: float | None = None
         self.previous_low: float | None = None
@@ -5137,12 +5231,17 @@ def run_replay_live(args: argparse.Namespace, gui: GuiBridge | None = None) -> N
                         'control': raw_event.get('raw_control'),
                         'dominance_v2_contribution_btc': 0.0,
                     }, ensure_ascii=False))
+            # P1 source population is explicitly existing STRONG/MEGA canonical
+            # events only; RAW_ONLY rows never enter this branch.
             if canonical_event_for_finalize is not None:
                 source = 'STRONG+RAW' if canonical_event_for_finalize.get('event_source') != 'RAW_OI_INTENSITY' and raw_summary is not None and raw_event is not None else 'STRONG' if canonical_event_for_finalize.get('event_source') != 'RAW_OI_INTENSITY' else 'RAW_ONLY'
                 if minute_time in event_by_time:
                     candidate = risk_archive.persist(canonical_event_for_finalize, session, source)
                     if candidate is not None:
-                        dispatch_important_pattern('RISK_BUILD_COLLISION', candidate, session, args, live_alert=False)
+                        dispatch_important_pattern(
+                            P1_PATTERN_ID, candidate, session, args,
+                            record_origin='BACKFILL', live_event_cutoff=None,
+                        )
                 session.finalize_raw_minute(minute_time, canonical_event_for_finalize, log_path=log_path)
                 event_archive.persist(canonical_event_for_finalize, session, 'BACKFILL')
                 write_replay_log(log_path, 'ACCUM_FINAL ' + json.dumps({
@@ -5363,6 +5462,8 @@ def run_live(args: argparse.Namespace, gui: GuiBridge | None = None) -> None:
                 raw_event = apply_raw_event_to_session(rebuilt, raw_summary)
             if canonical_event is None and raw_event is not None:
                 canonical_event = raw_event
+            # P1 source population is explicitly existing STRONG/MEGA canonical
+            # events only; RAW_ONLY rows never enter this branch.
             if canonical_event is not None:
                 if minute_time in rebuild_events:
                     risk_archive.persist(canonical_event, rebuilt, 'STRONG+RAW' if raw_event is not None else 'STRONG')
@@ -5621,7 +5722,11 @@ def run_live(args: argparse.Namespace, gui: GuiBridge | None = None) -> None:
                     source = 'STRONG+RAW' if raw_event is not None else 'STRONG'
                     candidate = risk_archive.persist(canonical_event, session, source)
                     if candidate is not None:
-                        dispatch_important_pattern('RISK_BUILD_COLLISION', candidate, session, args, live_alert=True)
+                        dispatch_important_pattern(
+                            P1_PATTERN_ID, candidate, session, args,
+                            record_origin='LIVE' if minute['minute'] >= live_event_cutoff else 'BACKFILL',
+                            live_event_cutoff=live_event_cutoff,
+                        )
                 session.finalize_raw_minute(minute['minute'], canonical_event, log_path=log_path)
                 event_archive.persist(
                     canonical_event,
@@ -5713,8 +5818,9 @@ def launch_gui(args: argparse.Namespace) -> None:
             font = QFont('Consolas', 10)
             self.header = QLabel('Ожидание данных…')
             self.replay_line = QLabel('')
+            self.important_pattern_line = QLabel('')
             self.current = QLabel('')
-            for label in (self.header, self.replay_line, self.current):
+            for label in (self.header, self.replay_line, self.important_pattern_line, self.current):
                 label.setFont(font)
                 label.setSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Fixed)
                 label.setTextInteractionFlags(Qt.TextInteractionFlag.TextSelectableByMouse)
@@ -5792,6 +5898,7 @@ def launch_gui(args: argparse.Namespace) -> None:
             top_layout.setAlignment(Qt.AlignmentFlag.AlignTop)
             top_layout.addWidget(self.header, 0)
             top_layout.addWidget(self.current, 0)
+            top_layout.addWidget(self.important_pattern_line, 0)
             layout = QVBoxLayout(self)
             layout.setContentsMargins(8, 8, 8, 8)
             layout.setSpacing(10)
@@ -5854,8 +5961,10 @@ def launch_gui(args: argparse.Namespace) -> None:
             metrics = QFontMetrics(self.table.font())
             padding = 22
             measured = [metrics.horizontalAdvance(header) + padding for header in headers]
+            visible_keys = ('time', 'btc_price', 'oi_act', 'net', 'aggr', 'delta_price', 'control')
             for row in rows:
-                for column, value in enumerate(row.values()):
+                for column, key in enumerate(visible_keys):
+                    value = row.get(key, '')
                     measured[column] = max(measured[column],
                                            metrics.horizontalAdvance(str(value)) + padding)
             changed = False
@@ -5999,6 +6108,17 @@ def launch_gui(args: argparse.Namespace) -> None:
                 snapshot.get('pre_release_text', '') if snapshot['live']
                 else f'HISTORICAL TIME {snapshot["clock"]} | SPEED {snapshot["speed"]:g}x'
             )
+            alert = snapshot.get('important_pattern_alert')
+            if alert:
+                self.important_pattern_line.setText(alert.get('text', ''))
+                self.important_pattern_line.setStyleSheet(
+                    'color: #1f7a35; background: #e7f4e7; padding: 2px 6px;'
+                    if alert.get('stronger_side') == 'BUY'
+                    else 'color: #a12626; background: #fbe7e7; padding: 2px 6px;'
+                )
+            else:
+                self.important_pattern_line.setText('')
+                self.important_pattern_line.setStyleSheet('')
             buy_pct = snapshot.get('continuous_buy_pct')
             sell_pct = snapshot.get('continuous_sell_pct')
             buy_text = '--' if buy_pct is None else f'{buy_pct:.1f}%'
@@ -6073,10 +6193,15 @@ def launch_gui(args: argparse.Namespace) -> None:
             self.sync_row_slots()
             self.update_content_widths(rows)
             self.resize_columns()
+            visible_keys = ('time', 'btc_price', 'oi_act', 'net', 'aggr', 'delta_price', 'control')
             for row_index in range(self.table.rowCount()):
-                values = (list(rows[row_index].values())
-                          if row_index < len(rows)
-                          else [''] * self.table.columnCount())
+                row = rows[row_index] if row_index < len(rows) else {}
+                values = [row.get(key, '') for key in visible_keys]
+                row_background = QColor('#ffffff')
+                if row.get('gui_highlight') and row.get('stronger_side') == 'BUY':
+                    row_background = QColor('#e7f4e7')
+                elif row.get('gui_highlight') and row.get('stronger_side') == 'SELL':
+                    row_background = QColor('#fbe7e7')
                 for col_index, value in enumerate(values):
                     text = str(value)
                     if self._cells.get((row_index, col_index)) != text:
@@ -6087,6 +6212,9 @@ def launch_gui(args: argparse.Namespace) -> None:
                         item.setTextAlignment(Qt.AlignmentFlag.AlignCenter | Qt.AlignmentFlag.AlignVCenter)
                         item.setText(text)
                         self._cells[(row_index, col_index)] = text
+                    item = self.table.item(row_index, col_index)
+                    if item is not None:
+                        item.setBackground(row_background)
             depth_rows = snapshot.get('depth_rows', [])
             self.depth_table.setRowCount(len(depth_rows))
             for row_index, row in enumerate(depth_rows):
