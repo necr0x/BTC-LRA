@@ -39,6 +39,9 @@ AGGR_BASELINE_WINDOW = 30
 MIN_AGGR_BASELINE_SAMPLES = 10
 MIN_AGGR_MAG_X = 2.0
 RAW_BASELINE_MINUTES = 60
+USER_HISTORY_HOURS = 48.0
+EVENT_PREHISTORY_HOURS = 6.5
+RAW_RETENTION_HOURS = USER_HISTORY_HOURS + EVENT_PREHISTORY_HOURS
 
 
 def play_event_sound(sound_file: Path | None) -> None:
@@ -222,10 +225,8 @@ def parse_t_window(text: str, now: datetime) -> dict[str, Any]:
             raise ValueError(f'недопустимая календарная дата в {token}') from exc
 
     if '-' not in value:
-        time_only = False
         if re.fullmatch(r'\d{4}', value):
             start = date_clock(value)
-            time_only = True
         elif re.fullmatch(r'\d{8}', value):
             start = date_clock(value)
         elif re.fullmatch(r'\d{1,2}:\d{2}', value) or re.fullmatch(
@@ -239,9 +240,7 @@ def parse_t_window(text: str, now: datetime) -> dict[str, Any]:
                 start = parse_time(value)
         else:
             raise ValueError('используйте HHMM или DDMMHHMM')
-        if time_only and start > now:
-            start -= timedelta(days=1)
-        elif not time_only and start > now:
+        if start > now:
             raise ValueError('FROM позже текущего времени')
         return {'mode': 'LIVE_FROM', 'start': start, 'end': None}
 
@@ -253,15 +252,12 @@ def parse_t_window(text: str, now: datetime) -> dict[str, Any]:
         raise ValueError('FROM диапазона должен быть HHMM или DDMMHHMM')
     if not re.fullmatch(r'\d{4}', right):
         raise ValueError('TO диапазона должен быть HHMM')
-    time_only = len(left) == 4
     start = date_clock(left)
-    if time_only and start > now:
-        start -= timedelta(days=1)
     end_hour, end_minute = clock_token(right)
     end = start.replace(hour=end_hour, minute=end_minute)
     if end <= start:
         end += timedelta(days=1)
-    if not time_only and end > now:
+    if end > now:
         raise ValueError('TO позже текущего времени')
     return {'mode': 'FIXED_RANGE', 'start': start, 'end': end}
 
@@ -418,7 +414,7 @@ def load_market(path: Path) -> list[dict[str, Any]]:
 
 
 def load_collector_market_history(path: Path, now: datetime,
-                                  history_hours: float = 24.0) -> list[dict[str, Any]]:
+                                  history_hours: float = RAW_RETENTION_HOURS) -> list[dict[str, Any]]:
     """Rebuild 1m market bars from collector's causal unfinished-candle snapshots."""
     if not path.is_file():
         return []
@@ -528,7 +524,7 @@ def collector_raw_is_fresh(path: Path, now: datetime, max_age_sec: float = 30.0)
 
 
 def load_collector_oi_history(path: Path, now: datetime,
-                              history_hours: float = 24.0) -> list[dict[str, Any]]:
+                              history_hours: float = RAW_RETENTION_HOURS) -> list[dict[str, Any]]:
     """Read collector-owned OI history without modifying the source file."""
     if not path.is_file():
         return []
@@ -1542,7 +1538,7 @@ def _raw_intensity_metrics(samples: list[dict[str, Any]]) -> list[dict[str, Any]
     add_index = 0
     for index, item in enumerate(metrics):
         current_time = item['ts']
-        lower = current_time - timedelta(hours=6, minutes=30)
+        lower = current_time - timedelta(hours=EVENT_PREHISTORY_HOURS)
         upper = current_time - timedelta(minutes=30)
         while add_index < index and metrics[add_index]['ts'] < upper:
             candidate = metrics[add_index]
@@ -5071,14 +5067,14 @@ def run_live(args: argparse.Namespace, gui: GuiBridge | None = None) -> None:
     raw_flow_by_time: dict[datetime, dict[str, Any]] = {}
     collector_owns_raw = collector_raw_is_fresh(collector_raw_path, startup_now)
     collector_owns_market = collector_raw_is_fresh(collector_market_path, startup_now)
-    raw_samples = load_collector_oi_history(collector_raw_path, startup_now, 24.0)
+    raw_samples = load_collector_oi_history(collector_raw_path, startup_now, RAW_RETENTION_HOURS)
     source = 'COLLECTOR' if raw_samples else 'EMPTY'
     history_span = ((raw_samples[-1]['ts'] - raw_samples[0]['ts']).total_seconds() / 3600
                     if len(raw_samples) >= 2 else 0.0)
     processed_raw_samples.update(sample['ts'] for sample in raw_samples)
     collector_oi_latest = collector_latest_timestamp(collector_raw_path)
     collector_market_latest = collector_latest_timestamp(collector_market_path)
-    earliest_exact = raw_samples[0]['ts'] + timedelta(hours=6, minutes=30) if raw_samples else None
+    earliest_exact = raw_samples[0]['ts'] + timedelta(hours=EVENT_PREHISTORY_HOURS) if raw_samples else None
     if not args.from_time and not args.from_now and earliest_exact is not None and anchor < earliest_exact:
         actual_anchor = min(max(earliest_exact, raw_samples[0]['ts']), startup_now)
         write_bounded_live_log(
@@ -5091,7 +5087,7 @@ def run_live(args: argparse.Namespace, gui: GuiBridge | None = None) -> None:
     session.collector_stale = not (collector_owns_raw and collector_owns_market)
     session.collector_last_age_sec = ((startup_now - collector_oi_latest).total_seconds() if collector_oi_latest else None)
     session.collector_market_last_age_sec = ((startup_now - collector_market_latest).total_seconds() if collector_market_latest else None)
-    migration_market = load_collector_market_history(collector_market_path, startup_now, 24.0)
+    migration_market = load_collector_market_history(collector_market_path, startup_now, RAW_RETENTION_HOURS)
     if len(migration_market) < 120:
         try:
             migration_market = merge_market_rows(fetch_binance_1m_klines(1000), migration_market)
@@ -5245,14 +5241,20 @@ def run_live(args: argparse.Namespace, gui: GuiBridge | None = None) -> None:
                     old_anchor = session.anchor
                     clock = datetime.now(PANAMA)
                     try:
-                        raw_samples = load_collector_oi_history(collector_raw_path, clock, 24.0)
+                        raw_samples = load_collector_oi_history(collector_raw_path, clock, RAW_RETENTION_HOURS)
                         if raw_samples:
                             history_span = (raw_samples[-1]['ts'] - raw_samples[0]['ts']).total_seconds() / 3600.0
                             baseline_ready = history_span >= RAW_BASELINE_MINUTES / 60
                         window = parse_t_window(value, clock)
                         requested = window['start']
                         requested_end = window['end'] or clock
-                        earliest_exact = (raw_samples[0]['ts'] + timedelta(hours=6, minutes=30)) if raw_samples else None
+                        research_cutoff = clock - timedelta(hours=USER_HISTORY_HOURS)
+                        if requested < research_cutoff:
+                            raise ValueError(
+                                f'T NOT AVAILABLE requested={fmt_time(requested)} '
+                                f'available research history={fmt_time(research_cutoff)} -> {fmt_time(clock)}'
+                            )
+                        earliest_exact = (raw_samples[0]['ts'] + timedelta(hours=EVENT_PREHISTORY_HOURS)) if raw_samples else None
                         event_exact_available = (
                             earliest_exact is not None and requested >= earliest_exact
                         )
@@ -5262,7 +5264,7 @@ def run_live(args: argparse.Namespace, gui: GuiBridge | None = None) -> None:
                         )
                         rebuild_market = merge_market_rows(
                             migration_market,
-                            load_collector_market_history(collector_market_path, clock, 24.0),
+                            load_collector_market_history(collector_market_path, clock, RAW_RETENTION_HOURS),
                         )
                         if len(rebuild_market) < 31:
                             rebuild_market = merge_market_rows(fetch_binance_1m_klines(1000), rebuild_market)
@@ -5347,13 +5349,13 @@ def run_live(args: argparse.Namespace, gui: GuiBridge | None = None) -> None:
         now = datetime.now(PANAMA)
         collector_fresh = collector_raw_is_fresh(collector_raw_path, now)
         collector_market_fresh = collector_raw_is_fresh(collector_market_path, now)
-        collector_market_rows = load_collector_market_history(collector_market_path, now, 24.0)
+        collector_market_rows = load_collector_market_history(collector_market_path, now, RAW_RETENTION_HOURS)
         live_klines = merge_market_rows(migration_market, collector_market_rows)
         depth_rows = load_collector_depth_summary(collector_depth_path, now, 24.0)
         display_end = session.window_end if session.window_mode == 'FIXED_RANGE' else now
         session.display_depth_history = build_depth_timeline(depth_rows, session.anchor, display_end)
         if collector_fresh:
-            raw_samples = load_collector_oi_history(collector_raw_path, now, 24.0)
+            raw_samples = load_collector_oi_history(collector_raw_path, now, RAW_RETENTION_HOURS)
 
         if raw_samples:
             span_minutes = (raw_samples[-1]['ts'] - raw_samples[0]['ts']).total_seconds() / 60
@@ -5367,7 +5369,7 @@ def run_live(args: argparse.Namespace, gui: GuiBridge | None = None) -> None:
         session.raw_baseline_ready = baseline_ready
         session.raw_baseline_span_minutes = history_span * 60
         earliest_exact = (
-            raw_samples[0]['ts'] + timedelta(hours=6, minutes=30)
+            raw_samples[0]['ts'] + timedelta(hours=EVENT_PREHISTORY_HOURS)
             if raw_samples else None
         )
         session.event_exact_available = (

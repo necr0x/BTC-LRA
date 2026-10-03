@@ -16,6 +16,10 @@ from pathlib import Path
 PANAMA = timezone(timedelta(hours=-5))
 SYMBOL = 'BTCUSDT'
 MAX_HEALTH_BYTES = 4 * 1024 * 1024
+USER_HISTORY_HOURS = 48.0
+EVENT_PREHISTORY_HOURS = 6.5
+RAW_RETENTION_HOURS = USER_HISTORY_HOURS + EVENT_PREHISTORY_HOURS
+DEPTH_RETENTION_HOURS = 24.0
 
 
 def now_utc() -> datetime:
@@ -94,7 +98,8 @@ def append_jsonl(path: Path, row: dict[str, object]) -> None:
 class Collector:
     def __init__(self, root: Path, history_hours: float, poll_seconds: float, depth_limit: int) -> None:
         self.root = root
-        self.history_hours = max(24.0, history_hours)
+        self.history_hours = max(RAW_RETENTION_HOURS, history_hours)
+        self.depth_history_hours = DEPTH_RETENTION_HOURS
         self.poll_seconds = max(1.0, poll_seconds)
         self.depth_limit = depth_limit
         self.directory = root / 'runtime' / 'collector'
@@ -107,12 +112,12 @@ class Collector:
         legacy_depth_summary_path = self.directory / 'BTC_LRA_DEPTH_SUMMARY_12H.jsonl'
         self.health_path = self.directory / 'BTC_LRA_COLLECTOR.log'
         self.pid_path = self.directory / 'BTC_LRA_COLLECTOR.pid'
-        current_oi_rows = read_jsonl(self.oi_path, history_hours)
-        legacy_oi_rows = read_jsonl(legacy_oi_path, history_hours)
+        current_oi_rows = read_jsonl(self.oi_path, self.history_hours)
+        legacy_oi_rows = read_jsonl(legacy_oi_path, self.history_hours)
         if legacy_oi_path.is_file():
             if legacy_oi_rows:
                 self.oi_rows, legacy_used, legacy_overlap_skipped = self._splice_oi_rows(
-                    current_oi_rows, legacy_oi_rows, history_hours,
+                    current_oi_rows, legacy_oi_rows, self.history_hours,
                 )
                 atomic_write_jsonl(self.oi_path, self.oi_rows)
                 oldest = parse_timestamp(self.oi_rows[0]) if self.oi_rows else None
@@ -130,8 +135,11 @@ class Collector:
                 self.log('LEGACY_OI_BOOTSTRAP_FAILED reason=no_valid_samples')
         else:
             self.oi_rows = current_oi_rows
-        self.market_rows = read_jsonl(self.market_path if self.market_path.is_file() else legacy_market_path, history_hours)
-        self.depth_summary_rows = read_jsonl(self.depth_summary_path if self.depth_summary_path.is_file() else legacy_depth_summary_path, history_hours)
+        self.market_rows = read_jsonl(self.market_path if self.market_path.is_file() else legacy_market_path, self.history_hours)
+        self.depth_summary_rows = read_jsonl(
+            self.depth_summary_path if self.depth_summary_path.is_file() else legacy_depth_summary_path,
+            self.depth_history_hours,
+        )
         self.previous_oi = float(self.oi_rows[-1]['oi_btc']) if self.oi_rows and self.oi_rows[-1].get('oi_btc') is not None else None
         self.previous_oi_time = parse_timestamp(self.oi_rows[-1]) if self.oi_rows else None
         self.stop_requested = False
@@ -234,13 +242,14 @@ class Collector:
 
     def compact(self) -> None:
         cutoff = now_utc() - timedelta(hours=self.history_hours)
+        depth_cutoff = now_utc() - timedelta(hours=self.depth_history_hours)
         self.oi_rows = [row for row in self.oi_rows if (parse_timestamp(row) or datetime.min.replace(tzinfo=timezone.utc)) >= cutoff]
         self.market_rows = [row for row in self.market_rows if (parse_timestamp(row) or datetime.min.replace(tzinfo=timezone.utc)) >= cutoff]
-        self.depth_summary_rows = [row for row in self.depth_summary_rows if (parse_timestamp(row) or datetime.min.replace(tzinfo=timezone.utc)) >= cutoff]
+        self.depth_summary_rows = [row for row in self.depth_summary_rows if (parse_timestamp(row) or datetime.min.replace(tzinfo=timezone.utc)) >= depth_cutoff]
         atomic_write_jsonl(self.oi_path, self.oi_rows)
         atomic_write_jsonl(self.market_path, self.market_rows)
         atomic_write_jsonl(self.depth_summary_path, self.depth_summary_rows)
-        self.prune_depth_files(cutoff)
+        self.prune_depth_files(depth_cutoff)
         self.last_compact = time.monotonic()
         self.log(f'COMPACT oi={len(self.oi_rows)} market={len(self.market_rows)} depth_summary={len(self.depth_summary_rows)}')
 
@@ -329,8 +338,8 @@ class Collector:
         latest_depth = parse_timestamp(self.depth_summary_rows[-1]) if self.depth_summary_rows else None
         current = datetime.now(timezone.utc)
         self.log(
-            f'HEARTBEAT time={iso_local(current)} oi_samples_24h={len(self.oi_rows)} '
-            f'market_samples_24h={len(self.market_rows)} depth_snapshots_24h={len(self.depth_summary_rows)} '
+            f'HEARTBEAT time={iso_local(current)} oi_samples_{self.history_hours:g}h={len(self.oi_rows)} '
+            f'market_samples_{self.history_hours:g}h={len(self.market_rows)} depth_snapshots_{self.depth_history_hours:g}h={len(self.depth_summary_rows)} '
             f'last_oi_age_sec={(current - latest_oi).total_seconds() if latest_oi else "--"} '
             f'last_market_age_sec={(current - latest_market).total_seconds() if latest_market else "--"} '
             f'last_depth_age_sec={(current - latest_depth).total_seconds() if latest_depth else "--"}'
@@ -380,7 +389,7 @@ class Collector:
 def main() -> None:
     parser = argparse.ArgumentParser(description='Standalone BTC-LRA public Binance data collector')
     parser.add_argument('--poll-seconds', type=float, default=5.0)
-    parser.add_argument('--history-hours', type=float, default=24.0)
+    parser.add_argument('--history-hours', type=float, default=RAW_RETENTION_HOURS)
     parser.add_argument('--depth-limit', type=int, choices=(50, 100, 500), default=100)
     args = parser.parse_args()
     Collector(Path(__file__).resolve().parent, args.history_hours, args.poll_seconds, args.depth_limit).run()
