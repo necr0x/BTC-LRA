@@ -3804,6 +3804,13 @@ class Session:
                 'buy_dominance_v2_btc': self.buy_dominance_v2_btc,
                 'sell_dominance_v2_btc': self.sell_dominance_v2_btc,
             })
+        # Latch the first valid post-anchor dominance state while processing
+        # the timeline, rather than during the first GUI refresh (which may
+        # already be at the current time after a startup/backfill).
+        committed_buy_pct, committed_sell_pct = dominance_percentages(
+            self.buy_dominance_v2_btc, self.sell_dominance_v2_btc
+        )
+        self.update_dominance_reference(committed_buy_pct, committed_sell_pct, minute)
         ledger['strong_finalized'] = canonical_event is not None
         if log_path is not None:
             write_replay_log(log_path, 'RAW_MINUTE_FINALIZE ' + json.dumps({
