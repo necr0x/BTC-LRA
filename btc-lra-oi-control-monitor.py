@@ -968,6 +968,16 @@ def dominance_change_text(change_pct: float | None) -> str:
     return f'{arrow}{abs(change_pct):.1f}%'
 
 
+def dominance_change_markup(change_pct: float | None, arrow_color: str) -> str:
+    text = dominance_change_text(change_pct)
+    if text == '—':
+        return '<span style="color:#000000">—</span>'
+    return (
+        f'<span style="color:{arrow_color}">{text[0]}</span>'
+        f'<span style="color:#000000">{text[1:]}</span>'
+    )
+
+
 def percentage_text(value: float | None) -> str:
     return '--' if value is None else f'{value:.1f}%'
 
@@ -5418,14 +5428,20 @@ def launch_gui(args: argparse.Namespace) -> None:
             sell_text = '--' if sell_pct is None else f'{sell_pct:.1f}%'
             buy_change = dominance_change_text(snapshot.get('dominance_buy_change_pct'))
             sell_change = dominance_change_text(snapshot.get('dominance_sell_change_pct'))
+            buy_change_html = dominance_change_markup(
+                snapshot.get('dominance_buy_change_pct'), '#168a2f'
+            )
+            sell_change_html = dominance_change_markup(
+                snapshot.get('dominance_sell_change_pct'), '#c62828'
+            )
             self._current_plain_text = (
                 f'{snapshot["clock_gui"]} | '
                 f'DOMINANCE {buy_change} {buy_text} vs {sell_text} {sell_change} | {snapshot["oi_flow"]}'
             )
             self.current.setText(
                 f'{snapshot["clock_gui"]} | DOMINANCE '
-                f'<span style="color:#168a2f">{buy_change} {buy_text}</span> vs '
-                f'<span style="color:#c62828">{sell_text} {sell_change}</span> | '
+                f'{buy_change_html} <span style="color:#168a2f">{buy_text}</span> vs '
+                f'<span style="color:#c62828">{sell_text}</span> {sell_change_html} | '
                 f'{snapshot["oi_flow"]}'
             )
             rows = snapshot['events']
