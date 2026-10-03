@@ -224,7 +224,11 @@ def load_raw(paths: list[Path]) -> list[dict[str, Any]]:
                 if row.get('oi_resolution') != 'instantaneous_poll':
                     continue
                 stamp = int(row['sample_time_ts'])
-                unique[stamp] = {'ts': datetime.fromtimestamp(stamp / 1000, tz=timezone.utc).astimezone(PANAMA), 'oi': float(row['OI_BTC'])}
+                unique[stamp] = {
+                    'ts': datetime.fromtimestamp(stamp / 1000, tz=timezone.utc).astimezone(PANAMA),
+                    'oi': float(row['OI_BTC']),
+                    'gap_break': bool(row.get('gap_break', False)),
+                }
     return [unique[key] for key in sorted(unique)]
 
 
@@ -647,17 +651,18 @@ def publish_gui(bridge: GuiBridge | None, session: 'Session', clock: datetime,
     old_buy_pct, old_sell_pct = dominance_percentages(
         session.buy_dominance_weight_usdt, session.sell_dominance_weight_usdt
     )
-    display_buy_dom = session.buy_dominance_v2_btc + session.provisional_buy_dominance_v2_btc
-    display_sell_dom = session.sell_dominance_v2_btc + session.provisional_sell_dominance_v2_btc
-    v2_buy_pct, v2_sell_pct = dominance_percentages(display_buy_dom, display_sell_dom)
-    dominance_relative = session.dominance_relative_snapshot(v2_buy_pct, v2_sell_pct, clock)
+    continuous_buy_pct = session.continuous_buy_pct
+    continuous_sell_pct = session.continuous_sell_pct
+    dominance_relative = session.dominance_relative_snapshot(
+        continuous_buy_pct, continuous_sell_pct, clock
+    )
     old_dominance = (
         f'DOMINANCE OLD BUY {old_buy_pct:.1f}% / SELL {old_sell_pct:.1f}%'
         if old_buy_pct is not None else 'DOMINANCE OLD BUY -- / SELL --'
     )
-    v2_dominance = (
-        f'DOMINANCE V2   BUY {v2_buy_pct:.1f}% / SELL {v2_sell_pct:.1f}%'
-        if v2_buy_pct is not None else 'DOMINANCE V2   BUY -- / SELL --'
+    continuous_dominance = (
+        f'DOMINANCE BUY {continuous_buy_pct:.1f}% / SELL {continuous_sell_pct:.1f}%'
+        if continuous_buy_pct is not None else 'DOMINANCE BUY -- / SELL --'
     )
     pre_release = session.pre_release.snapshot()
     pre_release_text = 'DEPTH NEUTRAL'
@@ -734,11 +739,20 @@ def publish_gui(bridge: GuiBridge | None, session: 'Session', clock: datetime,
         'speed': speed,
         'price': f'{compact(market_price if market_price is not None else session.price, signed=False)} USDT',
         'dominance': old_dominance,
-        'dominance_v2': v2_dominance,
-        'dominance_v2_buy_pct': v2_buy_pct,
-        'dominance_v2_sell_pct': v2_sell_pct,
+        'dominance_v2': continuous_dominance,
+        'dominance_v2_buy_pct': continuous_buy_pct,
+        'dominance_v2_sell_pct': continuous_sell_pct,
+        'continuous_buy_pct': continuous_buy_pct,
+        'continuous_sell_pct': continuous_sell_pct,
+        'continuous_buy_dominance_btc': session.continuous_buy_dominance_btc,
+        'continuous_sell_dominance_btc': session.continuous_sell_dominance_btc,
+        'continuous_unclear_minutes': session.continuous_unclear_minutes,
+        'total_oi_anchor_btc': session.total_oi_anchor_btc,
+        'total_oi_current_btc': session.total_oi_current_btc,
+        'total_oi_flow_btc': session.total_oi_flow_btc,
+        'total_oi_flow_pct': session.total_oi_flow_pct,
         **dominance_relative,
-        'oi_flow': f'OI FLOW {compact(session.oi_event_flow + session.provisional_oi_flow)} BTC',
+        'oi_flow': f'OI FLOW {compact(session.total_oi_flow_btc)} BTC',
         'raw_baseline_ready': getattr(session, 'raw_baseline_ready', False),
         'raw_baseline_span_minutes': getattr(session, 'raw_baseline_span_minutes', 0.0),
         'collector_stale': getattr(session, 'collector_stale', True),
@@ -976,6 +990,82 @@ def dominance_change_markup(change_pct: float | None, arrow_color: str) -> str:
         f'<span style="color:{arrow_color}">{text[0]}</span>'
         f'<span style="color:#000000">{text[1:]}</span>'
     )
+
+
+def continuous_market_control(history: list[dict[str, Any]],
+                               row: dict[str, Any]) -> dict[str, Any]:
+    """Pure all-minute effort/result calculation for market-state dominance.
+
+    This intentionally does not use anomaly thresholds or mutate Session.
+    ``history`` is causal and may contain only pre-anchor baseline rows plus
+    already processed post-anchor rows.
+    """
+    taker_buy = float(row.get('buy', 0.0) or 0.0)
+    taker_sell = float(row.get('sell', 0.0) or 0.0)
+    aggr_delta = taker_buy - taker_sell
+    aggr_side = 'BUY' if aggr_delta > 0 else 'SELL' if aggr_delta < 0 else 'HELD'
+    aggr_mag = abs(aggr_delta)
+    reference_price = float(row.get('open', 0.0) or 0.0)
+    price_change = float(row.get('close', 0.0) or 0.0) - reference_price
+    aligned_bps = None
+    if reference_price > 0 and aggr_side != 'HELD':
+        signed_result = price_change if aggr_side == 'BUY' else -price_change
+        aligned_bps = signed_result / reference_price * 10_000.0
+
+    side_baselines: dict[str, list[float]] = {'BUY': [], 'SELL': []}
+    for previous in history[-EFF_BASELINE_WINDOW:]:
+        previous_buy = float(previous.get('buy', 0.0) or 0.0)
+        previous_sell = float(previous.get('sell', 0.0) or 0.0)
+        previous_delta = previous_buy - previous_sell
+        previous_side = 'BUY' if previous_delta > 0 else 'SELL' if previous_delta < 0 else None
+        previous_mag = abs(previous_delta)
+        previous_open = float(previous.get('open', 0.0) or 0.0)
+        previous_close = float(previous.get('close', 0.0) or 0.0)
+        if previous_side is None or previous_mag <= 0 or previous_open <= 0:
+            continue
+        previous_result = (previous_close - previous_open
+                           if previous_side == 'BUY'
+                           else previous_open - previous_close)
+        previous_bps = previous_result / previous_open * 10_000.0
+        previous_notional_m = previous_mag * previous_open / 1_000_000.0
+        if previous_bps > 0 and previous_notional_m > 0:
+            side_baselines[previous_side].append(previous_bps / previous_notional_m)
+
+    baseline_impact = None
+    if aggr_side in ('BUY', 'SELL') and len(side_baselines[aggr_side]) >= MIN_BASELINE_SAMPLES:
+        baseline_impact = __import__('statistics').median(side_baselines[aggr_side])
+    aggr_notional_m = aggr_mag * reference_price / 1_000_000.0 if reference_price > 0 else 0.0
+    expected_bps = baseline_impact * aggr_notional_m if baseline_impact is not None else None
+    eff_ratio = (
+        aligned_bps / expected_bps
+        if aligned_bps is not None and expected_bps is not None and expected_bps > 0
+        else None
+    )
+    control = 'CONTROL UNCLEAR'
+    strength = 0.0
+    contribution_side = None
+    if aggr_side in ('BUY', 'SELL') and aggr_mag > 0 and eff_ratio is not None:
+        if eff_ratio < LIMIT_EFF_RATIO:
+            strength = min(1.0, max(0.0, 1.0 - max(eff_ratio, 0.0)))
+            contribution_side = 'SELL' if aggr_side == 'BUY' else 'BUY'
+            control = f'CONTROL LIMIT {contribution_side}'
+        else:
+            strength = min(1.0, max(0.0, eff_ratio))
+            contribution_side = aggr_side
+            control = f'CONTROL MARKET {aggr_side}'
+    weight = aggr_mag * strength if contribution_side else 0.0
+    return {
+        'aggr_side': aggr_side,
+        'aggr_mag': aggr_mag,
+        'price_change': price_change,
+        'eff_ratio': eff_ratio,
+        'absorption_ratio': min(1.0, max(0.0, 1.0 - max(eff_ratio or 0.0, 0.0))) if eff_ratio is not None else 0.0,
+        'control': control,
+        'strength': strength,
+        'weight': weight,
+        'contribution_side': contribution_side,
+        'baseline_impact_bps_per_1m': baseline_impact,
+    }
 
 
 def percentage_text(value: float | None) -> str:
@@ -1624,6 +1714,7 @@ def _local_dominance_contributions(samples: list[dict[str, Any]],
     market_by_time = {row['ts'].replace(second=0, microsecond=0): row for row in market}
     session = Session(anchor)
     session.market_history = market
+    session.initialize_continuous_baseline(market)
     contributions: list[dict[str, Any]] = []
     output: list[dict[str, Any]] = []
     for minute in minutes:
@@ -1635,6 +1726,7 @@ def _local_dominance_contributions(samples: list[dict[str, Any]],
         market_rows = [market_row] if market_row is not None else []
         for row in market_rows:
             session.apply_market(row)
+            session.apply_continuous_market(row)
         canonical_event: dict[str, Any] | None = None
         if minute_time in event_by_time:
             event = dict(event_by_time[minute_time])
@@ -3644,6 +3736,18 @@ class Session:
         self.sell_dominance_weight_usdt = 0.0
         self.buy_dominance_v2_btc = 0.0
         self.sell_dominance_v2_btc = 0.0
+        self.total_oi_anchor_btc: float | None = None
+        self.total_oi_current_btc: float | None = None
+        self.total_oi_flow_btc: float | None = None
+        self.total_oi_flow_pct: float | None = None
+        self.continuous_buy_dominance_btc = 0.0
+        self.continuous_sell_dominance_btc = 0.0
+        self.continuous_buy_pct: float | None = None
+        self.continuous_sell_pct: float | None = None
+        self.continuous_unclear_minutes = 0
+        self.continuous_market_history: list[dict[str, Any]] = []
+        self.continuous_baseline_initialized = False
+        self.continuous_last_result: dict[str, Any] | None = None
         self.dominance_reference_buy_pct: float | None = None
         self.dominance_reference_sell_pct: float | None = None
         self.dominance_reference_time: datetime | None = None
@@ -3677,6 +3781,58 @@ class Session:
 
     def reset(self, anchor: datetime) -> None:
         self.__init__(anchor)
+
+    def initialize_continuous_baseline(self, market_rows: list[dict[str, Any]]) -> None:
+        """Seed only the pre-anchor causal reference bars."""
+        self.continuous_market_history = [
+            row for row in market_rows if row.get('ts') < self.anchor
+        ][-EFF_BASELINE_WINDOW:]
+        self.continuous_baseline_initialized = True
+
+    def apply_continuous_market(self, row: dict[str, Any]) -> dict[str, Any] | None:
+        """Apply one closed post-anchor 1m bar to continuous dominance."""
+        if row.get('ts') is None or row['ts'] < self.anchor:
+            return None
+        if not self.continuous_baseline_initialized:
+            self.initialize_continuous_baseline([])
+        if any(existing.get('ts') == row['ts'] for existing in self.continuous_market_history[-1:]):
+            return None
+        result = continuous_market_control(self.continuous_market_history, row)
+        self.continuous_last_result = result
+        self.continuous_market_history.append(dict(row))
+        if result['contribution_side'] == 'BUY':
+            self.continuous_buy_dominance_btc += result['weight']
+        elif result['contribution_side'] == 'SELL':
+            self.continuous_sell_dominance_btc += result['weight']
+        else:
+            self.continuous_unclear_minutes += 1
+        self.continuous_buy_pct, self.continuous_sell_pct = dominance_percentages(
+            self.continuous_buy_dominance_btc,
+            self.continuous_sell_dominance_btc,
+        )
+        self.update_dominance_reference(
+            self.continuous_buy_pct, self.continuous_sell_pct, row['ts']
+        )
+        return result
+
+    def update_total_oi(self, samples: list[dict[str, Any]], clock: datetime) -> None:
+        """Set total OI state from absolute valid samples, not event deltas."""
+        eligible = [
+            sample for sample in samples
+            if self.anchor <= sample.get('ts', self.anchor) <= clock
+            and sample.get('oi') is not None
+        ]
+        if not eligible:
+            return
+        anchor_sample = eligible[0]
+        current_sample = eligible[-1]
+        self.total_oi_anchor_btc = float(anchor_sample['oi'])
+        self.total_oi_current_btc = float(current_sample['oi'])
+        self.total_oi_flow_btc = self.total_oi_current_btc - self.total_oi_anchor_btc
+        self.total_oi_flow_pct = (
+            self.total_oi_flow_btc / self.total_oi_anchor_btc * 100.0
+            if self.total_oi_anchor_btc else None
+        )
 
     def update_dominance_reference(self, buy_pct: float | None,
                                    sell_pct: float | None,
@@ -3813,13 +3969,6 @@ class Session:
                 'buy_dominance_v2_btc': self.buy_dominance_v2_btc,
                 'sell_dominance_v2_btc': self.sell_dominance_v2_btc,
             })
-        # Latch the first valid post-anchor dominance state while processing
-        # the timeline, rather than during the first GUI refresh (which may
-        # already be at the current time after a startup/backfill).
-        committed_buy_pct, committed_sell_pct = dominance_percentages(
-            self.buy_dominance_v2_btc, self.sell_dominance_v2_btc
-        )
-        self.update_dominance_reference(committed_buy_pct, committed_sell_pct, minute)
         ledger['strong_finalized'] = canonical_event is not None
         if log_path is not None:
             write_replay_log(log_path, 'RAW_MINUTE_FINALIZE ' + json.dumps({
@@ -4073,7 +4222,7 @@ class Session:
         peak = self.sell_peak if dominant == 'SELL' else self.buy_peak if dominant == 'BUY' else 0.0
         retraced = (peak - advantage) / peak * 100 if peak else 0.0
         adv_lost = max(0.0, peak - advantage)
-        return {'time': event_time, 'oi_net': (self.oi_current - self.oi_start) if self.oi_current is not None and self.oi_start is not None else None, 'oi_add': self.oi_add, 'oi_exit': self.oi_exit, 'oi_activity': self.oi_add + self.oi_exit, 'buy': self.buy, 'sell': self.sell, 'delta': delta, 'dominant': dominant, 'advantage': advantage, 'peak': peak, 'sell_peak': self.sell_peak, 'buy_peak': self.buy_peak, 'retraced': retraced, 'adv_lost': adv_lost, 'adv_remaining_pct': advantage / peak * 100 if peak else 0.0, 'adv_lost_pct': adv_lost / peak * 100 if peak else 0.0, 'price': self.price, 'price_from_start': (self.price - self.anchor_price) if self.price is not None and self.anchor_price is not None else None, **self.early_metrics()}
+        return {'time': event_time, 'oi_net': (self.oi_current - self.oi_start) if self.oi_current is not None and self.oi_start is not None else None, 'oi_add': self.oi_add, 'oi_exit': self.oi_exit, 'oi_activity': self.oi_add + self.oi_exit, 'buy': self.buy, 'sell': self.sell, 'delta': delta, 'dominant': dominant, 'advantage': advantage, 'peak': peak, 'sell_peak': self.sell_peak, 'buy_peak': self.buy_peak, 'retraced': retraced, 'adv_lost': adv_lost, 'adv_remaining_pct': advantage / peak * 100 if peak else 0.0, 'adv_lost_pct': adv_lost / peak * 100 if peak else 0.0, 'price': self.price, 'price_from_start': (self.price - self.anchor_price) if self.price is not None and self.anchor_price is not None else None, 'total_oi_anchor_btc': self.total_oi_anchor_btc, 'total_oi_current_btc': self.total_oi_current_btc, 'total_oi_flow_btc': self.total_oi_flow_btc, 'total_oi_flow_pct': self.total_oi_flow_pct, 'continuous_buy_dominance_btc': self.continuous_buy_dominance_btc, 'continuous_sell_dominance_btc': self.continuous_sell_dominance_btc, 'continuous_buy_pct': self.continuous_buy_pct, 'continuous_sell_pct': self.continuous_sell_pct, 'continuous_unclear_minutes': self.continuous_unclear_minutes, **self.early_metrics()}
 
     def print_status(self, title='SESSION SNAPSHOT') -> None:
         snap = self.snapshot(self.anchor)
@@ -4305,6 +4454,7 @@ def run_replay_live(args: argparse.Namespace, gui: GuiBridge | None = None) -> N
     start, end = common
     session = Session(start)
     session.market_history = market
+    session.initialize_continuous_baseline(market)
     log_path = args.log or root / 'data' / 'research' / 'BTC_LRA_RECORDED_LIVE_REPLAY.log'
     event_archive = EventRowArchive(root / 'runtime' / 'monitor' / 'BTC_LRA_EVENT_ROWS.jsonl', log_path)
     tv_path = root / 'BTC_LRA_TV_EVENTS.pine'
@@ -4392,6 +4542,7 @@ def run_replay_live(args: argparse.Namespace, gui: GuiBridge | None = None) -> N
     def rebuild_session(new_anchor: datetime, clock: datetime) -> Session:
         rebuilt = Session(new_anchor)
         rebuilt.market_history = market
+        rebuilt.initialize_continuous_baseline(market)
         prefix_minutes = minute_oi(raw_prefix)
         annotate_minutes(prefix_minutes)
         event_by_time = {prefix_minutes[e['confirmed']]['minute']: e for e in individual_events(prefix_minutes)}
@@ -4403,6 +4554,18 @@ def run_replay_live(args: argparse.Namespace, gui: GuiBridge | None = None) -> N
             market_row = market_by_minute.get(minute_time)
             if market_row is not None and market_row['ts'] + timedelta(minutes=1) <= clock:
                 rebuilt.apply_market(market_row)
+                continuous_result = rebuilt.apply_continuous_market(market_row)
+                if continuous_result is not None:
+                    write_replay_log(log_path, 'CONTINUOUS_STATE ' + json.dumps({
+                        'time': market_row['ts'].isoformat(),
+                        'buy_equiv': rebuilt.continuous_buy_dominance_btc,
+                        'sell_equiv': rebuilt.continuous_sell_dominance_btc,
+                        'buy_pct': rebuilt.continuous_buy_pct,
+                        'sell_pct': rebuilt.continuous_sell_pct,
+                        'control': continuous_result.get('control'),
+                        'aggr_mag': continuous_result.get('aggr_mag'),
+                        'strength': continuous_result.get('strength'),
+                    }, ensure_ascii=False))
             append_minute_history(rebuilt, minute, market_row)
             canonical_event = None
             if minute_time in event_by_time:
@@ -4535,6 +4698,7 @@ def run_replay_live(args: argparse.Namespace, gui: GuiBridge | None = None) -> N
                     paused = False
                 except (ValueError, TypeError):
                     pass
+        session.update_total_oi(raw_prefix, clock)
         publish_gui(gui, session, clock, speed, live=False)
 
     def process_until(clock: datetime) -> None:
@@ -4553,6 +4717,7 @@ def run_replay_live(args: argparse.Namespace, gui: GuiBridge | None = None) -> N
             market_row = market_by_minute.get(minute_time)
             if market_row is not None and market_row['ts'] + timedelta(minutes=1) <= clock and minute_time not in applied_market:
                 session.apply_market(market_row)
+                session.apply_continuous_market(market_row)
                 applied_market.add(minute_time)
             append_minute_history(session, minute, market_row)
             current = session.snapshot(minute_time)
@@ -4691,9 +4856,11 @@ def run_replay_live(args: argparse.Namespace, gui: GuiBridge | None = None) -> N
         raw_prefix.append(sample)
         process_raw_sample(sample)
         process_until(sample['ts'])
+        session.update_total_oi(samples, sample['ts'])
         publish_gui(gui, session, sample['ts'], speed, live=False, market_price=latest_closed_market_price(sample['ts']))
         previous_clock = sample['ts']
     process_until(end + timedelta(minutes=1))
+    session.update_total_oi(samples, end)
     publish_gui(gui, session, end, speed, live=False, market_price=latest_closed_market_price(end))
     final = session.snapshot(end)
     write_v2_replay_report(v2_report_path, v2_rows, session, v2_checkpoints)
@@ -4765,6 +4932,7 @@ def run_live(args: argparse.Namespace, gui: GuiBridge | None = None) -> None:
         except (OSError, ValueError, TypeError, urllib.error.URLError) as exc:
             write_bounded_live_log(log_path, f'MARKET_MIGRATION_FALLBACK_ERROR {type(exc).__name__}: {exc}')
     market_history = merge_market_rows(migration_market)[-120:]
+    session.initialize_continuous_baseline(migration_market)
     baseline_ready = history_span >= RAW_BASELINE_MINUTES / 60
     session.raw_baseline_ready = baseline_ready
     session.raw_baseline_span_minutes = history_span * 60
@@ -4821,6 +4989,7 @@ def run_live(args: argparse.Namespace, gui: GuiBridge | None = None) -> None:
 
         rebuilt = Session(new_anchor)
         rebuilt.market_history = closed_market
+        rebuilt.initialize_continuous_baseline(rebuild_market)
         rebuilt.raw_baseline_ready = baseline_ready
         rebuilt.raw_baseline_span_minutes = history_span * 60
         rebuilt_until = clock.replace(second=0, microsecond=0)
@@ -4847,6 +5016,7 @@ def run_live(args: argparse.Namespace, gui: GuiBridge | None = None) -> None:
             market_row = market_by_time.get(minute_time)
             if market_row is not None:
                 rebuilt.apply_market(market_row)
+                rebuilt.apply_continuous_market(market_row)
             append_minute_history(rebuilt, minute, market_row)
             canonical_event: dict[str, Any] | None = None
             raw_event: dict[str, Any] | None = None
@@ -4890,6 +5060,7 @@ def run_live(args: argparse.Namespace, gui: GuiBridge | None = None) -> None:
                 if key == 'R':
                     reset_time = datetime.now(PANAMA)
                     session = Session(reset_time)
+                    session.initialize_continuous_baseline(migration_market)
                     session.raw_baseline_ready = baseline_ready
                     session.raw_baseline_span_minutes = history_span * 60
                     processed.clear()
@@ -4959,6 +5130,7 @@ def run_live(args: argparse.Namespace, gui: GuiBridge | None = None) -> None:
             if key == 'R':
                 reset_time = datetime.now(PANAMA)
                 session = Session(reset_time)
+                session.initialize_continuous_baseline(migration_market)
                 session.raw_baseline_ready = baseline_ready
                 session.raw_baseline_span_minutes = history_span * 60
                 processed.clear()
@@ -5010,6 +5182,7 @@ def run_live(args: argparse.Namespace, gui: GuiBridge | None = None) -> None:
         raw_metric_by_timestamp = {row['ts']: row for row in raw_metrics}
         raw_summaries, _ = _raw_intensity_summary(samples, minutes, market_history)
         raw_flow_by_time = {row['_time']: row for row in raw_summaries}
+        session.update_total_oi(raw_samples, now)
         events = individual_events(minutes)
         event_by_time = {minutes[e['confirmed']]['minute']: e for e in events}
         for minute in minutes:
@@ -5022,6 +5195,19 @@ def run_live(args: argparse.Namespace, gui: GuiBridge | None = None) -> None:
             market_row = next((row for row in market_history if row['ts'] == minute['minute']), None)
             if market_row is not None:
                 session.apply_market(market_row)
+                continuous_result = session.apply_continuous_market(market_row)
+                if continuous_result is not None:
+                    write_bounded_live_log(log_path, 'CONTINUOUS_STATE ' + json.dumps({
+                        'time': market_row['ts'].isoformat(),
+                        'total_oi_flow_btc': session.total_oi_flow_btc,
+                        'buy_equiv': session.continuous_buy_dominance_btc,
+                        'sell_equiv': session.continuous_sell_dominance_btc,
+                        'buy_pct': session.continuous_buy_pct,
+                        'sell_pct': session.continuous_sell_pct,
+                        'control': continuous_result.get('control'),
+                        'aggr_mag': continuous_result.get('aggr_mag'),
+                        'strength': continuous_result.get('strength'),
+                    }, ensure_ascii=False))
             append_minute_history(session, minute, market_row)
             canonical_event = None
             raw_event: dict[str, Any] | None = None
@@ -5110,7 +5296,8 @@ def run_live(args: argparse.Namespace, gui: GuiBridge | None = None) -> None:
                             play_event_sound(args.sound_file)
             processed_raw_samples.add(sample['ts'])
         session.print_status('LIVE STATUS', current_time=datetime.now(PANAMA), live=True)
-        publish_gui(gui, session, datetime.now(PANAMA), None, live=True)
+        session.update_total_oi(raw_samples, now)
+        publish_gui(gui, session, now, None, live=True)
         time.sleep(max(2, args.poll_seconds))
 
 
@@ -5422,8 +5609,8 @@ def launch_gui(args: argparse.Namespace) -> None:
                 snapshot.get('pre_release_text', '') if snapshot['live']
                 else f'HISTORICAL TIME {snapshot["clock"]} | SPEED {snapshot["speed"]:g}x'
             )
-            buy_pct = snapshot.get('dominance_v2_buy_pct')
-            sell_pct = snapshot.get('dominance_v2_sell_pct')
+            buy_pct = snapshot.get('continuous_buy_pct')
+            sell_pct = snapshot.get('continuous_sell_pct')
             buy_text = '--' if buy_pct is None else f'{buy_pct:.1f}%'
             sell_text = '--' if sell_pct is None else f'{sell_pct:.1f}%'
             buy_change = dominance_change_text(snapshot.get('dominance_buy_change_pct'))
