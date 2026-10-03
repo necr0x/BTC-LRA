@@ -993,6 +993,12 @@ def dominance_change_markup(change_pct: float | None, arrow_color: str) -> str:
     )
 
 
+def dominance_change_parenthetical(change_pct: float | None) -> str:
+    if change_pct is None:
+        return ''
+    return f'({change_pct:+.1f}%)'
+
+
 def continuous_market_control(history: list[dict[str, Any]],
                                row: dict[str, Any]) -> dict[str, Any]:
     """Pure all-minute effort/result calculation for market-state dominance.
@@ -5647,18 +5653,18 @@ def launch_gui(args: argparse.Namespace) -> None:
             buy_text = '--' if buy_pct is None else f'{buy_pct:.1f}%'
             sell_text = '--' if sell_pct is None else f'{sell_pct:.1f}%'
             if snapshot.get('dominance_reference_frozen', False):
-                buy_change = dominance_change_text(snapshot.get('dominance_buy_change_pct'))
-                sell_change = dominance_change_text(snapshot.get('dominance_sell_change_pct'))
-                buy_change_html = dominance_change_markup(
-                    snapshot.get('dominance_buy_change_pct'), '#168a2f'
+                buy_change = dominance_change_parenthetical(
+                    snapshot.get('dominance_buy_change_pct')
                 )
-                sell_change_html = dominance_change_markup(
-                    snapshot.get('dominance_sell_change_pct'), '#c62828'
+                sell_change = dominance_change_parenthetical(
+                    snapshot.get('dominance_sell_change_pct')
                 )
                 plain_dominance = f'{buy_change} {buy_text} vs {sell_text} {sell_change}'
                 html_dominance = (
-                    f'{buy_change_html} <span style="color:#168a2f">{buy_text}</span> vs '
-                    f'<span style="color:#c62828">{sell_text}</span> {sell_change_html}'
+                    f'<span style="color:#000000">{buy_change}</span> '
+                    f'<span style="color:#168a2f">{buy_text}</span> vs '
+                    f'<span style="color:#c62828">{sell_text}</span> '
+                    f'<span style="color:#000000">{sell_change}</span>'
                 )
             else:
                 plain_dominance = f'{buy_text} vs {sell_text}'
