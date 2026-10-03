@@ -3673,19 +3673,18 @@ class Session:
                                    event_time: datetime) -> None:
         """Latch the first post-anchor dominance snapshot per side.
 
-        A zero side is retained as an unavailable reference until that side
-        first becomes non-zero, avoiding division by zero without changing
-        the underlying dominance accumulators.
+        A zero side keeps the reference unavailable until both sides are
+        non-zero, avoiding a misleading 100/0 warm-up reference without
+        changing the underlying dominance accumulators.
         """
-        if buy_pct is None or sell_pct is None:
+        # A one-sided first event (100/0 or 0/100) is a technical warm-up,
+        # not a useful dominance reference for relative comparison.
+        if (buy_pct is None or sell_pct is None or
+                buy_pct <= 0 or sell_pct <= 0):
             return
-        if self.dominance_reference_buy_pct is None or (
-            self.dominance_reference_buy_pct == 0 and buy_pct != 0
-        ):
+        if self.dominance_reference_buy_pct is None:
             self.dominance_reference_buy_pct = float(buy_pct)
-        if self.dominance_reference_sell_pct is None or (
-            self.dominance_reference_sell_pct == 0 and sell_pct != 0
-        ):
+        if self.dominance_reference_sell_pct is None:
             self.dominance_reference_sell_pct = float(sell_pct)
         if self.dominance_reference_time is None:
             self.dominance_reference_time = event_time
@@ -5421,11 +5420,11 @@ def launch_gui(args: argparse.Namespace) -> None:
             sell_change = dominance_change_text(snapshot.get('dominance_sell_change_pct'))
             self._current_plain_text = (
                 f'{snapshot["clock_gui"]} | '
-                f'DOMINANCE {buy_text} {buy_change}  {sell_text} {sell_change} | {snapshot["oi_flow"]}'
+                f'DOMINANCE {buy_change} {buy_text} vs {sell_text} {sell_change} | {snapshot["oi_flow"]}'
             )
             self.current.setText(
                 f'{snapshot["clock_gui"]} | DOMINANCE '
-                f'<span style="color:#168a2f">{buy_text} {buy_change}</span>  '
+                f'<span style="color:#168a2f">{buy_change} {buy_text}</span> vs '
                 f'<span style="color:#c62828">{sell_text} {sell_change}</span> | '
                 f'{snapshot["oi_flow"]}'
             )
