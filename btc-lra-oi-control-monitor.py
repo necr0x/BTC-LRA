@@ -721,6 +721,13 @@ def publish_gui(bridge: GuiBridge | None, session: 'Session', clock: datetime,
     )
     continuous_buy_pct = session.continuous_buy_pct
     continuous_sell_pct = session.continuous_sell_pct
+    continuous_partition = session.continuous_dominance_partition()
+    partition_buy_error = session.continuous_buy_dominance_btc - (
+        continuous_partition['event_buy_btc'] + continuous_partition['rest_buy_btc']
+    )
+    partition_sell_error = session.continuous_sell_dominance_btc - (
+        continuous_partition['event_sell_btc'] + continuous_partition['rest_sell_btc']
+    )
     dominance_relative = session.dominance_relative_snapshot(
         continuous_buy_pct, continuous_sell_pct, clock
     )
@@ -817,6 +824,16 @@ def publish_gui(bridge: GuiBridge | None, session: 'Session', clock: datetime,
         'continuous_sell_pct': continuous_sell_pct,
         'continuous_buy_dominance_btc': session.continuous_buy_dominance_btc,
         'continuous_sell_dominance_btc': session.continuous_sell_dominance_btc,
+        'event_buy_dominance_btc': continuous_partition['event_buy_btc'],
+        'event_sell_dominance_btc': continuous_partition['event_sell_btc'],
+        'event_buy_pct': continuous_partition['event_buy_pct'],
+        'event_sell_pct': continuous_partition['event_sell_pct'],
+        'rest_buy_dominance_btc': continuous_partition['rest_buy_btc'],
+        'rest_sell_dominance_btc': continuous_partition['rest_sell_btc'],
+        'rest_buy_pct': continuous_partition['rest_buy_pct'],
+        'rest_sell_pct': continuous_partition['rest_sell_pct'],
+        'dominance_partition_buy_error_btc': partition_buy_error,
+        'dominance_partition_sell_error_btc': partition_sell_error,
         'continuous_unclear_minutes': session.continuous_unclear_minutes,
         'continuous_valid_closed_minutes': session.continuous_valid_closed_minutes,
         'total_oi_anchor_btc': session.total_oi_anchor_btc,
@@ -3826,6 +3843,7 @@ class Session:
         self.continuous_sell_pct: float | None = None
         self.continuous_unclear_minutes = 0
         self.continuous_valid_closed_minutes = 0
+        self.continuous_contributions_by_minute: dict[datetime, dict[str, float]] = {}
         self.continuous_market_history: list[dict[str, Any]] = []
         self.continuous_baseline_initialized = False
         self.continuous_last_result: dict[str, Any] | None = None
@@ -3892,6 +3910,10 @@ class Session:
             self.continuous_sell_dominance_btc += result['weight']
         else:
             self.continuous_unclear_minutes += 1
+        self.continuous_contributions_by_minute[row['ts']] = {
+            'buy': float(result['weight']) if result['contribution_side'] == 'BUY' else 0.0,
+            'sell': float(result['weight']) if result['contribution_side'] == 'SELL' else 0.0,
+        }
         self.continuous_buy_pct, self.continuous_sell_pct = dominance_percentages(
             self.continuous_buy_dominance_btc,
             self.continuous_sell_dominance_btc,
@@ -3909,6 +3931,33 @@ class Session:
             self.dominance_reference_frozen = True
             self.dominance_reference_frozen_just_now = True
         return result
+
+    def continuous_dominance_partition(self) -> dict[str, float | None]:
+        """Split the existing continuous contributions by canonical event minute."""
+        event_times = {
+            event.get('time') for event in self.event_history
+            if isinstance(event.get('time'), datetime)
+        }
+        event_buy = event_sell = rest_buy = rest_sell = 0.0
+        for minute, contribution in self.continuous_contributions_by_minute.items():
+            if minute in event_times:
+                event_buy += contribution['buy']
+                event_sell += contribution['sell']
+            else:
+                rest_buy += contribution['buy']
+                rest_sell += contribution['sell']
+        event_buy_pct, event_sell_pct = dominance_percentages(event_buy, event_sell)
+        rest_buy_pct, rest_sell_pct = dominance_percentages(rest_buy, rest_sell)
+        return {
+            'event_buy_btc': event_buy,
+            'event_sell_btc': event_sell,
+            'event_buy_pct': event_buy_pct,
+            'event_sell_pct': event_sell_pct,
+            'rest_buy_btc': rest_buy,
+            'rest_sell_btc': rest_sell,
+            'rest_buy_pct': rest_buy_pct,
+            'rest_sell_pct': rest_sell_pct,
+        }
 
     def update_total_oi(self, samples: list[dict[str, Any]], clock: datetime) -> None:
         """Set total OI state from absolute valid samples, not event deltas."""
@@ -5058,20 +5107,6 @@ def run_live(args: argparse.Namespace, gui: GuiBridge | None = None) -> None:
     def parse_live_anchor(value: str, clock: datetime) -> datetime:
         parsed = parse_t_window(value, clock)
         return parsed['start']
-        value = value.strip()
-        if re.fullmatch(r'\d{1,2}:\d{2}', value):
-            requested = datetime.strptime(value, '%H:%M').replace(
-                year=clock.year, month=clock.month, day=clock.day, tzinfo=PANAMA,
-            )
-            if requested > clock:
-                requested -= timedelta(days=1)
-            return requested
-        if not re.fullmatch(r'\d{1,2}\.\d{1,2}\.\d{2,4}\s+\d{1,2}:\d{2}', value):
-            raise ValueError('используйте HH:MM или DD.MM.YY HH:MM')
-        requested = parse_time(value)
-        if requested > clock:
-            raise ValueError('anchor позже текущего времени')
-        return requested
 
     def rebuild_live_session(new_anchor: datetime, clock: datetime,
                              rebuild_market: list[dict[str, Any]],
@@ -5746,7 +5781,7 @@ def launch_gui(args: argparse.Namespace) -> None:
             if snapshot.get('window_mode') == 'FIXED_RANGE':
                 mode = f'RANGE {snapshot["anchor_gui"]}–{snapshot["window_end_gui"]}'
             else:
-                mode = 'LIVE FROM' if snapshot['live'] else 'SCAN FROM'
+                mode = f'LIVE FROM {snapshot["anchor_gui"]}' if snapshot['live'] else f'SCAN FROM {snapshot["anchor_gui"]}'
             baseline_text = ''
             if snapshot['live'] and snapshot.get('window_mode') != 'FIXED_RANGE' and not snapshot.get('raw_baseline_ready', False):
                 baseline_text = f' | RAW WARMUP {snapshot.get("raw_baseline_span_minutes", 0.0):.0f}m'
@@ -5759,6 +5794,14 @@ def launch_gui(args: argparse.Namespace) -> None:
             sell_pct = snapshot.get('continuous_sell_pct')
             buy_text = '--' if buy_pct is None else f'{buy_pct:.1f}%'
             sell_text = '--' if sell_pct is None else f'{sell_pct:.1f}%'
+            event_buy_pct = snapshot.get('event_buy_pct')
+            event_sell_pct = snapshot.get('event_sell_pct')
+            rest_buy_pct = snapshot.get('rest_buy_pct')
+            rest_sell_pct = snapshot.get('rest_sell_pct')
+            event_buy_text = '--' if event_buy_pct is None else f'{event_buy_pct:.1f}%'
+            event_sell_text = '--' if event_sell_pct is None else f'{event_sell_pct:.1f}%'
+            rest_buy_text = '--' if rest_buy_pct is None else f'{rest_buy_pct:.1f}%'
+            rest_sell_text = '--' if rest_sell_pct is None else f'{rest_sell_pct:.1f}%'
             if snapshot.get('dominance_reference_frozen', False):
                 buy_change = dominance_change_parenthetical(
                     snapshot.get('dominance_buy_change_pct')
@@ -5766,23 +5809,39 @@ def launch_gui(args: argparse.Namespace) -> None:
                 sell_change = dominance_change_parenthetical(
                     snapshot.get('dominance_sell_change_pct')
                 )
-                plain_dominance = f'{buy_change} {buy_text} vs {sell_text} {sell_change}'
-                html_dominance = (
+                full_plain = f'{buy_change} {buy_text} vs {sell_text} {sell_change}'
+                full_html = (
                     f'<span style="color:#000000">{buy_change}</span> '
                     f'<span style="color:#168a2f">{buy_text}</span> vs '
                     f'<span style="color:#c62828">{sell_text}</span> '
                     f'<span style="color:#000000">{sell_change}</span>'
                 )
             else:
-                plain_dominance = f'{buy_text} vs {sell_text}'
-                html_dominance = (
+                full_plain = f'{buy_text} vs {sell_text}'
+                full_html = (
                     f'<span style="color:#168a2f">{buy_text}</span> vs '
                     f'<span style="color:#c62828">{sell_text}</span>'
                 )
-            self._current_plain_text = f'{snapshot["clock_gui"]} | DOMINANCE {plain_dominance} | {snapshot["oi_flow"]}'
-            self.current.setText(
-                f'{snapshot["clock_gui"]} | DOMINANCE {html_dominance} | {snapshot["oi_flow"]}'
+            event_html = (
+                f'<span style="color:#168a2f">{event_buy_text}</span> vs '
+                f'<span style="color:#c62828">{event_sell_text}</span>'
             )
+            rest_html = (
+                f'<span style="color:#168a2f">{rest_buy_text}</span> vs '
+                f'<span style="color:#c62828">{rest_sell_text}</span>'
+            )
+            plain_dominance = (
+                f'F-DOMINANCE {full_plain} | {snapshot["oi_flow"]}\n'
+                f'E-DOMINANCE {event_buy_text} vs {event_sell_text}\n'
+                f'R-DOMINANCE {rest_buy_text} vs {rest_sell_text}'
+            )
+            html_dominance = (
+                f'F-DOMINANCE {full_html} | {snapshot["oi_flow"]}<br>'
+                f'E-DOMINANCE {event_html}<br>'
+                f'R-DOMINANCE {rest_html}'
+            )
+            self._current_plain_text = plain_dominance
+            self.current.setText(html_dominance)
             rows = snapshot['events']
             old_real_count = self._real_event_count
             anchor_changed = self._last_anchor != snapshot['anchor']
