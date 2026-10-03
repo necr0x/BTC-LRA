@@ -191,6 +191,74 @@ def parse_time(value: str) -> datetime:
     return datetime.strptime(value, '%Y-%m-%d %H:%M').replace(tzinfo=PANAMA)
 
 
+def parse_t_window(text: str, now: datetime) -> dict[str, Any]:
+    """Parse the deterministic short syntax used by GUI command T."""
+    value = text.strip()
+    if not value:
+        raise ValueError('пустое временное окно')
+    now = now.astimezone(PANAMA)
+
+    def clock_token(token: str) -> tuple[int, int]:
+        if not re.fullmatch(r'\d{4}', token):
+            raise ValueError('время должно быть в формате HHMM')
+        hour, minute = int(token[:2]), int(token[2:])
+        if hour > 23 or minute > 59:
+            raise ValueError(f'недопустимое время {token}: HH 00-23, MM 00-59')
+        return hour, minute
+
+    def date_clock(token: str) -> datetime:
+        if len(token) == 4:
+            day, month, clock = now.day, now.month, token
+        elif len(token) == 8:
+            day, month, clock = int(token[:2]), int(token[2:4]), token[4:]
+        else:
+            raise ValueError('ожидалось HHMM или DDMMHHMM')
+        hour, minute = clock_token(clock)
+        try:
+            return datetime(
+                now.year, month, day, hour, minute, tzinfo=PANAMA,
+            )
+        except ValueError as exc:
+            raise ValueError(f'недопустимая календарная дата в {token}') from exc
+
+    if '-' not in value:
+        if re.fullmatch(r'\d{4}', value):
+            start = date_clock(value)
+        elif re.fullmatch(r'\d{8}', value):
+            start = date_clock(value)
+        elif re.fullmatch(r'\d{1,2}:\d{2}', value) or re.fullmatch(
+                r'\d{1,2}\.\d{1,2}\.\d{2,4}\s+\d{1,2}:\d{2}', value):
+            if ':' in value and '.' not in value:
+                hour, minute = map(int, value.split(':'))
+                if hour > 23 or minute > 59:
+                    raise ValueError('недопустимое время')
+                start = now.replace(hour=hour, minute=minute, second=0, microsecond=0)
+            else:
+                start = parse_time(value)
+        else:
+            raise ValueError('используйте HHMM или DDMMHHMM')
+        if start > now:
+            raise ValueError('FROM позже текущего времени')
+        return {'mode': 'LIVE_FROM', 'start': start, 'end': None}
+
+    parts = value.split('-')
+    if len(parts) != 2:
+        raise ValueError('диапазон должен иметь вид FROM-TO')
+    left, right = parts
+    if not (re.fullmatch(r'\d{4}', left) or re.fullmatch(r'\d{8}', left)):
+        raise ValueError('FROM диапазона должен быть HHMM или DDMMHHMM')
+    if not re.fullmatch(r'\d{4}', right):
+        raise ValueError('TO диапазона должен быть HHMM')
+    start = date_clock(left)
+    end_hour, end_minute = clock_token(right)
+    end = start.replace(hour=end_hour, minute=end_minute)
+    if end <= start:
+        end += timedelta(days=1)
+    if end > now:
+        raise ValueError('TO позже текущего времени')
+    return {'mode': 'FIXED_RANGE', 'start': start, 'end': end}
+
+
 def fmt_time(value: datetime | None) -> str:
     return value.astimezone(PANAMA).strftime('%H:%M:%S / %d.%m.%y -5') if value else '—'
 
@@ -732,6 +800,9 @@ def publish_gui(bridge: GuiBridge | None, session: 'Session', clock: datetime,
         })
     bridge.publish({
         'live': live,
+        'window_mode': getattr(session, 'window_mode', 'LIVE_FROM'),
+        'window_end': fmt_time(getattr(session, 'window_end', None)),
+        'window_end_gui': fmt_gui_anchor(getattr(session, 'window_end', None)),
         'anchor': fmt_time(session.anchor),
         'clock': fmt_time(clock),
         'anchor_gui': fmt_gui_anchor(session.anchor),
@@ -3726,6 +3797,8 @@ def build_depth_timeline(rows: list[dict[str, Any]], anchor: datetime,
 class Session:
     def __init__(self, anchor: datetime) -> None:
         self.anchor = anchor
+        self.window_mode = 'LIVE_FROM'
+        self.window_end: datetime | None = None
         self.display_depth_history: list[dict[str, Any]] = []
         self.oi_start: float | None = None
         self.oi_current: float | None = None
@@ -4983,6 +5056,8 @@ def run_live(args: argparse.Namespace, gui: GuiBridge | None = None) -> None:
         write_bounded_live_log(log_path, warmup_line)
         baseline_warmup_logged = True
     def parse_live_anchor(value: str, clock: datetime) -> datetime:
+        parsed = parse_t_window(value, clock)
+        return parsed['start']
         value = value.strip()
         if re.fullmatch(r'\d{1,2}:\d{2}', value):
             requested = datetime.strptime(value, '%H:%M').replace(
@@ -4999,10 +5074,13 @@ def run_live(args: argparse.Namespace, gui: GuiBridge | None = None) -> None:
         return requested
 
     def rebuild_live_session(new_anchor: datetime, clock: datetime,
-                             rebuild_market: list[dict[str, Any]]) -> tuple[
+                             rebuild_market: list[dict[str, Any]],
+                             window_mode: str = 'LIVE_FROM',
+                             window_end: datetime | None = None) -> tuple[
                                  Session, set[datetime], set[datetime], dict[datetime, dict[str, Any]]]:
         """Causally rebuild session state without replaying raw sensors as new samples."""
-        closed_market = [row for row in rebuild_market if row['ts'] + timedelta(minutes=1) <= clock]
+        target_end = window_end or clock
+        closed_market = [row for row in rebuild_market if row['ts'] + timedelta(minutes=1) <= target_end]
         if not closed_market:
             raise ValueError('нет закрытых Binance 1m свечей для rebuild')
         if not any(row['ts'] <= new_anchor for row in closed_market):
@@ -5011,11 +5089,13 @@ def run_live(args: argparse.Namespace, gui: GuiBridge | None = None) -> None:
             raise ValueError('недостаточно 30m закрытого market baseline для указанного anchor')
 
         rebuilt = Session(new_anchor)
+        rebuilt.window_mode = window_mode
+        rebuilt.window_end = window_end
         rebuilt.market_history = closed_market
         rebuilt.initialize_continuous_baseline(rebuild_market)
         rebuilt.raw_baseline_ready = baseline_ready
         rebuilt.raw_baseline_span_minutes = history_span * 60
-        rebuilt_until = clock.replace(second=0, microsecond=0)
+        rebuilt_until = target_end.replace(second=0, microsecond=0)
         rebuild_minutes = minute_oi(raw_samples)
         annotate_minutes(rebuild_minutes)
         rebuild_summaries, _ = _raw_intensity_summary(raw_samples, rebuild_minutes, closed_market)
@@ -5032,7 +5112,7 @@ def run_live(args: argparse.Namespace, gui: GuiBridge | None = None) -> None:
             minute_time = minute['minute']
             if minute_time < new_anchor or minute_time >= rebuilt_until:
                 continue
-            if minute_time + timedelta(minutes=1) > clock:
+            if minute_time + timedelta(minutes=1) > target_end:
                 continue
             rebuilt.apply_oi(minute)
             rebuilt_processed.add(minute_time)
@@ -5080,7 +5160,7 @@ def run_live(args: argparse.Namespace, gui: GuiBridge | None = None) -> None:
         # start the fresh provisional ledger.
         processed_samples = {
             sample['ts'] for sample in raw_samples
-            if new_anchor <= sample['ts'] <= clock
+            if new_anchor <= sample['ts'] <= target_end
         }
 
         return rebuilt, rebuilt_processed, processed_samples, current_tv
@@ -5110,7 +5190,9 @@ def run_live(args: argparse.Namespace, gui: GuiBridge | None = None) -> None:
                         if raw_samples:
                             history_span = (raw_samples[-1]['ts'] - raw_samples[0]['ts']).total_seconds() / 3600.0
                             baseline_ready = history_span >= RAW_BASELINE_MINUTES / 60
-                        requested = parse_live_anchor(value, clock)
+                        window = parse_t_window(value, clock)
+                        requested = window['start']
+                        requested_end = window['end'] or clock
                         earliest_exact = (raw_samples[0]['ts'] + timedelta(hours=6, minutes=30)) if raw_samples else None
                         if earliest_exact is None or requested < earliest_exact:
                             raise ValueError(
@@ -5122,8 +5204,21 @@ def run_live(args: argparse.Namespace, gui: GuiBridge | None = None) -> None:
                         )
                         if len(rebuild_market) < 31:
                             rebuild_market = merge_market_rows(fetch_binance_1m_klines(1000), rebuild_market)
+                        if window['mode'] == 'FIXED_RANGE':
+                            oi_available = f'{fmt_time(raw_samples[0]["ts"])} -> {fmt_time(raw_samples[-1]["ts"])}' if raw_samples else '--'
+                            market_available = f'{fmt_time(rebuild_market[0]["ts"])} -> {fmt_time(rebuild_market[-1]["ts"])}' if rebuild_market else '--'
+                            if not raw_samples or raw_samples[0]['ts'] > requested or raw_samples[-1]['ts'] < requested_end:
+                                raise ValueError(
+                                    f'RANGE NOT AVAILABLE requested={fmt_time(requested)} -> {fmt_time(requested_end)} '
+                                    f'OI available={oi_available} MARKET available={market_available}'
+                                )
+                            if not rebuild_market or rebuild_market[0]['ts'] > requested - timedelta(minutes=30) or rebuild_market[-1]['ts'] + timedelta(minutes=1) < requested_end:
+                                raise ValueError(
+                                    f'RANGE NOT AVAILABLE requested={fmt_time(requested)} -> {fmt_time(requested_end)} '
+                                    f'OI available={oi_available} MARKET available={market_available}'
+                                )
                         rebuilt, rebuilt_processed, rebuilt_samples, rebuilt_tv = rebuild_live_session(
-                            requested, clock, rebuild_market,
+                            requested, clock, rebuild_market, window['mode'], requested_end if window['mode'] == 'FIXED_RANGE' else None,
                         )
                         preserved_depth_history = list(session.pre_release.depth_history)
                         session = rebuilt
@@ -5146,10 +5241,10 @@ def run_live(args: argparse.Namespace, gui: GuiBridge | None = None) -> None:
                         write_tv_events_pine(tv_path, list(tv_event_history.values()))
                         market_history = [
                             row for row in rebuild_market
-                            if row['ts'] + timedelta(minutes=1) <= clock
+                            if row['ts'] + timedelta(minutes=1) <= requested_end
                         ][-120:]
                         session.market_history = market_history
-                        write_bounded_live_log(log_path, f'LIVE_ANCHOR_CHANGED from={fmt_time(old_anchor)} to={fmt_time(requested)} rebuilt_until={fmt_time(clock)} events={len(session.event_history)} oi_flow={session.oi_event_flow + session.provisional_oi_flow:.6f} buy_dom={session.buy_dominance_v2_btc + session.provisional_buy_dominance_v2_btc:.6f} sell_dom={session.sell_dominance_v2_btc + session.provisional_sell_dominance_v2_btc:.6f} provisional_current_minute=RESET')
+                        write_bounded_live_log(log_path, f'LIVE_ANCHOR_CHANGED mode={window["mode"]} from={fmt_time(old_anchor)} to={fmt_time(requested)} rebuilt_until={fmt_time(requested_end)} events={len(session.event_history)} oi_flow={session.oi_event_flow + session.provisional_oi_flow:.6f} buy_dom={session.buy_dominance_v2_btc + session.provisional_buy_dominance_v2_btc:.6f} sell_dom={session.sell_dominance_v2_btc + session.provisional_sell_dominance_v2_btc:.6f} provisional_current_minute=RESET')
                     except (ValueError, TypeError, OSError, urllib.error.URLError) as exc:
                         write_bounded_live_log(log_path, f'LIVE_ANCHOR_REJECTED requested={value!r} reason={exc}')
                 elif key == 'RIGHT':
@@ -5180,7 +5275,8 @@ def run_live(args: argparse.Namespace, gui: GuiBridge | None = None) -> None:
         collector_market_rows = load_collector_market_history(collector_market_path, now, 24.0)
         live_klines = merge_market_rows(migration_market, collector_market_rows)
         depth_rows = load_collector_depth_summary(collector_depth_path, now, 24.0)
-        session.display_depth_history = build_depth_timeline(depth_rows, session.anchor, now)
+        display_end = session.window_end if session.window_mode == 'FIXED_RANGE' else now
+        session.display_depth_history = build_depth_timeline(depth_rows, session.anchor, display_end)
         if collector_fresh:
             raw_samples = load_collector_oi_history(collector_raw_path, now, 24.0)
 
@@ -5202,8 +5298,11 @@ def run_live(args: argparse.Namespace, gui: GuiBridge | None = None) -> None:
         samples = raw_samples
         minutes = minute_oi(samples)
         annotate_minutes(minutes)
-        closed_market = [row for row in live_klines if row['ts'] + timedelta(minutes=1) <= now]
-        current_market = next((row for row in reversed(live_klines) if row['ts'] + timedelta(minutes=1) > now), None)
+        processing_end = session.window_end if session.window_mode == 'FIXED_RANGE' else now
+        closed_market = [row for row in live_klines if row['ts'] + timedelta(minutes=1) <= processing_end]
+        current_market = None if session.window_mode == 'FIXED_RANGE' else next(
+            (row for row in reversed(live_klines) if row['ts'] + timedelta(minutes=1) > now), None
+        )
         if closed_market:
             market_history = closed_market[-120:]
             session.market_history = market_history
@@ -5213,13 +5312,13 @@ def run_live(args: argparse.Namespace, gui: GuiBridge | None = None) -> None:
         raw_metric_by_timestamp = {row['ts']: row for row in raw_metrics}
         raw_summaries, _ = _raw_intensity_summary(samples, minutes, market_history)
         raw_flow_by_time = {row['_time']: row for row in raw_summaries}
-        session.update_total_oi(raw_samples, now)
+        session.update_total_oi(raw_samples, processing_end)
         events = individual_events(minutes)
         event_by_time = {minutes[e['confirmed']]['minute']: e for e in events}
         for minute in minutes:
             if minute['minute'] < session.anchor or minute['minute'] in processed:
                 continue
-            if minute['minute'] + timedelta(minutes=1) > now:
+            if minute['minute'] + timedelta(minutes=1) > processing_end:
                 continue
             session.apply_oi(minute)
             processed.add(minute['minute'])
@@ -5289,7 +5388,7 @@ def run_live(args: argparse.Namespace, gui: GuiBridge | None = None) -> None:
         # Current Binance kline is causal: it is never added to history or
         # baseline until the exchange closes it.
         for sample in samples:
-            if sample['ts'] < session.anchor or sample['ts'] in processed_raw_samples:
+            if sample['ts'] < session.anchor or sample['ts'] > processing_end or sample['ts'] in processed_raw_samples:
                 continue
             metric = raw_metric_by_timestamp.get(sample['ts'])
             if metric is not None:
@@ -5334,9 +5433,9 @@ def run_live(args: argparse.Namespace, gui: GuiBridge | None = None) -> None:
                         if args.sound == 'on':
                             play_event_sound(args.sound_file)
             processed_raw_samples.add(sample['ts'])
-        session.print_status('LIVE STATUS', current_time=datetime.now(PANAMA), live=True)
-        session.update_total_oi(raw_samples, now)
-        publish_gui(gui, session, now, None, live=True)
+        session.print_status('LIVE STATUS', current_time=processing_end, live=True)
+        session.update_total_oi(raw_samples, processing_end)
+        publish_gui(gui, session, processing_end, None, live=True)
         time.sleep(max(2, args.poll_seconds))
 
 
@@ -5629,9 +5728,14 @@ def launch_gui(args: argparse.Namespace) -> None:
             elif key == Qt.Key.Key_Left:
                 bridge.command('LEFT')
             elif key == Qt.Key.Key_T:
-                value, accepted = QInputDialog.getText(self, 'НОВЫЙ ОТСЧЁТ', 'Введите HH:MM или DD.MM.YY HH:MM')
+                value, accepted = QInputDialog.getText(
+                    self,
+                    'T WINDOW',
+                    'HHMM, DDMMHHMM, HHMM-HHMM or DDMMHHMM-HHMM',
+                )
                 if accepted and value.strip():
                     bridge.command('T', value.strip())
+                return
             else:
                 super().keyPressEvent(event)
 
@@ -5639,11 +5743,14 @@ def launch_gui(args: argparse.Namespace) -> None:
             snapshot = bridge.read()
             if not snapshot:
                 return
-            mode = 'LIVE FROM' if snapshot['live'] else 'SCAN FROM'
+            if snapshot.get('window_mode') == 'FIXED_RANGE':
+                mode = f'RANGE {snapshot["anchor_gui"]}–{snapshot["window_end_gui"]}'
+            else:
+                mode = 'LIVE FROM' if snapshot['live'] else 'SCAN FROM'
             baseline_text = ''
-            if snapshot['live'] and not snapshot.get('raw_baseline_ready', False):
+            if snapshot['live'] and snapshot.get('window_mode') != 'FIXED_RANGE' and not snapshot.get('raw_baseline_ready', False):
                 baseline_text = f' | RAW WARMUP {snapshot.get("raw_baseline_span_minutes", 0.0):.0f}m'
-            self.header.setText(f'OI FLOW MONITOR v0.0.1 | {mode} {snapshot["anchor_gui"]}{baseline_text}')
+            self.header.setText(f'OI FLOW MONITOR v0.0.1 | {mode}{baseline_text}')
             self.replay_line.setText(
                 snapshot.get('pre_release_text', '') if snapshot['live']
                 else f'HISTORICAL TIME {snapshot["clock"]} | SPEED {snapshot["speed"]:g}x'
