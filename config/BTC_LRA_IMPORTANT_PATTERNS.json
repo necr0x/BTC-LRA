@@ -3,8 +3,8 @@
   "patterns": {
     "P1_RISK_BUILD_COLLISION": {
       "enabled": true,
-      "sound": true,
-      "gui_highlight": true
+      "gui_highlight": true,
+      "sound": true
     }
   }
 }

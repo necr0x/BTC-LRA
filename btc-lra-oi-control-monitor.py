@@ -1021,8 +1021,8 @@ RISK_BUILD_PURITY_MIN = 0.70
 RISK_BUILD_AGGR_SHARE_MIN_PCT = 60.0
 
 
-def risk_build_collision_candidate(event: dict[str, Any]) -> dict[str, Any] | None:
-    """Classify an already-canonical event as a research collision candidate."""
+def risk_build_collision_fingerprint(event: dict[str, Any]) -> dict[str, Any] | None:
+    """Broad research fingerprint helper; not an operational P1 classifier."""
     try:
         oi_activity = float(event.get('event_oi_activity') or 0.0)
         oi_net = float(event.get('event_oi_net') or 0.0)
@@ -1051,10 +1051,37 @@ def risk_build_collision_candidate(event: dict[str, Any]) -> dict[str, Any] | No
         'pattern_id': P1_PATTERN_ID,
         'pattern_variant': pattern_variant,
         'stronger_side': stronger_side,
-        'source_population': P1_SOURCE_POPULATION,
         'oi_build_purity': purity,
         'human_text': 'RISK BUILD COLLISION\\n'
                       f'{aggr_side} → {control.removeprefix("CONTROL ")}',
+    }
+
+
+def risk_build_collision_candidate(event: dict[str, Any]) -> dict[str, Any] | None:
+    """Operational P1: existing canonical MEGA collision only."""
+    fingerprint = risk_build_collision_fingerprint(event)
+    if fingerprint is None:
+        return None
+    if event.get('event_source') == 'RAW_OI_INTENSITY':
+        return None
+    event_kind = event.get('event_kind') or event.get('kind')
+    if event_kind != 'MEGA':
+        return None
+    try:
+        aggr_mag_x = float(event.get('aggr_mag_x') or 0.0)
+    except (TypeError, ValueError):
+        return None
+    if aggr_mag_x < 15.0:
+        return None
+    return {
+        **fingerprint,
+        'source_population': P1_SOURCE_POPULATION,
+        'source_class': 'STRONG_MEGA_CANONICAL',
+        'is_canonical': True,
+        'is_raw_only': False,
+        'is_mega': True,
+        'aggr_mag_x': aggr_mag_x,
+        'importance_class': 'IMPORTANT',
     }
 
 
@@ -1113,8 +1140,15 @@ class RiskBuildCollisionArchive:
             event.update({
                 'pattern_id': candidate['pattern_id'],
                 'pattern_variant': candidate['pattern_variant'],
+                'variant': candidate['pattern_variant'],
                 'stronger_side': candidate['stronger_side'],
                 'source_population': candidate['source_population'],
+                'source_class': candidate['source_class'],
+                'is_canonical': candidate['is_canonical'],
+                'is_raw_only': candidate['is_raw_only'],
+                'is_mega': candidate['is_mega'],
+                'aggr_mag_x': candidate['aggr_mag_x'],
+                'importance_class': candidate['importance_class'],
                 'gui_highlight': bool(
                     pattern_config.get('enabled', False)
                     and pattern_config.get('gui_highlight', False)
@@ -1141,8 +1175,15 @@ class RiskBuildCollisionArchive:
             'pattern_event_id': pattern_event_id,
             'pattern_id': candidate['pattern_id'],
             'pattern_variant': candidate['pattern_variant'],
+            'variant': candidate['pattern_variant'],
             'stronger_side': candidate['stronger_side'],
             'source_population': candidate['source_population'],
+            'source_class': candidate['source_class'],
+            'is_canonical': candidate['is_canonical'],
+            'is_raw_only': candidate['is_raw_only'],
+            'is_mega': candidate['is_mega'],
+            'aggr_mag_x': candidate['aggr_mag_x'],
+            'importance_class': candidate['importance_class'],
             'time': canonical_event_id,
             'price': self._number(price),
             'side': event.get('aggr_side'),
@@ -4739,7 +4780,7 @@ class Session:
         # V2 is calculated here but committed only by finalize_raw_minute().
         # This keeps STRONG/RAW reconciliation single-entry and idempotent.
         v2 = self.dominance_v2_contribution(float(minute.get('add', 0.0)), effort)
-        current = dict(snap, time=minute['minute'], flow=flow, flow_adv=abs(flow_delta), price_change=price_change, classification=classification, event_source=event.get('event_source'), control_label=control_label, event_oi_net=event_oi_net, event_oi_activity=event_oi_activity, display_flow=display_flow, display_flow_adv=abs(display_delta), display_price_change=display_price_change, display_event_price=event.get('display_event_price'), display_reference_price=event.get('display_reference_price'), display_taker_buy=event.get('display_taker_buy', 0.0), display_taker_sell=event.get('display_taker_sell', 0.0), display_flow_delta=event.get('display_flow_delta', display_delta), display_oi_add=float(minute.get('add', 0.0)), display_oi_exit=float(minute.get('exit', 0.0)), display_oi_jump=float(minute.get('jump', 0.0)), oi_add_mass=float(minute.get('add', 0.0)), **effort, **v2)
+        current = dict(snap, time=minute['minute'], flow=flow, flow_adv=abs(flow_delta), price_change=price_change, classification=classification, event_kind=event.get('kind'), event_source=event.get('event_source'), control_label=control_label, event_oi_net=event_oi_net, event_oi_activity=event_oi_activity, display_flow=display_flow, display_flow_adv=abs(display_delta), display_price_change=display_price_change, display_event_price=event.get('display_event_price'), display_reference_price=event.get('display_reference_price'), display_taker_buy=event.get('display_taker_buy', 0.0), display_taker_sell=event.get('display_taker_sell', 0.0), display_flow_delta=event.get('display_flow_delta', display_delta), display_oi_add=float(minute.get('add', 0.0)), display_oi_exit=float(minute.get('exit', 0.0)), display_oi_jump=float(minute.get('jump', 0.0)), oi_add_mass=float(minute.get('add', 0.0)), **effort, **v2)
         current['buy_dominance_v2_btc'] = self.buy_dominance_v2_btc
         current['sell_dominance_v2_btc'] = self.sell_dominance_v2_btc
         current['buy_v2_pct'], current['sell_v2_pct'] = dominance_percentages(
