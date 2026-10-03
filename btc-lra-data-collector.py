@@ -95,6 +95,26 @@ def append_jsonl(path: Path, row: dict[str, object]) -> None:
         handle.write(json.dumps(row, ensure_ascii=False, separators=(',', ':')) + '\n')
 
 
+def merge_retained_rows(*sources: list[dict[str, object]], history_hours: float) -> list[dict[str, object]]:
+    """Merge timestamped rows without allowing a shorter source to erase disk history."""
+    cutoff = now_utc() - timedelta(hours=history_hours)
+    merged: dict[str, dict[str, object]] = {}
+    for source in sources:
+        for row in source:
+            timestamp = parse_timestamp(row)
+            if timestamp is not None and timestamp >= cutoff:
+                merged[timestamp.isoformat()] = row
+    return [merged[key] for key in sorted(merged)]
+
+
+def row_summary(rows: list[dict[str, object]]) -> tuple[int, datetime | None, datetime | None, float]:
+    stamps = [stamp for row in rows if (stamp := parse_timestamp(row)) is not None]
+    if not stamps:
+        return 0, None, None, 0.0
+    oldest, newest = min(stamps), max(stamps)
+    return len(stamps), oldest, newest, (newest - oldest).total_seconds() / 3600.0
+
+
 class Collector:
     def __init__(self, root: Path, history_hours: float, poll_seconds: float, depth_limit: int) -> None:
         self.root = root
@@ -114,28 +134,54 @@ class Collector:
         self.pid_path = self.directory / 'BTC_LRA_COLLECTOR.pid'
         current_oi_rows = read_jsonl(self.oi_path, self.history_hours)
         legacy_oi_rows = read_jsonl(legacy_oi_path, self.history_hours)
-        if legacy_oi_path.is_file():
-            if legacy_oi_rows:
-                self.oi_rows, legacy_used, legacy_overlap_skipped = self._splice_oi_rows(
-                    current_oi_rows, legacy_oi_rows, self.history_hours,
-                )
-                atomic_write_jsonl(self.oi_path, self.oi_rows)
-                oldest = parse_timestamp(self.oi_rows[0]) if self.oi_rows else None
-                newest = parse_timestamp(self.oi_rows[-1]) if self.oi_rows else None
-                span = ((newest - oldest).total_seconds() / 3600.0) if oldest and newest else 0.0
-                self.log(
-                    f'LEGACY_OI_BOOTSTRAP legacy_total={len(legacy_oi_rows)} '
-                    f'legacy_used={legacy_used} legacy_overlap_skipped={legacy_overlap_skipped} '
-                    f'collector_existing={len(current_oi_rows)} combined={len(self.oi_rows)} '
-                    f'oldest={oldest.isoformat() if oldest else "--"} '
-                    f'newest={newest.isoformat() if newest else "--"} span_hours={span:.2f}'
-                )
-            else:
-                self.oi_rows = current_oi_rows
-                self.log('LEGACY_OI_BOOTSTRAP_FAILED reason=no_valid_samples')
-        else:
-            self.oi_rows = current_oi_rows
-        self.market_rows = read_jsonl(self.market_path if self.market_path.is_file() else legacy_market_path, self.history_hours)
+        disk_count, disk_oldest, disk_newest, disk_span = row_summary(current_oi_rows)
+        legacy_count, legacy_oldest, legacy_newest, legacy_span = row_summary(legacy_oi_rows)
+        self.oi_rows = merge_retained_rows(
+            legacy_oi_rows, current_oi_rows, history_hours=self.history_hours,
+        )
+        merged_count, merged_oldest, merged_newest, merged_span = row_summary(self.oi_rows)
+        self.log(
+            f'STARTUP_MERGE CURRENT_DISK count={disk_count} oldest={disk_oldest or "--"} '
+            f'newest={disk_newest or "--"} span_hours={disk_span:.2f} '
+            f'LEGACY count={legacy_count} oldest={legacy_oldest or "--"} '
+            f'newest={legacy_newest or "--"} span_hours={legacy_span:.2f} '
+            f'MERGED count={merged_count} oldest={merged_oldest or "--"} '
+            f'newest={merged_newest or "--"} span_hours={merged_span:.2f}'
+        )
+        if disk_oldest is not None and (merged_oldest is None or merged_oldest > disk_oldest):
+            self.log('ERROR STARTUP_MERGE_INVARIANT disk_valid_history_would_be_lost=YES action=REFUSE_REWRITE')
+        elif legacy_oi_rows and self.oi_path.is_file():
+            atomic_write_jsonl(self.oi_path, self.oi_rows)
+        if legacy_oi_path.is_file() and legacy_oi_rows:
+            self.log(
+                f'LEGACY_OI_BOOTSTRAP legacy_total={len(legacy_oi_rows)} '
+                f'collector_existing={len(current_oi_rows)} combined={len(self.oi_rows)} '
+                f'oldest={merged_oldest.isoformat() if merged_oldest else "--"} '
+                f'newest={merged_newest.isoformat() if merged_newest else "--"} span_hours={merged_span:.2f}'
+            )
+        elif legacy_oi_path.is_file():
+            self.log('LEGACY_OI_BOOTSTRAP_FAILED reason=no_valid_samples')
+        market_disk_rows = read_jsonl(self.market_path, self.history_hours)
+        market_legacy_rows = read_jsonl(legacy_market_path, self.history_hours)
+        market_disk_count, market_disk_oldest, market_disk_newest, market_disk_span = row_summary(market_disk_rows)
+        market_legacy_count, market_legacy_oldest, market_legacy_newest, market_legacy_span = row_summary(market_legacy_rows)
+        self.market_rows = merge_retained_rows(
+            market_legacy_rows, market_disk_rows, history_hours=self.history_hours,
+        )
+        market_merged_count, market_merged_oldest, market_merged_newest, market_merged_span = row_summary(self.market_rows)
+        if market_disk_rows or market_legacy_rows:
+            self.log(
+                f'STARTUP_MERGE_MARKET CURRENT_DISK count={market_disk_count} oldest={market_disk_oldest or "--"} '
+                f'newest={market_disk_newest or "--"} span_hours={market_disk_span:.2f} '
+                f'LEGACY count={market_legacy_count} oldest={market_legacy_oldest or "--"} '
+                f'newest={market_legacy_newest or "--"} span_hours={market_legacy_span:.2f} '
+                f'MERGED count={market_merged_count} oldest={market_merged_oldest or "--"} '
+                f'newest={market_merged_newest or "--"} span_hours={market_merged_span:.2f}'
+            )
+            if market_disk_oldest is not None and (market_merged_oldest is None or market_merged_oldest > market_disk_oldest):
+                self.log('ERROR STARTUP_MERGE_MARKET_INVARIANT disk_valid_history_would_be_lost=YES action=REFUSE_REWRITE')
+            elif self.market_path.is_file() and self.market_rows != market_disk_rows:
+                atomic_write_jsonl(self.market_path, self.market_rows)
         self.depth_summary_rows = read_jsonl(
             self.depth_summary_path if self.depth_summary_path.is_file() else legacy_depth_summary_path,
             self.depth_history_hours,
@@ -243,15 +289,43 @@ class Collector:
     def compact(self) -> None:
         cutoff = now_utc() - timedelta(hours=self.history_hours)
         depth_cutoff = now_utc() - timedelta(hours=self.depth_history_hours)
-        self.oi_rows = [row for row in self.oi_rows if (parse_timestamp(row) or datetime.min.replace(tzinfo=timezone.utc)) >= cutoff]
-        self.market_rows = [row for row in self.market_rows if (parse_timestamp(row) or datetime.min.replace(tzinfo=timezone.utc)) >= cutoff]
+        disk_oi = read_jsonl(self.oi_path, self.history_hours)
+        disk_market = read_jsonl(self.market_path, self.history_hours)
+        oi_disk_count, oi_disk_oldest, oi_disk_newest, _ = row_summary(disk_oi)
+        market_disk_count, market_disk_oldest, market_disk_newest, _ = row_summary(disk_market)
+        oi_memory_count, oi_memory_oldest, oi_memory_newest, _ = row_summary(self.oi_rows)
+        market_memory_count, market_memory_oldest, market_memory_newest, _ = row_summary(self.market_rows)
+        self.log(
+            f'COMPACT_PRE oi_disk_count={oi_disk_count} oi_disk_oldest={oi_disk_oldest or "--"} '
+            f'oi_disk_newest={oi_disk_newest or "--"} market_disk_count={market_disk_count} '
+            f'market_disk_oldest={market_disk_oldest or "--"} market_disk_newest={market_disk_newest or "--"} '
+            f'oi_memory_count={oi_memory_count} oi_memory_oldest={oi_memory_oldest or "--"} '
+            f'oi_memory_newest={oi_memory_newest or "--"} market_memory_count={market_memory_count} '
+            f'market_memory_oldest={market_memory_oldest or "--"} market_memory_newest={market_memory_newest or "--"} '
+            f'retention_cutoff={cutoff.isoformat()}'
+        )
+        merged_oi = merge_retained_rows(disk_oi, self.oi_rows, history_hours=self.history_hours)
+        merged_market = merge_retained_rows(disk_market, self.market_rows, history_hours=self.history_hours)
+        merged_oi_count, merged_oi_oldest, merged_oi_newest, _ = row_summary(merged_oi)
+        merged_market_count, merged_market_oldest, merged_market_newest, _ = row_summary(merged_market)
+        if ((oi_disk_oldest is not None and (merged_oi_oldest is None or merged_oi_oldest > oi_disk_oldest)) or
+                (market_disk_oldest is not None and (merged_market_oldest is None or merged_market_oldest > market_disk_oldest))):
+            self.log('ERROR COMPACT_INVARIANT disk_valid_history_would_be_lost=YES action=REFUSE_REWRITE')
+            return
+        self.oi_rows = merged_oi
+        self.market_rows = merged_market
         self.depth_summary_rows = [row for row in self.depth_summary_rows if (parse_timestamp(row) or datetime.min.replace(tzinfo=timezone.utc)) >= depth_cutoff]
         atomic_write_jsonl(self.oi_path, self.oi_rows)
         atomic_write_jsonl(self.market_path, self.market_rows)
         atomic_write_jsonl(self.depth_summary_path, self.depth_summary_rows)
         self.prune_depth_files(depth_cutoff)
         self.last_compact = time.monotonic()
-        self.log(f'COMPACT oi={len(self.oi_rows)} market={len(self.market_rows)} depth_summary={len(self.depth_summary_rows)}')
+        self.log(
+            f'COMPACT_POST oi_count={merged_oi_count} oi_oldest={merged_oi_oldest or "--"} '
+            f'oi_newest={merged_oi_newest or "--"} market_count={merged_market_count} '
+            f'market_oldest={merged_market_oldest or "--"} market_newest={merged_market_newest or "--"} '
+            f'depth_summary={len(self.depth_summary_rows)}'
+        )
 
     def prune_depth_files(self, cutoff: datetime) -> None:
         if not self.depth_directory.is_dir():

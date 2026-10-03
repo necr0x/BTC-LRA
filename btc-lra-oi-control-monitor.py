@@ -580,6 +580,57 @@ def load_collector_oi_history(path: Path, now: datetime,
     return [unique[timestamp] for timestamp in sorted(unique)]
 
 
+def assess_event_exact_coverage(samples: list[dict[str, Any]], anchor: datetime,
+                                processing_end: datetime) -> tuple[bool, str, str | None]:
+    """Verify causal raw continuity, not merely an old enough first sample."""
+    required_start = anchor - timedelta(hours=EVENT_PREHISTORY_HOURS)
+    if not samples:
+        return False, 'NO_RAW_HISTORY', None
+    ordered = sorted(
+        (sample for sample in samples if isinstance(sample.get('ts'), datetime)),
+        key=lambda row: row['ts'],
+    )
+    if not ordered or ordered[0]['ts'] > required_start:
+        return False, 'INSUFFICIENT_PREHISTORY', f'{fmt_time(ordered[0]["ts"]) if ordered else "--"} > {fmt_time(required_start)}'
+    if not any(sample['ts'] < anchor for sample in ordered):
+        return False, 'INSUFFICIENT_PREHISTORY', 'no sample before anchor'
+    available_end = ordered[-1]['ts']
+    if processing_end - available_end > timedelta(seconds=30):
+        return False, 'RAW_GAP', f'tail {fmt_time(available_end)} -> {fmt_time(processing_end)}'
+    relevant = [sample for sample in ordered if required_start <= sample['ts'] <= available_end]
+    previous = next((sample for sample in reversed(ordered) if sample['ts'] < required_start), None)
+    if previous is not None:
+        relevant.insert(0, previous)
+    for current in relevant[1:]:
+        if previous is None:
+            previous = current
+            continue
+        gap_seconds = (current['ts'] - previous['ts']).total_seconds()
+        if gap_seconds > 15.0 or current.get('gap_break'):
+            gap_start = max(previous['ts'], required_start)
+            gap_end = min(current['ts'], processing_end)
+            if gap_start < gap_end:
+                return False, 'RAW_GAP', f'{fmt_time(gap_start)} -> {fmt_time(gap_end)}'
+        previous = current
+    return True, 'OK', None
+
+
+def set_event_exact_state(session: 'Session', available: bool, reason: str,
+                          gap: str | None, raw_samples: list[dict[str, Any]],
+                          required_start: datetime, log_path: Path) -> None:
+    previous = session.event_exact_available
+    session.event_exact_available = available
+    session.event_exact_reason = reason
+    session.event_exact_gap = gap
+    if previous != available:
+        raw_oldest = fmt_time(raw_samples[0]['ts']) if raw_samples else '--'
+        write_bounded_live_log(
+            log_path,
+            f'EVENT_EXACT_CHANGED old={previous} new={available} anchor={fmt_time(session.anchor)} '
+            f'raw_oldest={raw_oldest} required_start={fmt_time(required_start)} gap={gap or "--"} reason={reason}',
+        )
+
+
 def collector_latest_timestamp(path: Path) -> datetime | None:
     """Return the newest valid collector record timestamp for stale diagnostics."""
     if not path.is_file():
@@ -868,6 +919,8 @@ def publish_gui(bridge: GuiBridge | None, session: 'Session', clock: datetime,
         'continuous_buy_pct': continuous_buy_pct,
         'continuous_sell_pct': continuous_sell_pct,
         'event_exact_available': session.event_exact_available,
+        'event_exact_reason': getattr(session, 'event_exact_reason', 'OK'),
+        'event_exact_gap': getattr(session, 'event_exact_gap', None),
         'continuous_buy_dominance_btc': session.continuous_buy_dominance_btc,
         'continuous_sell_dominance_btc': session.continuous_sell_dominance_btc,
         'event_buy_dominance_btc': continuous_partition['event_buy_btc'],
@@ -4525,6 +4578,8 @@ class Session:
         self.continuous_valid_closed_minutes = 0
         self.continuous_contributions_by_minute: dict[datetime, dict[str, float]] = {}
         self.event_exact_available = True
+        self.event_exact_reason = 'OK'
+        self.event_exact_gap: str | None = None
         self.continuous_market_history: list[dict[str, Any]] = []
         self.continuous_baseline_initialized = False
         self.continuous_last_result: dict[str, Any] | None = None
@@ -5807,6 +5862,11 @@ def run_live(args: argparse.Namespace, gui: GuiBridge | None = None) -> None:
     baseline_ready = history_span >= RAW_BASELINE_MINUTES / 60
     session.raw_baseline_ready = baseline_ready
     session.raw_baseline_span_minutes = history_span * 60
+    initial_exact, initial_reason, initial_gap = assess_event_exact_coverage(raw_samples, session.anchor, startup_now)
+    set_event_exact_state(
+        session, initial_exact, initial_reason, initial_gap, raw_samples,
+        session.anchor - timedelta(hours=EVENT_PREHISTORY_HOURS), log_path,
+    )
     baseline_line = (
         f'RAW_BASELINE_RESTORED samples={len(raw_samples)} '
         f'oldest={fmt_time(raw_samples[0]["ts"]) if raw_samples else "--"} '
@@ -5966,9 +6026,13 @@ def run_live(args: argparse.Namespace, gui: GuiBridge | None = None) -> None:
                                 f'T NOT AVAILABLE requested={fmt_time(requested)} '
                                 f'available research history={fmt_time(research_cutoff)} -> {fmt_time(clock)}'
                             )
-                        earliest_exact = (raw_samples[0]['ts'] + timedelta(hours=EVENT_PREHISTORY_HOURS)) if raw_samples else None
-                        event_exact_available = (
-                            earliest_exact is not None and requested >= earliest_exact
+                        processing_end_for_coverage = requested_end if window['mode'] == 'FIXED_RANGE' else clock
+                        event_exact_available, event_exact_reason, event_exact_gap = assess_event_exact_coverage(
+                            raw_samples, requested, processing_end_for_coverage,
+                        )
+                        earliest_exact = (
+                            raw_samples[0]['ts'] + timedelta(hours=EVENT_PREHISTORY_HOURS)
+                            if raw_samples else None
                         )
                         oi_available = (
                             f'{fmt_time(raw_samples[0]["ts"])} -> {fmt_time(raw_samples[-1]["ts"])}'
@@ -6010,7 +6074,13 @@ def run_live(args: argparse.Namespace, gui: GuiBridge | None = None) -> None:
                             event_exact_available,
                         )
                         preserved_depth_history = list(session.pre_release.depth_history)
+                        previous_exact = session.event_exact_available
                         session = rebuilt
+                        session.event_exact_available = previous_exact
+                        set_event_exact_state(
+                            session, event_exact_available, event_exact_reason, event_exact_gap,
+                            raw_samples, requested - timedelta(hours=EVENT_PREHISTORY_HOURS), log_path,
+                        )
                         session.pre_release.depth_history = preserved_depth_history[-200:]
                         session.pre_release.last_depth_event = (
                             session.pre_release.depth_history[-1]
@@ -6080,12 +6150,13 @@ def run_live(args: argparse.Namespace, gui: GuiBridge | None = None) -> None:
         session.collector_market_last_age_sec = ((now - market_latest).total_seconds() if market_latest else None)
         session.raw_baseline_ready = baseline_ready
         session.raw_baseline_span_minutes = history_span * 60
-        earliest_exact = (
-            raw_samples[0]['ts'] + timedelta(hours=EVENT_PREHISTORY_HOURS)
-            if raw_samples else None
+        processing_end = session.window_end if session.window_mode == 'FIXED_RANGE' else now
+        event_exact_available, event_exact_reason, event_exact_gap = assess_event_exact_coverage(
+            raw_samples, session.anchor, processing_end,
         )
-        session.event_exact_available = (
-            earliest_exact is not None and session.anchor >= earliest_exact
+        set_event_exact_state(
+            session, event_exact_available, event_exact_reason, event_exact_gap,
+            raw_samples, session.anchor - timedelta(hours=EVENT_PREHISTORY_HOURS), log_path,
         )
         if not session.raw_baseline_ready and not baseline_warmup_logged:
             warmup_line = f'RAW_BASELINE_WARMUP reason=available_span_{history_span * 60:.1f}m_required_{RAW_BASELINE_MINUTES}m'
@@ -6094,7 +6165,6 @@ def run_live(args: argparse.Namespace, gui: GuiBridge | None = None) -> None:
         samples = raw_samples
         minutes = minute_oi(samples)
         annotate_minutes(minutes)
-        processing_end = session.window_end if session.window_mode == 'FIXED_RANGE' else now
         closed_market = [row for row in live_klines if row['ts'] + timedelta(minutes=1) <= processing_end]
         current_market = None if session.window_mode == 'FIXED_RANGE' else next(
             (row for row in reversed(live_klines) if row['ts'] + timedelta(minutes=1) > now), None
@@ -6617,9 +6687,10 @@ def launch_gui(args: argparse.Namespace) -> None:
                 event_plain = f'{event_buy_text} vs {event_sell_text}'
                 rest_plain = f'{rest_buy_text} vs {rest_sell_text}'
             else:
-                event_html = '<span style="color:#000000">INCOMPLETE</span>'
-                rest_html = '<span style="color:#000000">INCOMPLETE</span>'
-                event_plain = rest_plain = 'INCOMPLETE'
+                reason = snapshot.get('event_exact_reason') or 'RAW_GAP'
+                event_html = f'<span style="color:#000000">INCOMPLETE [{reason}]</span>'
+                rest_html = f'<span style="color:#000000">INCOMPLETE [{reason}]</span>'
+                event_plain = rest_plain = f'INCOMPLETE [{reason}]'
             plain_dominance = (
                 f'F-DOMINANCE {full_plain} | {snapshot["oi_flow"]}\n'
                 f'E-DOMINANCE {event_plain}\n'
