@@ -650,6 +650,7 @@ def publish_gui(bridge: GuiBridge | None, session: 'Session', clock: datetime,
     display_buy_dom = session.buy_dominance_v2_btc + session.provisional_buy_dominance_v2_btc
     display_sell_dom = session.sell_dominance_v2_btc + session.provisional_sell_dominance_v2_btc
     v2_buy_pct, v2_sell_pct = dominance_percentages(display_buy_dom, display_sell_dom)
+    dominance_relative = session.dominance_relative_snapshot(v2_buy_pct, v2_sell_pct, clock)
     old_dominance = (
         f'DOMINANCE OLD BUY {old_buy_pct:.1f}% / SELL {old_sell_pct:.1f}%'
         if old_buy_pct is not None else 'DOMINANCE OLD BUY -- / SELL --'
@@ -736,6 +737,7 @@ def publish_gui(bridge: GuiBridge | None, session: 'Session', clock: datetime,
         'dominance_v2': v2_dominance,
         'dominance_v2_buy_pct': v2_buy_pct,
         'dominance_v2_sell_pct': v2_sell_pct,
+        **dominance_relative,
         'oi_flow': f'OI FLOW {compact(session.oi_event_flow + session.provisional_oi_flow)} BTC',
         'raw_baseline_ready': getattr(session, 'raw_baseline_ready', False),
         'raw_baseline_span_minutes': getattr(session, 'raw_baseline_span_minutes', 0.0),
@@ -947,6 +949,23 @@ def dominance_percentages(buy_weight: float, sell_weight: float) -> tuple[float 
     if total <= 0:
         return None, None
     return buy_weight / total * 100, sell_weight / total * 100
+
+
+def relative_dominance_change(current_pct: float | None,
+                              reference_pct: float | None) -> float | None:
+    """Return relative change in a dominance share, not percentage points."""
+    if current_pct is None or reference_pct in (None, 0):
+        return None
+    return (current_pct / reference_pct - 1.0) * 100.0
+
+
+def dominance_change_text(change_pct: float | None) -> str:
+    if change_pct is None:
+        return '—'
+    if abs(change_pct) < 0.05:
+        return '→0.0%'
+    arrow = '↑' if change_pct > 0 else '↓'
+    return f'{arrow}{abs(change_pct):.1f}%'
 
 
 def percentage_text(value: float | None) -> str:
@@ -3615,6 +3634,9 @@ class Session:
         self.sell_dominance_weight_usdt = 0.0
         self.buy_dominance_v2_btc = 0.0
         self.sell_dominance_v2_btc = 0.0
+        self.dominance_reference_buy_pct: float | None = None
+        self.dominance_reference_sell_pct: float | None = None
+        self.dominance_reference_time: datetime | None = None
         self.provisional_oi_flow = 0.0
         self.provisional_buy_dominance_v2_btc = 0.0
         self.provisional_sell_dominance_v2_btc = 0.0
@@ -3645,6 +3667,44 @@ class Session:
 
     def reset(self, anchor: datetime) -> None:
         self.__init__(anchor)
+
+    def update_dominance_reference(self, buy_pct: float | None,
+                                   sell_pct: float | None,
+                                   event_time: datetime) -> None:
+        """Latch the first post-anchor dominance snapshot per side.
+
+        A zero side is retained as an unavailable reference until that side
+        first becomes non-zero, avoiding division by zero without changing
+        the underlying dominance accumulators.
+        """
+        if buy_pct is None or sell_pct is None:
+            return
+        if self.dominance_reference_buy_pct is None or (
+            self.dominance_reference_buy_pct == 0 and buy_pct != 0
+        ):
+            self.dominance_reference_buy_pct = float(buy_pct)
+        if self.dominance_reference_sell_pct is None or (
+            self.dominance_reference_sell_pct == 0 and sell_pct != 0
+        ):
+            self.dominance_reference_sell_pct = float(sell_pct)
+        if self.dominance_reference_time is None:
+            self.dominance_reference_time = event_time
+
+    def dominance_relative_snapshot(self, buy_pct: float | None,
+                                    sell_pct: float | None,
+                                    event_time: datetime) -> dict[str, Any]:
+        self.update_dominance_reference(buy_pct, sell_pct, event_time)
+        return {
+            'dominance_reference_buy_pct': self.dominance_reference_buy_pct,
+            'dominance_reference_sell_pct': self.dominance_reference_sell_pct,
+            'dominance_buy_change_pct': relative_dominance_change(
+                buy_pct, self.dominance_reference_buy_pct
+            ),
+            'dominance_sell_change_pct': relative_dominance_change(
+                sell_pct, self.dominance_reference_sell_pct
+            ),
+            'dominance_reference_time': self.dominance_reference_time,
+        }
 
     def raw_ledger(self, minute: datetime) -> dict[str, Any]:
         return self.raw_minute_ledgers.setdefault(minute, {
@@ -5350,14 +5410,16 @@ def launch_gui(args: argparse.Namespace) -> None:
             sell_pct = snapshot.get('dominance_v2_sell_pct')
             buy_text = '--' if buy_pct is None else f'{buy_pct:.1f}%'
             sell_text = '--' if sell_pct is None else f'{sell_pct:.1f}%'
+            buy_change = dominance_change_text(snapshot.get('dominance_buy_change_pct'))
+            sell_change = dominance_change_text(snapshot.get('dominance_sell_change_pct'))
             self._current_plain_text = (
                 f'{snapshot["clock_gui"]} | '
-                f'DOMINANCE {buy_text} {sell_text} | {snapshot["oi_flow"]}'
+                f'DOMINANCE {buy_text} {buy_change}  {sell_text} {sell_change} | {snapshot["oi_flow"]}'
             )
             self.current.setText(
                 f'{snapshot["clock_gui"]} | DOMINANCE '
-                f'<span style="color:#168a2f">{buy_text}</span> '
-                f'<span style="color:#c62828">{sell_text}</span> | '
+                f'<span style="color:#168a2f">{buy_text} {buy_change}</span>  '
+                f'<span style="color:#c62828">{sell_text} {sell_change}</span> | '
                 f'{snapshot["oi_flow"]}'
             )
             rows = snapshot['events']
