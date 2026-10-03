@@ -1,0 +1,76 @@
+# BTC-LRA RELEASE STAGES
+
+Research-only layer. Existing ENTRY EPISODES, production CONTROL, DOMINANCE, thresholds and Pine are unchanged.
+
+CSV: `C:\Users\miscp\OneDrive\Desktop\BTC-LRA-SCRIPTS\data\research\BTC_LRA_RELEASE_STAGES.csv`
+
+LIMIT target-side control is classified as DEFENDED. MARKET target-side control is classified as RELEASE. No score or new threshold is introduced.
+
+## Benchmark causal timelines
+
+### 21:26
+21:26 EARLY SHORT | votes 4/4 | state EARLY_SHORT -> SHORT_DEFENDED -> INVALIDATED
+21:27 CONTROL LIMIT SELL | SHORT_DEFENDED
+MARKET release: NONE
+21:26 EARLY SHORT | votes 4/4 | state EARLY_SHORT -> SHORT_DEFENDED -> INVALIDATED
+21:27 CONTROL LIMIT SELL | SHORT_DEFENDED
+MARKET release: NONE
+21:26 EARLY SHORT | votes 4/4 | state EARLY_SHORT -> SHORT_DEFENDED -> INVALIDATED
+21:27 CONTROL LIMIT SELL | SHORT_DEFENDED
+MARKET release: NONE
+21:26 EARLY SHORT | votes 4/4 | state EARLY_SHORT -> SHORT_DEFENDED -> INVALIDATED
+21:27 CONTROL LIMIT SELL | SHORT_DEFENDED
+MARKET release: NONE
+### 22:01
+22:01 EARLY LONG | votes 1/4 | state EARLY_LONG -> INVALIDATED
+MARKET release: NONE
+### 22:37
+22:37 EARLY LONG | votes 4/4 | state EARLY_LONG -> LONG_RELEASE
+22:39 CONTROL MARKET BUY | LONG_RELEASE
+22:37 EARLY LONG | votes 4/4 | state EARLY_LONG -> LONG_RELEASE
+22:39 CONTROL MARKET BUY | LONG_RELEASE
+22:37 EARLY LONG | votes 4/4 | state EARLY_LONG -> LONG_RELEASE
+22:39 CONTROL MARKET BUY | LONG_RELEASE
+22:37 EARLY LONG | votes 4/4 | state EARLY_LONG -> LONG_RELEASE
+22:39 CONTROL MARKET BUY | LONG_RELEASE
+### 22:51
+22:51 EARLY LONG | votes 4/4 | state EARLY_LONG -> LONG_DEFENDED -> LONG_RELEASE
+22:52 CONTROL LIMIT BUY | LONG_DEFENDED
+22:56 CONTROL MARKET BUY | LONG_RELEASE
+22:51 EARLY LONG | votes 4/4 | state EARLY_LONG -> LONG_DEFENDED -> LONG_RELEASE
+22:52 CONTROL LIMIT BUY | LONG_DEFENDED
+22:56 CONTROL MARKET BUY | LONG_RELEASE
+22:51 EARLY LONG | votes 4/4 | state EARLY_LONG -> LONG_DEFENDED -> LONG_RELEASE
+22:52 CONTROL LIMIT BUY | LONG_DEFENDED
+22:56 CONTROL MARKET BUY | LONG_RELEASE
+22:51 EARLY LONG | votes 4/4 | state EARLY_LONG -> LONG_DEFENDED -> LONG_RELEASE
+22:52 CONTROL LIMIT BUY | LONG_DEFENDED
+22:56 CONTROL MARKET BUY | LONG_RELEASE
+
+## Full dataset comparison
+
+PATH | COUNT
+---|---:
+| EARLY -> INVALIDATED | 9 |
+| EARLY -> DEFENDED | 0 |
+| EARLY -> RELEASE | 15 |
+| EARLY -> DEFENDED -> RELEASE | 14 |
+| NO-CONFIRM | 0 |
+
+## Outcome groups
+
+GROUP | COUNT | EARLY MFE 10M | EARLY MAE 10M | RELEASE MFE 10M | RELEASE MAE 10M
+---|---:|---:|---:|---:|---:
+| RELEASE episodes | 29 | 63.62758620689495 | 11.834482758620087 | 68.28275862068655 | 11.189655172414295 |
+| DEFENDED-only episodes | 5 | 10.879999999993014 | 145.14000000000232 | None | None |
+| NO-confirm episodes | 4 | 0.0 | 141.7750000000051 | None | None |
+
+## Answers
+
+The report compares LIMIT defense and MARKET release using observed causal rows. It does not select a threshold or declare a strategy.
+
+1. LIMIT and MARKET are reported as separate stages; the benchmark paths below show whether the distinction separates defense from active release.
+2. 21:26: SHORT votes=4/4 path=EARLY_SHORT -> SHORT_DEFENDED -> INVALIDATED release=NONE; SHORT votes=4/4 path=EARLY_SHORT -> SHORT_DEFENDED -> INVALIDATED release=NONE; SHORT votes=4/4 path=EARLY_SHORT -> SHORT_DEFENDED -> INVALIDATED release=NONE; SHORT votes=4/4 path=EARLY_SHORT -> SHORT_DEFENDED -> INVALIDATED release=NONE
+3. 22:51: LONG votes=4/4 path=EARLY_LONG -> LONG_DEFENDED -> LONG_RELEASE release=2026-09-30 22:56:00; LONG votes=4/4 path=EARLY_LONG -> LONG_DEFENDED -> LONG_RELEASE release=2026-09-30 22:56:00; LONG votes=4/4 path=EARLY_LONG -> LONG_DEFENDED -> LONG_RELEASE release=2026-09-30 22:56:00; LONG votes=4/4 path=EARLY_LONG -> LONG_DEFENDED -> LONG_RELEASE release=2026-09-30 22:56:00
+4. EARLY-to-MARKET-RELEASE delays observed: [2.0, 2.0, 8.0, 8.0, 9.0, 4.0, 4.0, 5.0, 2.0, 2.0, 2.0, 1.0, 1.0, 8.0, 8.0, 8.0, 8.0, 1.0, 1.0, 1.0, 1.0, 2.0, 2.0, 2.0, 2.0, 5.0, 5.0, 5.0, 5.0]; no delay threshold is selected.
+5. Outcome tables compare RELEASE, DEFENDED-only and NO-confirm groups without using outcomes in state formation.

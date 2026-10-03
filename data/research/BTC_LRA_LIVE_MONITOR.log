@@ -523,3 +523,933 @@ LIVE_OI_SAMPLE time=00:15:12 / 02.10.26 -5 oi=100339.194000 dOI_gap_break=False 
 LIVE_OI_SAMPLE time=00:15:23 / 02.10.26 -5 oi=100340.202000 dOI_gap_break=False samples=5328
 LIVE_OI_SAMPLE time=00:15:28 / 02.10.26 -5 oi=100340.823000 dOI_gap_break=False samples=5329
 LIVE_OI_SAMPLE time=00:15:33 / 02.10.26 -5 oi=100341.036000 dOI_gap_break=False samples=5329
+LIVE_OI_SAMPLE time=00:15:41 / 02.10.26 -5 oi=100340.251000 dOI_gap_break=False samples=5328
+LIVE_OI_SAMPLE time=00:15:49 / 02.10.26 -5 oi=100342.845000 dOI_gap_break=False samples=5328
+LIVE_OI_SAMPLE time=00:15:52 / 02.10.26 -5 oi=100343.457000 dOI_gap_break=False samples=5328
+LIVE_OI_SAMPLE time=00:15:57 / 02.10.26 -5 oi=100343.526000 dOI_gap_break=False samples=5328
+LIVE_OI_SAMPLE time=00:16:06 / 02.10.26 -5 oi=100348.841000 dOI_gap_break=False samples=5328
+LIVE_OI_SAMPLE time=00:16:13 / 02.10.26 -5 oi=100346.256000 dOI_gap_break=False samples=5328
+LIVE_OI_SAMPLE time=00:16:21 / 02.10.26 -5 oi=100346.708000 dOI_gap_break=False samples=5329
+LIVE_OI_SAMPLE time=00:16:26 / 02.10.26 -5 oi=100346.892000 dOI_gap_break=False samples=5330
+LIVE_OI_SAMPLE time=00:16:35 / 02.10.26 -5 oi=100344.129000 dOI_gap_break=False samples=5330
+LIVE_OI_SAMPLE time=00:16:40 / 02.10.26 -5 oi=100346.355000 dOI_gap_break=False samples=5330
+LIVE_OI_SAMPLE time=00:16:46 / 02.10.26 -5 oi=100340.179000 dOI_gap_break=False samples=5330
+LIVE_OI_SAMPLE time=00:16:57 / 02.10.26 -5 oi=100348.937000 dOI_gap_break=False samples=5329
+LIVE_OI_SAMPLE time=00:17:02 / 02.10.26 -5 oi=100348.949000 dOI_gap_break=False samples=5329
+LIVE_OI_SAMPLE time=00:17:10 / 02.10.26 -5 oi=100361.240000 dOI_gap_break=False samples=5330
+LIVE_OI_SAMPLE time=00:17:16 / 02.10.26 -5 oi=100359.281000 dOI_gap_break=False samples=5331
+LIVE_ANCHOR_CHANGED from=00:12:33 / 02.10.26 -5 to=22:00:00 / 01.10.26 -5 rebuilt_until=00:17:23 / 02.10.26 -5 events=66 oi_flow=2041.096000 buy_dom=1589.989688 sell_dom=1631.055945
+LIVE_OI_SAMPLE time=00:17:18 / 02.10.26 -5 oi=100359.319000 dOI_gap_break=False samples=5332
+LIVE_OI_SAMPLE time=00:17:23 / 02.10.26 -5 oi=100360.105000 dOI_gap_break=False samples=5333
+LIVE_OI_SAMPLE time=00:17:30 / 02.10.26 -5 oi=100354.751000 dOI_gap_break=False samples=5333
+LIVE_OI_SAMPLE time=00:17:37 / 02.10.26 -5 oi=100339.367000 dOI_gap_break=False samples=5333
+LIVE_OI_SAMPLE time=00:17:45 / 02.10.26 -5 oi=100322.460000 dOI_gap_break=False samples=5333
+LIVE_OI_SAMPLE time=00:17:56 / 02.10.26 -5 oi=100322.646000 dOI_gap_break=False samples=5332
+LIVE_OI_SAMPLE time=00:18:02 / 02.10.26 -5 oi=100326.698000 dOI_gap_break=False samples=5332
+LIVE_OI_SAMPLE time=00:18:07 / 02.10.26 -5 oi=100326.842000 dOI_gap_break=False samples=5332
+LIVE_OI_SAMPLE time=00:18:12 / 02.10.26 -5 oi=100324.624000 dOI_gap_break=False samples=5332
+LIVE_OI_SAMPLE time=00:18:20 / 02.10.26 -5 oi=100326.324000 dOI_gap_break=False samples=5333
+LIVE_OI_SAMPLE time=00:18:25 / 02.10.26 -5 oi=100325.395000 dOI_gap_break=False samples=5334
+LIVE_OI_SAMPLE time=00:18:28 / 02.10.26 -5 oi=100325.621000 dOI_gap_break=False samples=5335
+LIVE_OI_SAMPLE time=00:18:36 / 02.10.26 -5 oi=100325.792000 dOI_gap_break=False samples=5336
+LIVE_OI_SAMPLE time=00:18:44 / 02.10.26 -5 oi=100328.575000 dOI_gap_break=False samples=5335
+LIVE_OI_SAMPLE time=00:18:55 / 02.10.26 -5 oi=100333.185000 dOI_gap_break=False samples=5334
+LIVE_OI_SAMPLE time=00:18:57 / 02.10.26 -5 oi=100335.482000 dOI_gap_break=False samples=5335
+LIVE_OI_SAMPLE time=00:19:07 / 02.10.26 -5 oi=100321.179000 dOI_gap_break=False samples=5334
+LIVE_OI_SAMPLE time=00:19:13 / 02.10.26 -5 oi=100329.885000 dOI_gap_break=False samples=5335
+LIVE_OI_SAMPLE time=00:19:21 / 02.10.26 -5 oi=100327.219000 dOI_gap_break=False samples=5336
+LIVE_OI_SAMPLE time=00:19:23 / 02.10.26 -5 oi=100327.462000 dOI_gap_break=False samples=5336
+LIVE_OI_SAMPLE time=00:19:37 / 02.10.26 -5 oi=100327.998000 dOI_gap_break=False samples=5335
+LIVE_OI_SAMPLE time=00:19:42 / 02.10.26 -5 oi=100329.092000 dOI_gap_break=False samples=5335
+LIVE_OI_SAMPLE time=00:19:48 / 02.10.26 -5 oi=100328.991000 dOI_gap_break=False samples=5335
+LIVE_OI_SAMPLE time=00:19:55 / 02.10.26 -5 oi=100334.626000 dOI_gap_break=False samples=5335
+LIVE_OI_SAMPLE time=00:20:05 / 02.10.26 -5 oi=100331.958000 dOI_gap_break=False samples=5334
+LIVE_OI_SAMPLE time=00:20:06 / 02.10.26 -5 oi=100332.055000 dOI_gap_break=False samples=5335
+LIVE_OI_SAMPLE time=00:20:15 / 02.10.26 -5 oi=100331.257000 dOI_gap_break=False samples=5336
+LIVE_OI_SAMPLE time=00:20:19 / 02.10.26 -5 oi=100331.126000 dOI_gap_break=False samples=5337
+LIVE_OI_SAMPLE time=00:20:30 / 02.10.26 -5 oi=100330.491000 dOI_gap_break=False samples=5336
+LIVE_OI_SAMPLE time=00:20:38 / 02.10.26 -5 oi=100332.742000 dOI_gap_break=False samples=5335
+LIVE_OI_SAMPLE time=00:20:42 / 02.10.26 -5 oi=100336.182000 dOI_gap_break=False samples=5336
+LIVE_OI_SAMPLE time=00:20:53 / 02.10.26 -5 oi=100336.605000 dOI_gap_break=False samples=5335
+LIVE_OI_SAMPLE time=00:20:58 / 02.10.26 -5 oi=100337.461000 dOI_gap_break=False samples=5335
+LIVE_OI_SAMPLE time=00:21:02 / 02.10.26 -5 oi=100340.017000 dOI_gap_break=False samples=5335
+LIVE_OI_SAMPLE time=00:21:13 / 02.10.26 -5 oi=100348.620000 dOI_gap_break=False samples=5335
+LIVE_OI_SAMPLE time=00:21:21 / 02.10.26 -5 oi=100355.579000 dOI_gap_break=False samples=5336
+LIVE_OI_SAMPLE time=00:21:31 / 02.10.26 -5 oi=100345.998000 dOI_gap_break=False samples=5336
+LIVE_OI_SAMPLE time=00:21:36 / 02.10.26 -5 oi=100343.692000 dOI_gap_break=False samples=5336
+LIVE_OI_SAMPLE time=00:21:42 / 02.10.26 -5 oi=100312.511000 dOI_gap_break=False samples=5336
+RAW_ACCUM {"time": "2026-10-02 00:21:42.592000-05:00", "dOI": -31.180999999996857, "pctl": 98.80059970014993, "control": "CONTROL MARKET SELL", "strength": 1.0, "flow_delta": -31.180999999996857, "buy_dom_delta": 0.0, "sell_dom_delta": 0.0, "display_flow": 2009.914999999991, "display_buy_dom": 1589.989688014243, "display_sell_dom": 1631.0559448995014}
+LIVE_OI_SAMPLE time=00:21:47 / 02.10.26 -5 oi=100305.647000 dOI_gap_break=False samples=5336
+LIVE_OI_SAMPLE time=00:21:52 / 02.10.26 -5 oi=100305.822000 dOI_gap_break=False samples=5336
+LIVE_OI_SAMPLE time=00:22:03 / 02.10.26 -5 oi=100321.457000 dOI_gap_break=False samples=5335
+RAW_MINUTE_FINALIZE {"minute": "2026-10-02T00:21:00-05:00", "raw_samples_counted": 1, "flow_already_counted": -31.180999999996857, "canonical_flow": -34.195, "strong_residual": 0.0, "double_count": 0}
+ACCUM_FINAL {"time": "2026-10-02T00:21:00-05:00", "source": "RAW_ONLY", "net": -34.195, "oi_add": 18.293000000005122, "control": "CONTROL MARKET SELL", "strength": 0.99700916, "flow_final": -34.195, "buy_dom_final": 0.0, "sell_dom_final": 18.238288563879998, "double_count": 0}
+LIVE_OI_SAMPLE time=00:22:09 / 02.10.26 -5 oi=100322.018000 dOI_gap_break=False samples=5335
+LIVE_OI_SAMPLE time=00:22:14 / 02.10.26 -5 oi=100332.588000 dOI_gap_break=False samples=5336
+LIVE_OI_SAMPLE time=00:22:25 / 02.10.26 -5 oi=100346.050000 dOI_gap_break=False samples=5337
+LIVE_OI_SAMPLE time=00:22:32 / 02.10.26 -5 oi=100348.799000 dOI_gap_break=False samples=5338
+LIVE_OI_SAMPLE time=00:22:35 / 02.10.26 -5 oi=100349.337000 dOI_gap_break=False samples=5339
+LIVE_OI_SAMPLE time=00:22:46 / 02.10.26 -5 oi=100345.510000 dOI_gap_break=False samples=5338
+LIVE_OI_SAMPLE time=00:22:51 / 02.10.26 -5 oi=100346.348000 dOI_gap_break=False samples=5338
+LIVE_OI_SAMPLE time=00:23:02 / 02.10.26 -5 oi=100347.796000 dOI_gap_break=False samples=5337
+LIVE_OI_SAMPLE time=00:23:04 / 02.10.26 -5 oi=100347.756000 dOI_gap_break=False samples=5338
+LIVE_OI_SAMPLE time=00:23:15 / 02.10.26 -5 oi=100344.763000 dOI_gap_break=False samples=5338
+LIVE_OI_SAMPLE time=00:23:23 / 02.10.26 -5 oi=100344.978000 dOI_gap_break=False samples=5339
+LIVE_OI_SAMPLE time=00:23:28 / 02.10.26 -5 oi=100345.923000 dOI_gap_break=False samples=5340
+LIVE_OI_SAMPLE time=00:23:39 / 02.10.26 -5 oi=100345.385000 dOI_gap_break=False samples=5341
+LIVE_OI_SAMPLE time=00:23:45 / 02.10.26 -5 oi=100346.283000 dOI_gap_break=False samples=5342
+LIVE_OI_SAMPLE time=00:23:51 / 02.10.26 -5 oi=100348.900000 dOI_gap_break=False samples=5342
+LIVE_OI_SAMPLE time=00:23:56 / 02.10.26 -5 oi=100353.224000 dOI_gap_break=False samples=5342
+LIVE_OI_SAMPLE time=00:24:06 / 02.10.26 -5 oi=100346.860000 dOI_gap_break=False samples=5341
+LIVE_OI_SAMPLE time=00:24:12 / 02.10.26 -5 oi=100347.483000 dOI_gap_break=False samples=5341
+LIVE_OI_SAMPLE time=00:24:18 / 02.10.26 -5 oi=100339.443000 dOI_gap_break=False samples=5342
+LIVE_OI_SAMPLE time=00:24:29 / 02.10.26 -5 oi=100307.148000 dOI_gap_break=False samples=5343
+LIVE_OI_SAMPLE time=00:24:34 / 02.10.26 -5 oi=100306.059000 dOI_gap_break=False samples=5344
+LIVE_OI_SAMPLE time=00:24:39 / 02.10.26 -5 oi=100307.842000 dOI_gap_break=False samples=5344
+LIVE_OI_SAMPLE time=00:24:49 / 02.10.26 -5 oi=100307.562000 dOI_gap_break=False samples=5343
+LIVE_OI_SAMPLE time=00:24:55 / 02.10.26 -5 oi=100303.905000 dOI_gap_break=False samples=5343
+LIVE_OI_SAMPLE time=00:25:05 / 02.10.26 -5 oi=100306.974000 dOI_gap_break=False samples=5342
+LIVE_OI_SAMPLE time=00:25:11 / 02.10.26 -5 oi=100305.049000 dOI_gap_break=False samples=5343
+LIVE_OI_SAMPLE time=00:25:16 / 02.10.26 -5 oi=100281.840000 dOI_gap_break=False samples=5344
+RAW_ACCUM {"time": "2026-10-02 00:25:16.895000-05:00", "dOI": -23.20900000000256, "pctl": 98.57997010463379, "control": "CONTROL LIMIT BUY", "strength": 0.5942540795322155, "flow_delta": -23.20900000000256, "buy_dom_delta": 0.0, "sell_dom_delta": 0.0, "display_flow": 1983.6919999999855, "display_buy_dom": 1589.989688014243, "display_sell_dom": 1649.2942334633813}
+LIVE_OI_SAMPLE time=00:25:22 / 02.10.26 -5 oi=100283.270000 dOI_gap_break=False samples=5344
+LIVE_OI_SAMPLE time=00:25:32 / 02.10.26 -5 oi=100287.032000 dOI_gap_break=False samples=5344
+LIVE_OI_SAMPLE time=00:25:37 / 02.10.26 -5 oi=100287.534000 dOI_gap_break=False samples=5344
+LIVE_OI_SAMPLE time=00:25:48 / 02.10.26 -5 oi=100266.283000 dOI_gap_break=False samples=5343
+LIVE_OI_SAMPLE time=00:25:53 / 02.10.26 -5 oi=100277.462000 dOI_gap_break=False samples=5343
+LIVE_OI_SAMPLE time=00:25:59 / 02.10.26 -5 oi=100274.628000 dOI_gap_break=False samples=5343
+RAW_MINUTE_FINALIZE {"minute": "2026-10-02T00:25:00-05:00", "raw_samples_counted": 1, "flow_already_counted": -23.20900000000256, "canonical_flow": -32.346, "strong_residual": 0.0, "double_count": 0}
+ACCUM_FINAL {"time": "2026-10-02T00:25:00-05:00", "source": "RAW_ONLY", "net": -32.346, "oi_add": 19.94200000001001, "control": "CONTROL MARKET SELL", "strength": 0.5897741, "flow_final": -32.346, "buy_dom_final": 0.0, "sell_dom_final": 11.761275102199999, "double_count": 0}
+LIVE_OI_SAMPLE time=00:26:04 / 02.10.26 -5 oi=100272.001000 dOI_gap_break=False samples=5343
+LIVE_OI_SAMPLE time=00:26:10 / 02.10.26 -5 oi=100260.146000 dOI_gap_break=False samples=5343
+LIVE_OI_SAMPLE time=00:26:21 / 02.10.26 -5 oi=100234.141000 dOI_gap_break=False samples=5344
+LIVE_OI_SAMPLE time=00:26:26 / 02.10.26 -5 oi=100154.877000 dOI_gap_break=False samples=5345
+RAW_ACCUM {"time": "2026-10-02 00:26:26.498000-05:00", "dOI": -79.26400000001013, "pctl": 99.6267263904442, "control": "CONTROL LIMIT BUY", "strength": 0.5365348529541443, "flow_delta": -79.26400000001013, "buy_dom_delta": 0.0, "sell_dom_delta": 0.0, "display_flow": 1895.2909999999779, "display_buy_dom": 1589.989688014243, "display_sell_dom": 1661.0555085655812}
+LIVE_OI_SAMPLE time=00:26:31 / 02.10.26 -5 oi=100162.012000 dOI_gap_break=False samples=5346
+RAW_ACCUM {"time": "2026-10-02 00:26:31.222000-05:00", "dOI": 7.135000000009313, "pctl": 98.2089552238806, "control": "CONTROL LIMIT BUY", "strength": 1.0, "flow_delta": 7.135000000009313, "buy_dom_delta": 7.135000000009313, "sell_dom_delta": 0.0, "display_flow": 1902.4259999999872, "display_buy_dom": 1597.1246880142523, "display_sell_dom": 1661.0555085655812}
+LIVE_OI_SAMPLE time=00:26:37 / 02.10.26 -5 oi=100161.164000 dOI_gap_break=False samples=5346
+RAW_ACCUM {"time": "2026-10-02 00:26:37.113000-05:00", "dOI": -0.8479999999981374, "pctl": 98.20962327489742, "control": "CONTROL LIMIT BUY", "strength": 1.0, "flow_delta": -0.8479999999981374, "buy_dom_delta": 0.0, "sell_dom_delta": 0.0, "display_flow": 1901.577999999989, "display_buy_dom": 1597.1246880142523, "display_sell_dom": 1661.0555085655812}
+LIVE_OI_SAMPLE time=00:26:42 / 02.10.26 -5 oi=100159.177000 dOI_gap_break=False samples=5346
+RAW_ACCUM {"time": "2026-10-02 00:26:42.490000-05:00", "dOI": -1.9870000000082655, "pctl": 97.911227154047, "control": "CONTROL LIMIT BUY", "strength": 1.0, "flow_delta": -1.9870000000082655, "buy_dom_delta": 0.0, "sell_dom_delta": 0.0, "display_flow": 1899.5909999999808, "display_buy_dom": 1597.1246880142523, "display_sell_dom": 1661.0555085655812}
+LIVE_OI_SAMPLE time=00:26:53 / 02.10.26 -5 oi=100162.929000 dOI_gap_break=False samples=5345
+LIVE_OI_SAMPLE time=00:26:58 / 02.10.26 -5 oi=100161.355000 dOI_gap_break=False samples=5345
+LIVE_OI_SAMPLE time=00:27:03 / 02.10.26 -5 oi=100162.316000 dOI_gap_break=False samples=5345
+LIVE_OI_SAMPLE time=00:27:14 / 02.10.26 -5 oi=100164.994000 dOI_gap_break=False samples=5345
+LIVE_OI_SAMPLE time=00:27:19 / 02.10.26 -5 oi=100166.064000 dOI_gap_break=False samples=5346
+LIVE_OI_SAMPLE time=00:27:25 / 02.10.26 -5 oi=100171.302000 dOI_gap_break=False samples=5346
+LIVE_OI_SAMPLE time=00:27:30 / 02.10.26 -5 oi=100171.553000 dOI_gap_break=False samples=5346
+LIVE_OI_SAMPLE time=00:27:40 / 02.10.26 -5 oi=100173.529000 dOI_gap_break=False samples=5345
+LIVE_OI_SAMPLE time=00:27:46 / 02.10.26 -5 oi=100173.072000 dOI_gap_break=False samples=5345
+LIVE_OI_SAMPLE time=00:27:51 / 02.10.26 -5 oi=100174.373000 dOI_gap_break=False samples=5345
+LIVE_OI_SAMPLE time=00:27:57 / 02.10.26 -5 oi=100176.029000 dOI_gap_break=False samples=5345
+LIVE_OI_SAMPLE time=00:28:03 / 02.10.26 -5 oi=100176.004000 dOI_gap_break=False samples=5345
+LIVE_OI_SAMPLE time=00:28:08 / 02.10.26 -5 oi=100176.331000 dOI_gap_break=False samples=5345
+LIVE_OI_SAMPLE time=00:28:17 / 02.10.26 -5 oi=100171.439000 dOI_gap_break=False samples=5346
+LIVE_OI_SAMPLE time=00:28:23 / 02.10.26 -5 oi=100175.840000 dOI_gap_break=False samples=5347
+LIVE_OI_SAMPLE time=00:28:33 / 02.10.26 -5 oi=100163.666000 dOI_gap_break=False samples=5346
+LIVE_OI_SAMPLE time=00:28:39 / 02.10.26 -5 oi=100158.527000 dOI_gap_break=False samples=5346
+LIVE_OI_SAMPLE time=00:28:47 / 02.10.26 -5 oi=100160.409000 dOI_gap_break=False samples=5346
+LIVE_OI_SAMPLE time=00:28:55 / 02.10.26 -5 oi=100162.066000 dOI_gap_break=False samples=5345
+LIVE_OI_SAMPLE time=00:29:00 / 02.10.26 -5 oi=100148.764000 dOI_gap_break=False samples=5345
+LIVE_OI_SAMPLE time=00:29:06 / 02.10.26 -5 oi=100149.471000 dOI_gap_break=False samples=5345
+LIVE_OI_SAMPLE time=00:29:16 / 02.10.26 -5 oi=100146.900000 dOI_gap_break=False samples=5346
+LIVE_OI_SAMPLE time=00:29:19 / 02.10.26 -5 oi=100147.712000 dOI_gap_break=False samples=5347
+LIVE_OI_SAMPLE time=00:29:26 / 02.10.26 -5 oi=100152.944000 dOI_gap_break=False samples=5347
+LIVE_OI_SAMPLE time=00:29:32 / 02.10.26 -5 oi=100150.933000 dOI_gap_break=False samples=5347
+LIVE_OI_SAMPLE time=00:29:43 / 02.10.26 -5 oi=100154.185000 dOI_gap_break=False samples=5346
+LIVE_OI_SAMPLE time=00:29:48 / 02.10.26 -5 oi=100152.970000 dOI_gap_break=False samples=5346
+LIVE_OI_SAMPLE time=00:29:53 / 02.10.26 -5 oi=100153.370000 dOI_gap_break=False samples=5346
+LIVE_OI_SAMPLE time=00:29:58 / 02.10.26 -5 oi=100153.467000 dOI_gap_break=False samples=5346
+LIVE_OI_SAMPLE time=00:30:09 / 02.10.26 -5 oi=100150.416000 dOI_gap_break=False samples=5346
+LIVE_OI_SAMPLE time=00:30:15 / 02.10.26 -5 oi=100155.771000 dOI_gap_break=False samples=5347
+LIVE_OI_SAMPLE time=00:30:21 / 02.10.26 -5 oi=100159.196000 dOI_gap_break=False samples=5347
+LIVE_OI_SAMPLE time=00:30:30 / 02.10.26 -5 oi=100165.523000 dOI_gap_break=False samples=5346
+LIVE_OI_SAMPLE time=00:30:35 / 02.10.26 -5 oi=100169.662000 dOI_gap_break=False samples=5347
+LIVE_OI_SAMPLE time=00:30:46 / 02.10.26 -5 oi=100173.630000 dOI_gap_break=False samples=5346
+LIVE_OI_SAMPLE time=00:30:51 / 02.10.26 -5 oi=100174.110000 dOI_gap_break=False samples=5346
+LIVE_OI_SAMPLE time=00:30:58 / 02.10.26 -5 oi=100174.821000 dOI_gap_break=False samples=5346
+LIVE_OI_SAMPLE time=00:31:03 / 02.10.26 -5 oi=100176.620000 dOI_gap_break=False samples=5346
+LIVE_OI_SAMPLE time=00:31:12 / 02.10.26 -5 oi=100182.539000 dOI_gap_break=False samples=5346
+LIVE_OI_SAMPLE time=00:31:17 / 02.10.26 -5 oi=100183.298000 dOI_gap_break=False samples=5347
+LIVE_OI_SAMPLE time=00:31:25 / 02.10.26 -5 oi=100182.188000 dOI_gap_break=False samples=5347
+LIVE_OI_SAMPLE time=00:31:30 / 02.10.26 -5 oi=100183.098000 dOI_gap_break=False samples=5347
+LIVE_OI_SAMPLE time=00:31:39 / 02.10.26 -5 oi=100182.675000 dOI_gap_break=False samples=5346
+LIVE_OI_SAMPLE time=00:31:44 / 02.10.26 -5 oi=100185.868000 dOI_gap_break=False samples=5346
+LIVE_OI_SAMPLE time=00:31:52 / 02.10.26 -5 oi=100185.385000 dOI_gap_break=False samples=5346
+LIVE_OI_SAMPLE time=00:32:02 / 02.10.26 -5 oi=100182.112000 dOI_gap_break=False samples=5345
+LIVE_OI_SAMPLE time=00:32:08 / 02.10.26 -5 oi=100185.929000 dOI_gap_break=False samples=5345
+LIVE_OI_SAMPLE time=00:32:14 / 02.10.26 -5 oi=100185.523000 dOI_gap_break=False samples=5346
+LIVE_OI_SAMPLE time=00:32:15 / 02.10.26 -5 oi=100185.685000 dOI_gap_break=False samples=5347
+LIVE_OI_SAMPLE time=00:32:26 / 02.10.26 -5 oi=100180.352000 dOI_gap_break=False samples=5347
+LIVE_OI_SAMPLE time=00:32:36 / 02.10.26 -5 oi=100179.455000 dOI_gap_break=False samples=5346
+LIVE_OI_SAMPLE time=00:32:41 / 02.10.26 -5 oi=100179.030000 dOI_gap_break=False samples=5347
+LIVE_OI_SAMPLE time=00:32:50 / 02.10.26 -5 oi=100179.392000 dOI_gap_break=False samples=5346
+LIVE_OI_SAMPLE time=00:32:56 / 02.10.26 -5 oi=100179.392000 dOI_gap_break=False samples=5346
+LIVE_OI_SAMPLE time=00:33:06 / 02.10.26 -5 oi=100131.510000 dOI_gap_break=False samples=5345
+RAW_ACCUM {"time": "2026-10-02 00:33:06.925000-05:00", "dOI": -47.88200000001234, "pctl": 98.59050445103857, "control": "CONTROL MARKET SELL", "strength": 0.8992907973471037, "flow_delta": -47.88200000001234, "buy_dom_delta": 0.0, "sell_dom_delta": 0.0, "display_flow": 1851.7089999999685, "display_buy_dom": 1597.1246880142523, "display_sell_dom": 1661.0555085655812}
+LIVE_OI_SAMPLE time=00:33:09 / 02.10.26 -5 oi=100131.803000 dOI_gap_break=False samples=5346
+LIVE_OI_SAMPLE time=00:33:13 / 02.10.26 -5 oi=100131.554000 dOI_gap_break=False samples=5347
+LIVE_OI_SAMPLE time=00:33:25 / 02.10.26 -5 oi=100130.993000 dOI_gap_break=False samples=5347
+LIVE_OI_SAMPLE time=00:33:30 / 02.10.26 -5 oi=100128.432000 dOI_gap_break=False samples=5347
+LIVE_OI_SAMPLE time=00:33:35 / 02.10.26 -5 oi=100128.066000 dOI_gap_break=False samples=5347
+LIVE_OI_SAMPLE time=00:33:40 / 02.10.26 -5 oi=100128.027000 dOI_gap_break=False samples=5347
+LIVE_OI_SAMPLE time=00:33:46 / 02.10.26 -5 oi=100127.496000 dOI_gap_break=False samples=5347
+LIVE_OI_SAMPLE time=00:33:57 / 02.10.26 -5 oi=100129.118000 dOI_gap_break=False samples=5346
+RAW_MINUTE_FINALIZE {"minute": "2026-10-02T00:33:00-05:00", "raw_samples_counted": 1, "flow_already_counted": -47.88200000001234, "canonical_flow": -2.392, "strong_residual": 0.0, "double_count": 0}
+ACCUM_FINAL {"time": "2026-10-02T00:33:00-05:00", "source": "RAW_ONLY", "net": -2.392, "oi_add": 1.915000000008149, "control": "CONTROL MARKET SELL", "strength": 0.90936903, "flow_final": -2.392, "buy_dom_final": 0.0, "sell_dom_final": 1.74144169245, "double_count": 0}
+LIVE_OI_SAMPLE time=00:34:00 / 02.10.26 -5 oi=100130.381000 dOI_gap_break=False samples=5347
+LIVE_OI_SAMPLE time=00:34:10 / 02.10.26 -5 oi=100127.407000 dOI_gap_break=False samples=5346
+LIVE_OI_SAMPLE time=00:34:19 / 02.10.26 -5 oi=100123.228000 dOI_gap_break=False samples=5347
+LIVE_OI_SAMPLE time=00:34:21 / 02.10.26 -5 oi=100123.265000 dOI_gap_break=False samples=5348
+LIVE_OI_SAMPLE time=00:34:32 / 02.10.26 -5 oi=100120.731000 dOI_gap_break=False samples=5347
+LIVE_OI_SAMPLE time=00:34:38 / 02.10.26 -5 oi=100119.614000 dOI_gap_break=False samples=5347
+LIVE_OI_SAMPLE time=00:34:44 / 02.10.26 -5 oi=100119.750000 dOI_gap_break=False samples=5347
+LIVE_OI_SAMPLE time=00:34:52 / 02.10.26 -5 oi=100117.374000 dOI_gap_break=False samples=5346
+LIVE_OI_SAMPLE time=00:35:00 / 02.10.26 -5 oi=100115.622000 dOI_gap_break=False samples=5346
+LIVE_OI_SAMPLE time=00:35:05 / 02.10.26 -5 oi=100113.422000 dOI_gap_break=False samples=5346
+LIVE_OI_SAMPLE time=00:35:13 / 02.10.26 -5 oi=100103.662000 dOI_gap_break=False samples=5347
+LIVE_OI_SAMPLE time=00:35:20 / 02.10.26 -5 oi=100106.874000 dOI_gap_break=False samples=5347
+LIVE_OI_SAMPLE time=00:35:26 / 02.10.26 -5 oi=100091.858000 dOI_gap_break=False samples=5347
+LIVE_OI_SAMPLE time=00:35:35 / 02.10.26 -5 oi=100085.945000 dOI_gap_break=False samples=5347
+LIVE_OI_SAMPLE time=00:35:42 / 02.10.26 -5 oi=100085.672000 dOI_gap_break=False samples=5346
+LIVE_OI_SAMPLE time=00:35:47 / 02.10.26 -5 oi=100093.228000 dOI_gap_break=False samples=5347
+LIVE_OI_SAMPLE time=00:35:53 / 02.10.26 -5 oi=100087.531000 dOI_gap_break=False samples=5347
+LIVE_OI_SAMPLE time=00:35:57 / 02.10.26 -5 oi=100084.657000 dOI_gap_break=False samples=5347
+LIVE_OI_SAMPLE time=00:36:03 / 02.10.26 -5 oi=100084.575000 dOI_gap_break=False samples=5347
+LIVE_OI_SAMPLE time=00:36:13 / 02.10.26 -5 oi=100081.671000 dOI_gap_break=False samples=5347
+LIVE_OI_SAMPLE time=00:36:19 / 02.10.26 -5 oi=100066.092000 dOI_gap_break=False samples=5348
+LIVE_OI_SAMPLE time=00:36:24 / 02.10.26 -5 oi=100007.023000 dOI_gap_break=False samples=5348
+RAW_ACCUM {"time": "2026-10-02 00:36:24.779000-05:00", "dOI": -59.06900000000314, "pctl": 99.5197635759143, "control": "CONTROL LIMIT BUY", "strength": 0.5987265131145774, "flow_delta": -59.06900000000314, "buy_dom_delta": 0.0, "sell_dom_delta": 0.0, "display_flow": 1838.1299999999776, "display_buy_dom": 1597.1246880142523, "display_sell_dom": 1662.7969502580313}
+LIVE_OI_SAMPLE time=00:36:35 / 02.10.26 -5 oi=99988.663000 dOI_gap_break=False samples=5347
+LIVE_OI_SAMPLE time=00:36:40 / 02.10.26 -5 oi=99990.604000 dOI_gap_break=False samples=5348
+LIVE_OI_SAMPLE time=00:36:46 / 02.10.26 -5 oi=99986.383000 dOI_gap_break=False samples=5348
+LIVE_OI_SAMPLE time=00:36:56 / 02.10.26 -5 oi=99975.765000 dOI_gap_break=False samples=5347
+LIVE_OI_SAMPLE time=00:37:02 / 02.10.26 -5 oi=99908.027000 dOI_gap_break=False samples=5347
+RAW_MINUTE_FINALIZE {"minute": "2026-10-02T00:36:00-05:00", "raw_samples_counted": 1, "flow_already_counted": -59.06900000000314, "canonical_flow": -108.81, "strong_residual": 0.0, "double_count": 0}
+ACCUM_FINAL {"time": "2026-10-02T00:36:00-05:00", "source": "RAW_ONLY", "net": -108.81, "oi_add": 1.94100000000617, "control": "CONTROL MARKET SELL", "strength": 0.53014213, "flow_final": -108.81, "buy_dom_final": 0.0, "sell_dom_final": 1.02900587433, "double_count": 0}
+RAW_ACCUM {"time": "2026-10-02 00:37:02.488000-05:00", "dOI": -67.73799999999756, "pctl": 99.55654101995566, "control": "CONTROL MARKET SELL", "strength": 0.5282775914541638, "flow_delta": -67.73799999999756, "buy_dom_delta": 0.0, "sell_dom_delta": 0.0, "display_flow": 1720.6509999999832, "display_buy_dom": 1597.1246880142523, "display_sell_dom": 1663.8259561323614}
+LIVE_OI_SAMPLE time=00:37:07 / 02.10.26 -5 oi=99829.256000 dOI_gap_break=False samples=5347
+RAW_ACCUM {"time": "2026-10-02 00:37:07.298000-05:00", "dOI": -78.77100000000792, "pctl": 99.70436067997043, "control": "CONTROL MARKET SELL", "strength": 0.5131794938405786, "flow_delta": -78.77100000000792, "buy_dom_delta": 0.0, "sell_dom_delta": 0.0, "display_flow": 1641.8799999999753, "display_buy_dom": 1597.1246880142523, "display_sell_dom": 1663.8259561323614}
+LIVE_OI_SAMPLE time=00:37:14 / 02.10.26 -5 oi=99780.996000 dOI_gap_break=False samples=5348
+RAW_ACCUM {"time": "2026-10-02 00:37:14.231000-05:00", "dOI": -48.25999999999476, "pctl": 99.40872135994087, "control": "CONTROL LIMIT BUY", "strength": 0.5280684122190802, "flow_delta": -48.25999999999476, "buy_dom_delta": 0.0, "sell_dom_delta": 0.0, "display_flow": 1593.6199999999806, "display_buy_dom": 1597.1246880142523, "display_sell_dom": 1663.8259561323614}
+LIVE_OI_SAMPLE time=00:37:23 / 02.10.26 -5 oi=99687.025000 dOI_gap_break=False samples=5349
+RAW_ACCUM {"time": "2026-10-02 00:37:23.208000-05:00", "dOI": -93.971000000005, "pctl": 99.66752862947914, "control": "CONTROL LIMIT BUY", "strength": 0.5719802075934284, "flow_delta": -93.971000000005, "buy_dom_delta": 0.0, "sell_dom_delta": 0.0, "display_flow": 1499.6489999999756, "display_buy_dom": 1597.1246880142523, "display_sell_dom": 1663.8259561323614}
+LIVE_OI_SAMPLE time=00:37:30 / 02.10.26 -5 oi=99597.913000 dOI_gap_break=False samples=5350
+RAW_ACCUM {"time": "2026-10-02 00:37:30.380000-05:00", "dOI": -89.11199999999371, "pctl": 99.81543004798819, "control": "CONTROL LIMIT BUY", "strength": 0.5212480310076834, "flow_delta": -89.11199999999371, "buy_dom_delta": 0.0, "sell_dom_delta": 0.0, "display_flow": 1410.5369999999818, "display_buy_dom": 1597.1246880142523, "display_sell_dom": 1663.8259561323614}
+LIVE_OI_SAMPLE time=00:37:35 / 02.10.26 -5 oi=99605.708000 dOI_gap_break=False samples=5350
+RAW_ACCUM {"time": "2026-10-02 00:37:35.768000-05:00", "dOI": 7.794999999998254, "pctl": 99.74160206718346, "control": "CONTROL LIMIT BUY", "strength": 0.5844358816598736, "flow_delta": 7.794999999998254, "buy_dom_delta": 4.5556776975376945, "sell_dom_delta": 0.0, "display_flow": 1418.33199999998, "display_buy_dom": 1601.68036571179, "display_sell_dom": 1663.8259561323614}
+LIVE_OI_SAMPLE time=00:37:44 / 02.10.26 -5 oi=99598.468000 dOI_gap_break=False samples=5349
+RAW_ACCUM {"time": "2026-10-02 00:37:44.393000-05:00", "dOI": -7.240000000005239, "pctl": 99.33579335793358, "control": "CONTROL LIMIT BUY", "strength": 0.6759882524876484, "flow_delta": -7.240000000005239, "buy_dom_delta": 0.0, "sell_dom_delta": 0.0, "display_flow": 1411.0919999999749, "display_buy_dom": 1601.68036571179, "display_sell_dom": 1663.8259561323614}
+LIVE_OI_SAMPLE time=00:37:51 / 02.10.26 -5 oi=99594.882000 dOI_gap_break=False samples=5349
+RAW_ACCUM {"time": "2026-10-02 00:37:51.427000-05:00", "dOI": -3.5859999999956926, "pctl": 99.37292511988196, "control": "CONTROL LIMIT BUY", "strength": 0.7023680916642914, "flow_delta": -3.5859999999956926, "buy_dom_delta": 0.0, "sell_dom_delta": 0.0, "display_flow": 1407.5059999999792, "display_buy_dom": 1601.68036571179, "display_sell_dom": 1663.8259561323614}
+LIVE_OI_SAMPLE time=00:37:57 / 02.10.26 -5 oi=99590.721000 dOI_gap_break=False samples=5349
+RAW_MINUTE_FINALIZE {"minute": "2026-10-02T00:37:00-05:00", "raw_samples_counted": 8, "flow_already_counted": -380.88300000000163, "canonical_flow": -317.30599999999686, "strong_residual": 63.57700000000477, "double_count": 0}
+ACCUM_FINAL {"time": "2026-10-02T00:37:00-05:00", "source": "STRONG+RAW", "net": -317.30599999999686, "oi_add": 7.794999999998254, "control": "CONTROL LIMIT BUY", "strength": 0.69621278, "flow_final": -317.30599999999686, "buy_dom_final": 5.426978620098784, "sell_dom_final": 0.0, "double_count": 0}
+LIVE_OI_SAMPLE time=00:38:07 / 02.10.26 -5 oi=99587.643000 dOI_gap_break=False samples=5348
+RAW_ACCUM {"time": "2026-10-02 00:38:07.878000-05:00", "dOI": -3.0780000000086147, "pctl": 98.85608856088561, "control": "CONTROL LIMIT BUY", "strength": 0.7059797469880951, "flow_delta": -3.0780000000086147, "buy_dom_delta": 0.0, "sell_dom_delta": 0.0, "display_flow": 1468.0049999999753, "display_buy_dom": 1602.551666634351, "display_sell_dom": 1663.8259561323614}
+LIVE_OI_SAMPLE time=00:38:13 / 02.10.26 -5 oi=99586.572000 dOI_gap_break=False samples=5349
+RAW_ACCUM {"time": "2026-10-02 00:38:13.261000-05:00", "dOI": -1.0709999999962747, "pctl": 98.89339727037994, "control": "CONTROL MARKET SELL", "strength": 1.0, "flow_delta": -1.0709999999962747, "buy_dom_delta": 0.0, "sell_dom_delta": 0.0, "display_flow": 1466.933999999979, "display_buy_dom": 1602.551666634351, "display_sell_dom": 1663.8259561323614}
+LIVE_OI_SAMPLE time=00:38:16 / 02.10.26 -5 oi=99587.170000 dOI_gap_break=False samples=5350
+RAW_ACCUM {"time": "2026-10-02 00:38:16.142000-05:00", "dOI": 0.5979999999981374, "pctl": 98.52452969383991, "control": "CONTROL MARKET SELL", "strength": 1.0, "flow_delta": 0.5979999999981374, "buy_dom_delta": 0.0, "sell_dom_delta": 0.5979999999981374, "display_flow": 1467.5319999999772, "display_buy_dom": 1602.551666634351, "display_sell_dom": 1664.4239561323595}
+LIVE_OI_SAMPLE time=00:38:29 / 02.10.26 -5 oi=99564.168000 dOI_gap_break=False samples=5351
+LIVE_OI_SAMPLE time=00:38:32 / 02.10.26 -5 oi=99561.182000 dOI_gap_break=False samples=5351
+LIVE_OI_SAMPLE time=00:38:40 / 02.10.26 -5 oi=99560.331000 dOI_gap_break=False samples=5351
+LIVE_OI_SAMPLE time=00:38:46 / 02.10.26 -5 oi=99560.534000 dOI_gap_break=False samples=5351
+LIVE_OI_SAMPLE time=00:38:50 / 02.10.26 -5 oi=99560.038000 dOI_gap_break=False samples=5351
+LIVE_OI_SAMPLE time=00:39:02 / 02.10.26 -5 oi=99561.221000 dOI_gap_break=False samples=5350
+RAW_MINUTE_FINALIZE {"minute": "2026-10-02T00:38:00-05:00", "raw_samples_counted": 3, "flow_already_counted": -3.551000000006752, "canonical_flow": -27.605, "strong_residual": 0.0, "double_count": 0}
+ACCUM_FINAL {"time": "2026-10-02T00:38:00-05:00", "source": "RAW_ONLY", "net": -27.605, "oi_add": 0.8009999999922002, "control": "CONTROL MARKET SELL", "strength": 1.0, "flow_final": -27.605, "buy_dom_final": 0.0, "sell_dom_final": 0.801, "double_count": 0}
+LIVE_OI_SAMPLE time=00:39:09 / 02.10.26 -5 oi=99534.389000 dOI_gap_break=False samples=5350
+LIVE_OI_SAMPLE time=00:39:14 / 02.10.26 -5 oi=99515.946000 dOI_gap_break=False samples=5350
+LIVE_OI_SAMPLE time=00:39:19 / 02.10.26 -5 oi=99505.716000 dOI_gap_break=False samples=5351
+LIVE_OI_SAMPLE time=00:39:29 / 02.10.26 -5 oi=99490.250000 dOI_gap_break=False samples=5352
+LIVE_OI_SAMPLE time=00:39:33 / 02.10.26 -5 oi=99474.376000 dOI_gap_break=False samples=5353
+LIVE_OI_SAMPLE time=00:39:42 / 02.10.26 -5 oi=99483.389000 dOI_gap_break=False samples=5352
+LIVE_OI_SAMPLE time=00:39:49 / 02.10.26 -5 oi=99485.536000 dOI_gap_break=False samples=5352
+LIVE_OI_SAMPLE time=00:40:00 / 02.10.26 -5 oi=99475.454000 dOI_gap_break=False samples=5351
+RAW_MINUTE_FINALIZE {"minute": "2026-10-02T00:39:00-05:00", "raw_samples_counted": 0, "flow_already_counted": 0.0, "canonical_flow": -75.685, "strong_residual": 0.0, "double_count": 0}
+ACCUM_FINAL {"time": "2026-10-02T00:39:00-05:00", "source": "RAW_ONLY", "net": -75.685, "oi_add": 12.34299999999348, "control": "CONTROL MARKET SELL", "strength": 1.0, "flow_final": -75.685, "buy_dom_final": 0.0, "sell_dom_final": 12.343, "double_count": 0}
+LIVE_OI_SAMPLE time=00:40:07 / 02.10.26 -5 oi=99460.530000 dOI_gap_break=False samples=5351
+LIVE_OI_SAMPLE time=00:40:12 / 02.10.26 -5 oi=99460.089000 dOI_gap_break=False samples=5352
+LIVE_OI_SAMPLE time=00:40:18 / 02.10.26 -5 oi=99468.632000 dOI_gap_break=False samples=5353
+LIVE_OI_SAMPLE time=00:40:27 / 02.10.26 -5 oi=99471.931000 dOI_gap_break=False samples=5354
+LIVE_OI_SAMPLE time=00:40:35 / 02.10.26 -5 oi=99473.975000 dOI_gap_break=False samples=5353
+LIVE_OI_SAMPLE time=00:40:38 / 02.10.26 -5 oi=99478.824000 dOI_gap_break=False samples=5354
+LIVE_OI_SAMPLE time=00:40:45 / 02.10.26 -5 oi=99484.044000 dOI_gap_break=False samples=5354
+LIVE_OI_SAMPLE time=00:40:54 / 02.10.26 -5 oi=99483.487000 dOI_gap_break=False samples=5353
+LIVE_OI_SAMPLE time=00:40:59 / 02.10.26 -5 oi=99482.970000 dOI_gap_break=False samples=5353
+LIVE_OI_SAMPLE time=00:41:06 / 02.10.26 -5 oi=99483.927000 dOI_gap_break=False samples=5353
+LIVE_OI_SAMPLE time=00:41:10 / 02.10.26 -5 oi=99484.070000 dOI_gap_break=False samples=5354
+LIVE_OI_SAMPLE time=00:41:18 / 02.10.26 -5 oi=99474.843000 dOI_gap_break=False samples=5355
+RAW_BASELINE_RESTORED samples=5340 oldest=12:43:37 / 01.10.26 -5 newest=00:41:18 / 02.10.26 -5 span_hours=11.96 source=PERSISTENT reference_ready=YES
+LIVE_OI_SAMPLE time=00:43:35 / 02.10.26 -5 oi=99418.127000 dOI_gap_break=True samples=5341
+LIVE_OI_SAMPLE time=00:43:40 / 02.10.26 -5 oi=99419.331000 dOI_gap_break=False samples=5341
+LIVE_OI_SAMPLE time=00:43:45 / 02.10.26 -5 oi=99451.547000 dOI_gap_break=False samples=5341
+RAW_ACCUM {"time": "2026-10-02 00:43:45.940000-05:00", "dOI": 32.21600000000035, "pctl": 99.08223201174742, "control": "CONTROL LIMIT SELL", "strength": 0.9429643348775686, "flow_delta": 32.21600000000035, "buy_dom_delta": 0.0, "sell_dom_delta": 30.37853901241608, "display_flow": 32.21600000000035, "display_buy_dom": 0.0, "display_sell_dom": 30.37853901241608}
+LIVE_OI_SAMPLE time=00:43:51 / 02.10.26 -5 oi=99444.068000 dOI_gap_break=False samples=5341
+LIVE_OI_SAMPLE time=00:43:59 / 02.10.26 -5 oi=99443.364000 dOI_gap_break=False samples=5341
+LIVE_OI_SAMPLE time=00:44:07 / 02.10.26 -5 oi=99440.139000 dOI_gap_break=False samples=5340
+LIVE_OI_SAMPLE time=00:44:15 / 02.10.26 -5 oi=99459.578000 dOI_gap_break=False samples=5341
+LIVE_OI_SAMPLE time=00:44:21 / 02.10.26 -5 oi=99456.086000 dOI_gap_break=False samples=5342
+LIVE_OI_SAMPLE time=00:44:23 / 02.10.26 -5 oi=99454.299000 dOI_gap_break=False samples=5343
+LIVE_OI_SAMPLE time=00:44:33 / 02.10.26 -5 oi=99463.049000 dOI_gap_break=False samples=5343
+LIVE_OI_SAMPLE time=00:44:39 / 02.10.26 -5 oi=99465.921000 dOI_gap_break=False samples=5343
+LIVE_ANCHOR_CHANGED from=00:43:36 / 02.10.26 -5 to=23:00:00 / 01.10.26 -5 rebuilt_until=00:44:50 / 02.10.26 -5 events=50 oi_flow=573.971000 buy_dom=1007.536808 sell_dom=1129.050608 provisional_current_minute=RESET
+LIVE_OI_SAMPLE time=00:44:44 / 02.10.26 -5 oi=99466.090000 dOI_gap_break=False samples=5343
+LIVE_OI_SAMPLE time=00:44:53 / 02.10.26 -5 oi=99464.753000 dOI_gap_break=False samples=5342
+LIVE_OI_SAMPLE time=00:45:00 / 02.10.26 -5 oi=99469.606000 dOI_gap_break=False samples=5342
+LIVE_OI_SAMPLE time=00:45:05 / 02.10.26 -5 oi=99468.733000 dOI_gap_break=False samples=5342
+LIVE_OI_SAMPLE time=00:45:10 / 02.10.26 -5 oi=99430.089000 dOI_gap_break=False samples=5343
+RAW_ACCUM {"time": "2026-10-02 00:45:10.867000-05:00", "dOI": -38.64399999998568, "pctl": 99.22992299229924, "control": "CONTROL LIMIT SELL", "strength": 0.7488449914973407, "flow_delta": -38.64399999998568, "buy_dom_delta": 0.0, "sell_dom_delta": 0.0, "display_flow": 535.3270000000151, "display_buy_dom": 1007.5368080790136, "display_sell_dom": 1129.05060808807}
+LIVE_OI_SAMPLE time=00:45:16 / 02.10.26 -5 oi=99430.727000 dOI_gap_break=False samples=5344
+LIVE_OI_SAMPLE time=00:45:22 / 02.10.26 -5 oi=99429.838000 dOI_gap_break=False samples=5345
+LIVE_OI_SAMPLE time=00:45:31 / 02.10.26 -5 oi=99432.087000 dOI_gap_break=False samples=5346
+LIVE_OI_SAMPLE time=00:45:38 / 02.10.26 -5 oi=99432.331000 dOI_gap_break=False samples=5345
+LIVE_OI_SAMPLE time=00:45:48 / 02.10.26 -5 oi=99436.176000 dOI_gap_break=False samples=5345
+LIVE_OI_SAMPLE time=00:45:54 / 02.10.26 -5 oi=99437.563000 dOI_gap_break=False samples=5345
+LIVE_ANCHOR_CHANGED from=23:00:00 / 01.10.26 -5 to=23:35:00 / 01.10.26 -5 rebuilt_until=00:46:03 / 02.10.26 -5 events=25 oi_flow=-130.009000 buy_dom=400.062867 sell_dom=533.936364 provisional_current_minute=RESET
+LIVE_OI_SAMPLE time=00:45:58 / 02.10.26 -5 oi=99438.371000 dOI_gap_break=False samples=5345
+LIVE_OI_SAMPLE time=00:46:05 / 02.10.26 -5 oi=99434.607000 dOI_gap_break=False samples=5345
+LIVE_OI_SAMPLE time=00:46:14 / 02.10.26 -5 oi=99436.848000 dOI_gap_break=False samples=5345
+LIVE_OI_SAMPLE time=00:46:20 / 02.10.26 -5 oi=99437.149000 dOI_gap_break=False samples=5346
+LIVE_OI_SAMPLE time=00:46:25 / 02.10.26 -5 oi=99438.080000 dOI_gap_break=False samples=5347
+LIVE_OI_SAMPLE time=00:46:32 / 02.10.26 -5 oi=99439.160000 dOI_gap_break=False samples=5348
+LIVE_ANCHOR_CHANGED from=23:35:00 / 01.10.26 -5 to=00:38:00 / 02.10.26 -5 rebuilt_until=00:46:42 / 02.10.26 -5 events=4 oi_flow=-109.288000 buy_dom=0.000000 sell_dom=57.423323 provisional_current_minute=RESET
+LIVE_OI_SAMPLE time=00:46:40 / 02.10.26 -5 oi=99447.545000 dOI_gap_break=False samples=5347
+LIVE_OI_SAMPLE time=00:46:46 / 02.10.26 -5 oi=99449.547000 dOI_gap_break=False samples=5347
+LIVE_OI_SAMPLE time=00:46:51 / 02.10.26 -5 oi=99449.799000 dOI_gap_break=False samples=5347
+LIVE_OI_SAMPLE time=00:46:56 / 02.10.26 -5 oi=99451.183000 dOI_gap_break=False samples=5347
+LIVE_OI_SAMPLE time=00:47:05 / 02.10.26 -5 oi=99460.100000 dOI_gap_break=False samples=5347
+LIVE_OI_SAMPLE time=00:47:12 / 02.10.26 -5 oi=99460.297000 dOI_gap_break=False samples=5348
+LIVE_OI_SAMPLE time=00:47:23 / 02.10.26 -5 oi=99463.448000 dOI_gap_break=False samples=5349
+LIVE_OI_SAMPLE time=00:47:28 / 02.10.26 -5 oi=99463.278000 dOI_gap_break=False samples=5350
+LIVE_OI_SAMPLE time=00:47:30 / 02.10.26 -5 oi=99473.348000 dOI_gap_break=False samples=5350
+RAW_ACCUM {"time": "2026-10-02 00:47:30.611000-05:00", "dOI": 10.069999999992433, "pctl": 98.8308366824991, "control": "CONTROL MARKET SELL", "strength": 1.0, "flow_delta": 10.069999999992433, "buy_dom_delta": 0.0, "sell_dom_delta": 10.069999999992433, "display_flow": -99.21800000000758, "display_buy_dom": 0.0, "display_sell_dom": 67.49332317799244}
+LIVE_OI_SAMPLE time=00:47:37 / 02.10.26 -5 oi=99474.166000 dOI_gap_break=False samples=5350
+LIVE_OI_SAMPLE time=00:47:44 / 02.10.26 -5 oi=99470.801000 dOI_gap_break=False samples=5350
+LIVE_OI_SAMPLE time=00:47:51 / 02.10.26 -5 oi=99473.202000 dOI_gap_break=False samples=5350
+LIVE_OI_SAMPLE time=00:48:02 / 02.10.26 -5 oi=99476.521000 dOI_gap_break=False samples=5349
+RAW_MINUTE_FINALIZE {"minute": "2026-10-02T00:47:00-05:00", "raw_samples_counted": 1, "flow_already_counted": 10.069999999992433, "canonical_flow": 13.102, "strong_residual": 0.0, "double_count": 0}
+ACCUM_FINAL {"time": "2026-10-02T00:47:00-05:00", "source": "RAW_ONLY", "net": 13.102, "oi_add": 25.553999999989173, "control": "CONTROL MARKET SELL", "strength": 1.0, "flow_final": 13.102, "buy_dom_final": 0.0, "sell_dom_final": 25.554, "double_count": 0}
+LIVE_OI_SAMPLE time=00:48:09 / 02.10.26 -5 oi=99486.265000 dOI_gap_break=False samples=5349
+LIVE_OI_SAMPLE time=00:48:14 / 02.10.26 -5 oi=99487.390000 dOI_gap_break=False samples=5350
+LIVE_OI_SAMPLE time=00:48:21 / 02.10.26 -5 oi=99487.482000 dOI_gap_break=False samples=5351
+LIVE_OI_SAMPLE time=00:48:26 / 02.10.26 -5 oi=99546.434000 dOI_gap_break=False samples=5351
+RAW_ACCUM {"time": "2026-10-02 00:48:26.671000-05:00", "dOI": 58.95199999999022, "pctl": 99.52537422416941, "control": "CONTROL LIMIT SELL", "strength": 0.7177925854943491, "flow_delta": 58.95199999999022, "buy_dom_delta": 0.0, "sell_dom_delta": 42.31530850005585, "display_flow": -37.234000000009786, "display_buy_dom": 0.0, "display_sell_dom": 125.29263167805586}
+LIVE_OI_SAMPLE time=00:48:35 / 02.10.26 -5 oi=99545.741000 dOI_gap_break=False samples=5351
+LIVE_OI_SAMPLE time=00:48:42 / 02.10.26 -5 oi=99545.834000 dOI_gap_break=False samples=5351
+LIVE_OI_SAMPLE time=00:48:51 / 02.10.26 -5 oi=99546.923000 dOI_gap_break=False samples=5350
+LIVE_OI_SAMPLE time=00:48:56 / 02.10.26 -5 oi=99546.624000 dOI_gap_break=False samples=5350
+RAW_MINUTE_FINALIZE {"minute": "2026-10-02T00:48:00-05:00", "raw_samples_counted": 1, "flow_already_counted": 58.95199999999022, "canonical_flow": 70.103, "strong_residual": 0.0, "double_count": 0}
+ACCUM_FINAL {"time": "2026-10-02T00:48:00-05:00", "source": "RAW_ONLY", "net": 70.103, "oi_add": 74.41399999998976, "control": "CONTROL LIMIT SELL", "strength": 0.51286277, "flow_final": 70.103, "buy_dom_final": 0.0, "sell_dom_final": 38.16417016678, "double_count": 0}
+LIVE_OI_SAMPLE time=00:49:03 / 02.10.26 -5 oi=99546.521000 dOI_gap_break=False samples=5350
+LIVE_OI_SAMPLE time=00:49:12 / 02.10.26 -5 oi=99552.150000 dOI_gap_break=False samples=5350
+LIVE_OI_SAMPLE time=00:49:14 / 02.10.26 -5 oi=99551.958000 dOI_gap_break=False samples=5351
+LIVE_OI_SAMPLE time=00:49:23 / 02.10.26 -5 oi=99546.350000 dOI_gap_break=False samples=5352
+LIVE_OI_SAMPLE time=00:49:30 / 02.10.26 -5 oi=99546.633000 dOI_gap_break=False samples=5352
+LIVE_OI_SAMPLE time=00:49:41 / 02.10.26 -5 oi=99547.220000 dOI_gap_break=False samples=5351
+LIVE_OI_SAMPLE time=00:49:44 / 02.10.26 -5 oi=99547.056000 dOI_gap_break=False samples=5351
+LIVE_OI_SAMPLE time=00:49:51 / 02.10.26 -5 oi=99547.447000 dOI_gap_break=False samples=5351
+LIVE_OI_SAMPLE time=00:49:57 / 02.10.26 -5 oi=99533.449000 dOI_gap_break=False samples=5351
+LIVE_OI_SAMPLE time=00:50:03 / 02.10.26 -5 oi=99534.907000 dOI_gap_break=False samples=5351
+LIVE_OI_SAMPLE time=00:50:12 / 02.10.26 -5 oi=99534.644000 dOI_gap_break=False samples=5351
+LIVE_OI_SAMPLE time=00:50:17 / 02.10.26 -5 oi=99535.046000 dOI_gap_break=False samples=5352
+LIVE_OI_SAMPLE time=00:50:22 / 02.10.26 -5 oi=99531.634000 dOI_gap_break=False samples=5353
+LIVE_OI_SAMPLE time=00:50:33 / 02.10.26 -5 oi=99531.819000 dOI_gap_break=False samples=5353
+LIVE_OI_SAMPLE time=00:50:35 / 02.10.26 -5 oi=99531.804000 dOI_gap_break=False samples=5354
+LIVE_OI_SAMPLE time=00:50:44 / 02.10.26 -5 oi=99530.014000 dOI_gap_break=False samples=5353
+LIVE_OI_SAMPLE time=00:50:49 / 02.10.26 -5 oi=99529.092000 dOI_gap_break=False samples=5353
+LIVE_OI_SAMPLE time=00:51:05 / 02.10.26 -5 oi=99537.415000 dOI_gap_break=True samples=5352
+LIVE_BINANCE_KLINES_ERROR TimeoutError: The read operation timed out
+LIVE_OI_SAMPLE time=00:51:21 / 02.10.26 -5 oi=99539.159000 dOI_gap_break=True samples=5352
+LIVE_OI_SAMPLE time=00:51:26 / 02.10.26 -5 oi=99539.325000 dOI_gap_break=False samples=5353
+LIVE_OI_SAMPLE time=00:51:34 / 02.10.26 -5 oi=99539.504000 dOI_gap_break=False samples=5353
+LIVE_OI_SAMPLE time=00:51:42 / 02.10.26 -5 oi=99539.815000 dOI_gap_break=False samples=5353
+LIVE_OI_SAMPLE time=00:51:48 / 02.10.26 -5 oi=99538.209000 dOI_gap_break=False samples=5353
+LIVE_OI_SAMPLE time=00:51:53 / 02.10.26 -5 oi=99537.353000 dOI_gap_break=False samples=5353
+LIVE_OI_SAMPLE time=00:52:01 / 02.10.26 -5 oi=99533.108000 dOI_gap_break=False samples=5352
+LIVE_OI_SAMPLE time=00:52:04 / 02.10.26 -5 oi=99533.236000 dOI_gap_break=False samples=5353
+LIVE_OI_SAMPLE time=00:52:12 / 02.10.26 -5 oi=99534.190000 dOI_gap_break=False samples=5353
+LIVE_OI_SAMPLE time=00:52:22 / 02.10.26 -5 oi=99538.069000 dOI_gap_break=False samples=5354
+LIVE_OI_SAMPLE time=00:52:26 / 02.10.26 -5 oi=99538.063000 dOI_gap_break=False samples=5355
+LIVE_OI_SAMPLE time=00:52:33 / 02.10.26 -5 oi=99540.874000 dOI_gap_break=False samples=5355
+LIVE_OI_SAMPLE time=00:52:42 / 02.10.26 -5 oi=99541.178000 dOI_gap_break=False samples=5355
+LIVE_OI_SAMPLE time=00:52:44 / 02.10.26 -5 oi=99536.368000 dOI_gap_break=False samples=5356
+LIVE_OI_SAMPLE time=00:52:53 / 02.10.26 -5 oi=99535.489000 dOI_gap_break=False samples=5355
+LIVE_OI_SAMPLE time=00:53:00 / 02.10.26 -5 oi=99532.786000 dOI_gap_break=False samples=5355
+LIVE_OI_SAMPLE time=00:53:09 / 02.10.26 -5 oi=99526.347000 dOI_gap_break=False samples=5354
+LIVE_OI_SAMPLE time=00:53:13 / 02.10.26 -5 oi=99528.476000 dOI_gap_break=False samples=5355
+LIVE_OI_SAMPLE time=00:53:23 / 02.10.26 -5 oi=99527.629000 dOI_gap_break=False samples=5356
+LIVE_OI_SAMPLE time=00:53:27 / 02.10.26 -5 oi=99526.982000 dOI_gap_break=False samples=5357
+LIVE_OI_SAMPLE time=00:53:34 / 02.10.26 -5 oi=99527.685000 dOI_gap_break=False samples=5358
+LIVE_OI_SAMPLE time=00:53:41 / 02.10.26 -5 oi=99527.966000 dOI_gap_break=False samples=5358
+LIVE_OI_SAMPLE time=00:53:50 / 02.10.26 -5 oi=99528.573000 dOI_gap_break=False samples=5357
+LIVE_OI_SAMPLE time=00:53:59 / 02.10.26 -5 oi=99528.608000 dOI_gap_break=False samples=5357
+LIVE_OI_SAMPLE time=00:54:04 / 02.10.26 -5 oi=99529.368000 dOI_gap_break=False samples=5357
+LIVE_OI_SAMPLE time=00:54:09 / 02.10.26 -5 oi=99530.376000 dOI_gap_break=False samples=5357
+LIVE_OI_SAMPLE time=00:54:16 / 02.10.26 -5 oi=99530.761000 dOI_gap_break=False samples=5358
+LIVE_OI_SAMPLE time=00:54:19 / 02.10.26 -5 oi=99531.823000 dOI_gap_break=False samples=5359
+LIVE_OI_SAMPLE time=00:54:27 / 02.10.26 -5 oi=99527.379000 dOI_gap_break=False samples=5360
+LIVE_OI_SAMPLE time=00:54:31 / 02.10.26 -5 oi=99527.682000 dOI_gap_break=False samples=5361
+LIVE_OI_SAMPLE time=00:54:38 / 02.10.26 -5 oi=99521.594000 dOI_gap_break=False samples=5361
+LIVE_OI_SAMPLE time=00:54:47 / 02.10.26 -5 oi=99522.654000 dOI_gap_break=False samples=5360
+LIVE_OI_SAMPLE time=00:54:57 / 02.10.26 -5 oi=99522.639000 dOI_gap_break=False samples=5359
+LIVE_OI_SAMPLE time=00:55:03 / 02.10.26 -5 oi=99522.578000 dOI_gap_break=False samples=5359
+LIVE_OI_SAMPLE time=00:55:08 / 02.10.26 -5 oi=99521.136000 dOI_gap_break=False samples=5360
+LIVE_OI_SAMPLE time=00:55:13 / 02.10.26 -5 oi=99521.930000 dOI_gap_break=False samples=5360
+LIVE_OI_SAMPLE time=00:55:20 / 02.10.26 -5 oi=99520.061000 dOI_gap_break=False samples=5361
+LIVE_OI_SAMPLE time=00:55:24 / 02.10.26 -5 oi=99520.366000 dOI_gap_break=False samples=5362
+LIVE_OI_SAMPLE time=00:55:30 / 02.10.26 -5 oi=99519.451000 dOI_gap_break=False samples=5363
+LIVE_OI_SAMPLE time=00:55:40 / 02.10.26 -5 oi=99512.552000 dOI_gap_break=False samples=5362
+LIVE_OI_SAMPLE time=00:55:46 / 02.10.26 -5 oi=99512.771000 dOI_gap_break=False samples=5363
+LIVE_OI_SAMPLE time=00:55:51 / 02.10.26 -5 oi=99512.256000 dOI_gap_break=False samples=5363
+LIVE_OI_SAMPLE time=00:55:57 / 02.10.26 -5 oi=99511.825000 dOI_gap_break=False samples=5363
+LIVE_OI_SAMPLE time=00:56:07 / 02.10.26 -5 oi=99511.808000 dOI_gap_break=False samples=5362
+LIVE_OI_SAMPLE time=00:56:13 / 02.10.26 -5 oi=99511.921000 dOI_gap_break=False samples=5362
+LIVE_OI_SAMPLE time=00:56:18 / 02.10.26 -5 oi=99512.218000 dOI_gap_break=False samples=5363
+LIVE_OI_SAMPLE time=00:56:29 / 02.10.26 -5 oi=99512.946000 dOI_gap_break=False samples=5364
+LIVE_OI_SAMPLE time=00:56:33 / 02.10.26 -5 oi=99513.311000 dOI_gap_break=False samples=5365
+LIVE_OI_SAMPLE time=00:56:45 / 02.10.26 -5 oi=99495.340000 dOI_gap_break=False samples=5365
+LIVE_OI_SAMPLE time=00:56:49 / 02.10.26 -5 oi=99495.881000 dOI_gap_break=False samples=5365
+LIVE_OI_SAMPLE time=00:56:56 / 02.10.26 -5 oi=99496.030000 dOI_gap_break=False samples=5365
+LIVE_OI_SAMPLE time=00:57:00 / 02.10.26 -5 oi=99496.645000 dOI_gap_break=False samples=5365
+LIVE_OI_SAMPLE time=00:57:11 / 02.10.26 -5 oi=99496.491000 dOI_gap_break=False samples=5364
+LIVE_OI_SAMPLE time=00:57:17 / 02.10.26 -5 oi=99496.996000 dOI_gap_break=False samples=5365
+LIVE_OI_SAMPLE time=00:57:22 / 02.10.26 -5 oi=99495.833000 dOI_gap_break=False samples=5365
+LIVE_OI_SAMPLE time=00:57:33 / 02.10.26 -5 oi=99496.757000 dOI_gap_break=False samples=5364
+LIVE_OI_SAMPLE time=00:57:38 / 02.10.26 -5 oi=99496.519000 dOI_gap_break=False samples=5364
+LIVE_OI_SAMPLE time=00:57:42 / 02.10.26 -5 oi=99496.560000 dOI_gap_break=False samples=5365
+LIVE_OI_SAMPLE time=00:57:48 / 02.10.26 -5 oi=99495.797000 dOI_gap_break=False samples=5365
+LIVE_OI_SAMPLE time=00:57:54 / 02.10.26 -5 oi=99496.020000 dOI_gap_break=False samples=5365
+LIVE_OI_SAMPLE time=00:58:05 / 02.10.26 -5 oi=99499.273000 dOI_gap_break=False samples=5364
+LIVE_OI_SAMPLE time=00:58:10 / 02.10.26 -5 oi=99499.733000 dOI_gap_break=False samples=5365
+LIVE_OI_SAMPLE time=00:58:15 / 02.10.26 -5 oi=99499.562000 dOI_gap_break=False samples=5366
+LIVE_OI_SAMPLE time=00:58:26 / 02.10.26 -5 oi=99495.662000 dOI_gap_break=False samples=5367
+LIVE_OI_SAMPLE time=00:58:35 / 02.10.26 -5 oi=99501.861000 dOI_gap_break=False samples=5367
+LIVE_OI_SAMPLE time=00:58:42 / 02.10.26 -5 oi=99499.279000 dOI_gap_break=False samples=5367
+LIVE_OI_SAMPLE time=00:58:48 / 02.10.26 -5 oi=99497.587000 dOI_gap_break=False samples=5366
+LIVE_OI_SAMPLE time=00:58:52 / 02.10.26 -5 oi=99497.434000 dOI_gap_break=False samples=5367
+LIVE_OI_SAMPLE time=00:58:57 / 02.10.26 -5 oi=99496.304000 dOI_gap_break=False samples=5367
+LIVE_OI_SAMPLE time=00:59:02 / 02.10.26 -5 oi=99497.527000 dOI_gap_break=False samples=5367
+LIVE_OI_SAMPLE time=00:59:09 / 02.10.26 -5 oi=99498.660000 dOI_gap_break=False samples=5367
+LIVE_OI_SAMPLE time=00:59:18 / 02.10.26 -5 oi=99492.874000 dOI_gap_break=False samples=5368
+LIVE_OI_SAMPLE time=00:59:23 / 02.10.26 -5 oi=99488.985000 dOI_gap_break=False samples=5369
+LIVE_OI_SAMPLE time=00:59:31 / 02.10.26 -5 oi=99491.235000 dOI_gap_break=False samples=5370
+LIVE_OI_SAMPLE time=00:59:39 / 02.10.26 -5 oi=99490.761000 dOI_gap_break=False samples=5370
+LIVE_OI_SAMPLE time=00:59:46 / 02.10.26 -5 oi=99491.584000 dOI_gap_break=False samples=5369
+LIVE_OI_SAMPLE time=00:59:52 / 02.10.26 -5 oi=99490.470000 dOI_gap_break=False samples=5369
+LIVE_OI_SAMPLE time=01:00:01 / 02.10.26 -5 oi=99490.421000 dOI_gap_break=False samples=5369
+LIVE_OI_SAMPLE time=01:00:06 / 02.10.26 -5 oi=99490.861000 dOI_gap_break=False samples=5369
+LIVE_OI_SAMPLE time=01:00:17 / 02.10.26 -5 oi=99494.036000 dOI_gap_break=False samples=5370
+LIVE_OI_SAMPLE time=01:00:19 / 02.10.26 -5 oi=99492.580000 dOI_gap_break=False samples=5371
+LIVE_OI_SAMPLE time=01:00:24 / 02.10.26 -5 oi=99493.359000 dOI_gap_break=False samples=5372
+LIVE_OI_SAMPLE time=01:00:35 / 02.10.26 -5 oi=99492.017000 dOI_gap_break=False samples=5372
+LIVE_OI_SAMPLE time=01:00:38 / 02.10.26 -5 oi=99491.790000 dOI_gap_break=False samples=5373
+LIVE_OI_SAMPLE time=01:00:49 / 02.10.26 -5 oi=99467.499000 dOI_gap_break=False samples=5372
+LIVE_OI_SAMPLE time=01:00:54 / 02.10.26 -5 oi=99471.798000 dOI_gap_break=False samples=5372
+LIVE_OI_SAMPLE time=01:00:59 / 02.10.26 -5 oi=99471.711000 dOI_gap_break=False samples=5372
+LIVE_OI_SAMPLE time=01:01:05 / 02.10.26 -5 oi=99472.365000 dOI_gap_break=False samples=5372
+LIVE_OI_SAMPLE time=01:01:15 / 02.10.26 -5 oi=99473.871000 dOI_gap_break=False samples=5373
+LIVE_OI_SAMPLE time=01:01:20 / 02.10.26 -5 oi=99472.894000 dOI_gap_break=False samples=5374
+LIVE_OI_SAMPLE time=01:01:26 / 02.10.26 -5 oi=99472.333000 dOI_gap_break=False samples=5375
+LIVE_OI_SAMPLE time=01:01:36 / 02.10.26 -5 oi=99465.340000 dOI_gap_break=False samples=5374
+LIVE_OI_SAMPLE time=01:01:42 / 02.10.26 -5 oi=99464.519000 dOI_gap_break=False samples=5374
+LIVE_OI_SAMPLE time=01:01:48 / 02.10.26 -5 oi=99464.769000 dOI_gap_break=False samples=5375
+LIVE_OI_SAMPLE time=01:01:58 / 02.10.26 -5 oi=99464.887000 dOI_gap_break=False samples=5374
+LIVE_OI_SAMPLE time=01:02:04 / 02.10.26 -5 oi=99459.338000 dOI_gap_break=False samples=5374
+LIVE_OI_SAMPLE time=01:02:08 / 02.10.26 -5 oi=99457.859000 dOI_gap_break=False samples=5374
+LIVE_OI_SAMPLE time=01:02:14 / 02.10.26 -5 oi=99456.747000 dOI_gap_break=False samples=5375
+LIVE_OI_SAMPLE time=01:02:25 / 02.10.26 -5 oi=99456.662000 dOI_gap_break=False samples=5376
+LIVE_OI_SAMPLE time=01:02:30 / 02.10.26 -5 oi=99460.034000 dOI_gap_break=False samples=5377
+LIVE_OI_SAMPLE time=01:02:35 / 02.10.26 -5 oi=99466.289000 dOI_gap_break=False samples=5377
+LIVE_OI_SAMPLE time=01:02:40 / 02.10.26 -5 oi=99465.182000 dOI_gap_break=False samples=5377
+LIVE_OI_SAMPLE time=01:02:46 / 02.10.26 -5 oi=99465.186000 dOI_gap_break=False samples=5377
+LIVE_OI_SAMPLE time=01:02:57 / 02.10.26 -5 oi=99470.893000 dOI_gap_break=False samples=5377
+LIVE_OI_SAMPLE time=01:03:02 / 02.10.26 -5 oi=99470.054000 dOI_gap_break=False samples=5377
+LIVE_OI_SAMPLE time=01:03:14 / 02.10.26 -5 oi=99468.294000 dOI_gap_break=False samples=5377
+LIVE_OI_SAMPLE time=01:03:19 / 02.10.26 -5 oi=99469.208000 dOI_gap_break=False samples=5378
+LIVE_OI_SAMPLE time=01:03:23 / 02.10.26 -5 oi=99463.009000 dOI_gap_break=False samples=5379
+LIVE_OI_SAMPLE time=01:03:33 / 02.10.26 -5 oi=99461.524000 dOI_gap_break=False samples=5379
+LIVE_OI_SAMPLE time=01:03:38 / 02.10.26 -5 oi=99460.380000 dOI_gap_break=False samples=5379
+LIVE_OI_SAMPLE time=01:03:45 / 02.10.26 -5 oi=99459.697000 dOI_gap_break=False samples=5379
+LIVE_OI_SAMPLE time=01:03:54 / 02.10.26 -5 oi=99459.041000 dOI_gap_break=False samples=5379
+LIVE_OI_SAMPLE time=01:04:02 / 02.10.26 -5 oi=99458.668000 dOI_gap_break=False samples=5378
+LIVE_OI_SAMPLE time=01:04:07 / 02.10.26 -5 oi=99459.014000 dOI_gap_break=False samples=5379
+LIVE_OI_SAMPLE time=01:04:13 / 02.10.26 -5 oi=99462.117000 dOI_gap_break=False samples=5379
+LIVE_OI_SAMPLE time=01:04:26 / 02.10.26 -5 oi=99469.086000 dOI_gap_break=False samples=5380
+LIVE_OI_SAMPLE time=01:04:32 / 02.10.26 -5 oi=99474.501000 dOI_gap_break=False samples=5381
+LIVE_OI_SAMPLE time=01:04:39 / 02.10.26 -5 oi=99474.669000 dOI_gap_break=False samples=5381
+LIVE_OI_SAMPLE time=01:04:45 / 02.10.26 -5 oi=99487.460000 dOI_gap_break=False samples=5381
+LIVE_OI_SAMPLE time=01:04:53 / 02.10.26 -5 oi=99488.194000 dOI_gap_break=False samples=5381
+LIVE_OI_SAMPLE time=01:04:58 / 02.10.26 -5 oi=99495.631000 dOI_gap_break=False samples=5381
+LIVE_OI_SAMPLE time=01:05:05 / 02.10.26 -5 oi=99498.287000 dOI_gap_break=False samples=5380
+LIVE_OI_SAMPLE time=01:05:14 / 02.10.26 -5 oi=99502.265000 dOI_gap_break=False samples=5381
+LIVE_OI_SAMPLE time=01:05:17 / 02.10.26 -5 oi=99503.785000 dOI_gap_break=False samples=5382
+LIVE_OI_SAMPLE time=01:05:24 / 02.10.26 -5 oi=99506.254000 dOI_gap_break=False samples=5383
+LIVE_OI_SAMPLE time=01:05:33 / 02.10.26 -5 oi=99511.882000 dOI_gap_break=False samples=5383
+LIVE_OI_SAMPLE time=01:05:40 / 02.10.26 -5 oi=99511.785000 dOI_gap_break=False samples=5383
+LIVE_OI_SAMPLE time=01:05:49 / 02.10.26 -5 oi=99515.127000 dOI_gap_break=False samples=5383
+LIVE_OI_SAMPLE time=01:05:54 / 02.10.26 -5 oi=99515.453000 dOI_gap_break=False samples=5383
+LIVE_OI_SAMPLE time=01:05:59 / 02.10.26 -5 oi=99519.397000 dOI_gap_break=False samples=5383
+LIVE_OI_SAMPLE time=01:06:10 / 02.10.26 -5 oi=99513.434000 dOI_gap_break=False samples=5382
+LIVE_OI_SAMPLE time=01:06:15 / 02.10.26 -5 oi=99518.059000 dOI_gap_break=False samples=5383
+LIVE_OI_SAMPLE time=01:06:25 / 02.10.26 -5 oi=99523.123000 dOI_gap_break=False samples=5384
+LIVE_OI_SAMPLE time=01:06:29 / 02.10.26 -5 oi=99524.306000 dOI_gap_break=False samples=5385
+LIVE_OI_SAMPLE time=01:06:34 / 02.10.26 -5 oi=99523.318000 dOI_gap_break=False samples=5385
+LIVE_OI_SAMPLE time=01:06:45 / 02.10.26 -5 oi=99521.390000 dOI_gap_break=False samples=5384
+LIVE_OI_SAMPLE time=01:06:53 / 02.10.26 -5 oi=99523.515000 dOI_gap_break=False samples=5384
+LIVE_OI_SAMPLE time=01:06:56 / 02.10.26 -5 oi=99523.996000 dOI_gap_break=False samples=5385
+LIVE_OI_SAMPLE time=01:07:00 / 02.10.26 -5 oi=99526.883000 dOI_gap_break=False samples=5385
+LIVE_OI_SAMPLE time=01:07:11 / 02.10.26 -5 oi=99532.897000 dOI_gap_break=False samples=5384
+LIVE_OI_SAMPLE time=01:07:19 / 02.10.26 -5 oi=99522.235000 dOI_gap_break=False samples=5385
+LIVE_OI_SAMPLE time=01:07:26 / 02.10.26 -5 oi=99530.413000 dOI_gap_break=False samples=5386
+LIVE_OI_SAMPLE time=01:07:31 / 02.10.26 -5 oi=99532.036000 dOI_gap_break=False samples=5387
+LIVE_OI_SAMPLE time=01:07:35 / 02.10.26 -5 oi=99536.755000 dOI_gap_break=False samples=5387
+LIVE_OI_SAMPLE time=01:07:43 / 02.10.26 -5 oi=99545.639000 dOI_gap_break=False samples=5387
+LIVE_OI_SAMPLE time=01:07:51 / 02.10.26 -5 oi=99550.191000 dOI_gap_break=False samples=5387
+LIVE_OI_SAMPLE time=01:07:54 / 02.10.26 -5 oi=99550.382000 dOI_gap_break=False samples=5387
+LIVE_OI_SAMPLE time=01:08:03 / 02.10.26 -5 oi=99555.796000 dOI_gap_break=False samples=5387
+LIVE_OI_SAMPLE time=01:08:08 / 02.10.26 -5 oi=99562.617000 dOI_gap_break=False samples=5387
+LIVE_OI_SAMPLE time=01:08:15 / 02.10.26 -5 oi=99564.900000 dOI_gap_break=False samples=5388
+LIVE_OI_SAMPLE time=01:08:23 / 02.10.26 -5 oi=99576.305000 dOI_gap_break=False samples=5389
+LIVE_OI_SAMPLE time=01:08:31 / 02.10.26 -5 oi=99568.645000 dOI_gap_break=False samples=5390
+LIVE_OI_SAMPLE time=01:08:36 / 02.10.26 -5 oi=99568.586000 dOI_gap_break=False samples=5390
+LIVE_OI_SAMPLE time=01:08:39 / 02.10.26 -5 oi=99569.772000 dOI_gap_break=False samples=5390
+LIVE_OI_SAMPLE time=01:08:50 / 02.10.26 -5 oi=99572.949000 dOI_gap_break=False samples=5389
+LIVE_OI_SAMPLE time=01:08:58 / 02.10.26 -5 oi=99581.376000 dOI_gap_break=False samples=5389
+LIVE_OI_SAMPLE time=01:09:03 / 02.10.26 -5 oi=99584.485000 dOI_gap_break=False samples=5389
+LIVE_OI_SAMPLE time=01:09:14 / 02.10.26 -5 oi=99594.903000 dOI_gap_break=False samples=5389
+LIVE_OI_SAMPLE time=01:09:17 / 02.10.26 -5 oi=99615.544000 dOI_gap_break=False samples=5390
+RAW_ACCUM {"time": "2026-10-02 01:09:17.076000-05:00", "dOI": 20.640999999988708, "pctl": 99.03121636167921, "control": "CONTROL LIMIT BUY", "strength": 1.0, "flow_delta": 20.640999999988708, "buy_dom_delta": 20.640999999988708, "sell_dom_delta": 0.0, "display_flow": -5.442000000011305, "display_buy_dom": 20.640999999988708, "display_sell_dom": 121.14149334478}
+LIVE_OI_SAMPLE time=01:09:24 / 02.10.26 -5 oi=99636.749000 dOI_gap_break=False samples=5391
+LIVE_OI_SAMPLE time=01:09:33 / 02.10.26 -5 oi=99627.388000 dOI_gap_break=False samples=5392
+LIVE_OI_SAMPLE time=01:09:35 / 02.10.26 -5 oi=99631.272000 dOI_gap_break=False samples=5393
+LIVE_OI_SAMPLE time=01:09:45 / 02.10.26 -5 oi=99637.543000 dOI_gap_break=False samples=5392
+LIVE_OI_SAMPLE time=01:09:54 / 02.10.26 -5 oi=99640.696000 dOI_gap_break=False samples=5392
+LIVE_OI_SAMPLE time=01:09:59 / 02.10.26 -5 oi=99645.921000 dOI_gap_break=False samples=5392
+RAW_MINUTE_FINALIZE {"minute": "2026-10-02T01:09:00-05:00", "raw_samples_counted": 1, "flow_already_counted": 20.640999999988708, "canonical_flow": 61.436, "strong_residual": 0.0, "double_count": 0}
+ACCUM_FINAL {"time": "2026-10-02T01:09:00-05:00", "source": "RAW_ONLY", "net": 61.436, "oi_add": 73.90599999998813, "control": "CONTROL LIMIT BUY", "strength": 1.0, "flow_final": 61.436, "buy_dom_final": 73.906, "sell_dom_final": 0.0, "double_count": 0}
+LIVE_OI_SAMPLE time=01:10:07 / 02.10.26 -5 oi=99638.938000 dOI_gap_break=False samples=5391
+LIVE_OI_SAMPLE time=01:10:13 / 02.10.26 -5 oi=99644.700000 dOI_gap_break=False samples=5392
+LIVE_OI_SAMPLE time=01:10:15 / 02.10.26 -5 oi=99644.859000 dOI_gap_break=False samples=5393
+LIVE_OI_SAMPLE time=01:10:28 / 02.10.26 -5 oi=99648.543000 dOI_gap_break=False samples=5394
+LIVE_OI_SAMPLE time=01:10:31 / 02.10.26 -5 oi=99641.541000 dOI_gap_break=False samples=5395
+LIVE_OI_SAMPLE time=01:10:40 / 02.10.26 -5 oi=99641.935000 dOI_gap_break=False samples=5395
+LIVE_OI_SAMPLE time=01:10:45 / 02.10.26 -5 oi=99633.009000 dOI_gap_break=False samples=5395
+LIVE_OI_SAMPLE time=01:10:54 / 02.10.26 -5 oi=99625.917000 dOI_gap_break=False samples=5394
+LIVE_OI_SAMPLE time=01:11:00 / 02.10.26 -5 oi=99625.868000 dOI_gap_break=False samples=5394
+LIVE_OI_SAMPLE time=01:11:05 / 02.10.26 -5 oi=99630.043000 dOI_gap_break=False samples=5394
+LIVE_OI_SAMPLE time=01:11:13 / 02.10.26 -5 oi=99623.791000 dOI_gap_break=False samples=5395
+LIVE_OI_SAMPLE time=01:11:23 / 02.10.26 -5 oi=99613.287000 dOI_gap_break=False samples=5395
+LIVE_OI_SAMPLE time=01:11:28 / 02.10.26 -5 oi=99612.470000 dOI_gap_break=False samples=5395
+LIVE_OI_SAMPLE time=01:11:32 / 02.10.26 -5 oi=99605.635000 dOI_gap_break=False samples=5395
+LIVE_OI_SAMPLE time=01:11:44 / 02.10.26 -5 oi=99602.154000 dOI_gap_break=False samples=5394
+LIVE_OI_SAMPLE time=01:11:51 / 02.10.26 -5 oi=99601.927000 dOI_gap_break=False samples=5394
+LIVE_OI_SAMPLE time=01:11:57 / 02.10.26 -5 oi=99600.518000 dOI_gap_break=False samples=5394
+LIVE_OI_SAMPLE time=01:12:07 / 02.10.26 -5 oi=99600.338000 dOI_gap_break=False samples=5393
+LIVE_OI_SAMPLE time=01:12:09 / 02.10.26 -5 oi=99599.863000 dOI_gap_break=False samples=5394
+LIVE_OI_SAMPLE time=01:12:18 / 02.10.26 -5 oi=99599.386000 dOI_gap_break=False samples=5395
+LIVE_OI_SAMPLE time=01:12:22 / 02.10.26 -5 oi=99599.942000 dOI_gap_break=False samples=5396
+LIVE_OI_SAMPLE time=01:12:29 / 02.10.26 -5 oi=99598.312000 dOI_gap_break=False samples=5397
+LIVE_OI_SAMPLE time=01:12:41 / 02.10.26 -5 oi=99594.293000 dOI_gap_break=False samples=5396
+LIVE_OI_SAMPLE time=01:12:46 / 02.10.26 -5 oi=99594.357000 dOI_gap_break=False samples=5396
+LIVE_OI_SAMPLE time=01:12:49 / 02.10.26 -5 oi=99594.051000 dOI_gap_break=False samples=5397
+LIVE_OI_SAMPLE time=01:13:00 / 02.10.26 -5 oi=99593.614000 dOI_gap_break=False samples=5396
+LIVE_OI_SAMPLE time=01:13:07 / 02.10.26 -5 oi=99591.163000 dOI_gap_break=False samples=5396
+LIVE_OI_SAMPLE time=01:13:10 / 02.10.26 -5 oi=99591.122000 dOI_gap_break=False samples=5397
+LIVE_OI_SAMPLE time=01:13:23 / 02.10.26 -5 oi=99591.418000 dOI_gap_break=False samples=5398
+LIVE_OI_SAMPLE time=01:13:28 / 02.10.26 -5 oi=99592.924000 dOI_gap_break=False samples=5399
+LIVE_OI_SAMPLE time=01:13:32 / 02.10.26 -5 oi=99593.296000 dOI_gap_break=False samples=5399
+LIVE_OI_SAMPLE time=01:13:42 / 02.10.26 -5 oi=99595.048000 dOI_gap_break=False samples=5398
+LIVE_OI_SAMPLE time=01:13:47 / 02.10.26 -5 oi=99595.124000 dOI_gap_break=False samples=5399
+LIVE_OI_SAMPLE time=01:13:59 / 02.10.26 -5 oi=99595.684000 dOI_gap_break=False samples=5398
+LIVE_OI_SAMPLE time=01:14:04 / 02.10.26 -5 oi=99595.156000 dOI_gap_break=False samples=5398
+LIVE_OI_SAMPLE time=01:14:09 / 02.10.26 -5 oi=99590.153000 dOI_gap_break=False samples=5398
+LIVE_OI_SAMPLE time=01:14:14 / 02.10.26 -5 oi=99583.007000 dOI_gap_break=False samples=5399
+LIVE_OI_SAMPLE time=01:14:25 / 02.10.26 -5 oi=99585.749000 dOI_gap_break=False samples=5400
+LIVE_OI_SAMPLE time=01:14:30 / 02.10.26 -5 oi=99583.444000 dOI_gap_break=False samples=5401
+LIVE_OI_SAMPLE time=01:14:37 / 02.10.26 -5 oi=99590.496000 dOI_gap_break=False samples=5401
+LIVE_OI_SAMPLE time=01:14:46 / 02.10.26 -5 oi=99584.688000 dOI_gap_break=False samples=5400
+LIVE_OI_SAMPLE time=01:14:53 / 02.10.26 -5 oi=99584.983000 dOI_gap_break=False samples=5400
+LIVE_OI_SAMPLE time=01:15:02 / 02.10.26 -5 oi=99591.633000 dOI_gap_break=False samples=5399
+LIVE_OI_SAMPLE time=01:15:03 / 02.10.26 -5 oi=99591.433000 dOI_gap_break=False samples=5400
+LIVE_OI_SAMPLE time=01:15:14 / 02.10.26 -5 oi=99592.944000 dOI_gap_break=False samples=5400
+LIVE_OI_SAMPLE time=01:15:19 / 02.10.26 -5 oi=99595.850000 dOI_gap_break=False samples=5401
+LIVE_OI_SAMPLE time=01:15:25 / 02.10.26 -5 oi=99593.611000 dOI_gap_break=False samples=5402
+LIVE_OI_SAMPLE time=01:15:36 / 02.10.26 -5 oi=99591.781000 dOI_gap_break=False samples=5402
+LIVE_OI_SAMPLE time=01:15:39 / 02.10.26 -5 oi=99594.226000 dOI_gap_break=False samples=5403
+LIVE_OI_SAMPLE time=01:15:50 / 02.10.26 -5 oi=99621.085000 dOI_gap_break=False samples=5402
+LIVE_OI_SAMPLE time=01:15:57 / 02.10.26 -5 oi=99621.597000 dOI_gap_break=False samples=5402
+LIVE_OI_SAMPLE time=01:16:02 / 02.10.26 -5 oi=99621.198000 dOI_gap_break=False samples=5402
+LIVE_OI_SAMPLE time=01:16:07 / 02.10.26 -5 oi=99622.466000 dOI_gap_break=False samples=5402
+LIVE_OI_SAMPLE time=01:16:18 / 02.10.26 -5 oi=99609.016000 dOI_gap_break=False samples=5403
+LIVE_OI_SAMPLE time=01:16:22 / 02.10.26 -5 oi=99605.839000 dOI_gap_break=False samples=5404
+LIVE_OI_SAMPLE time=01:16:29 / 02.10.26 -5 oi=99604.594000 dOI_gap_break=False samples=5404
+RAW_BASELINE_RESTORED samples=5402 oldest=13:16:46 / 01.10.26 -5 newest=01:16:29 / 02.10.26 -5 span_hours=12.00 source=PERSISTENT reference_ready=YES
+LIVE_OI_SAMPLE time=01:16:39 / 02.10.26 -5 oi=99607.116000 dOI_gap_break=False samples=5403
+LIVE_OI_SAMPLE time=01:16:50 / 02.10.26 -5 oi=99606.389000 dOI_gap_break=False samples=5403
+LIVE_OI_SAMPLE time=01:16:55 / 02.10.26 -5 oi=99608.064000 dOI_gap_break=False samples=5403
+LIVE_OI_SAMPLE time=01:17:00 / 02.10.26 -5 oi=99610.297000 dOI_gap_break=False samples=5403
+LIVE_OI_SAMPLE time=01:17:06 / 02.10.26 -5 oi=99614.738000 dOI_gap_break=False samples=5403
+LIVE_ANCHOR_CHANGED from=01:16:45 / 02.10.26 -5 to=21:00:00 / 01.10.26 -5 rebuilt_until=01:17:17 / 02.10.26 -5 events=105 oi_flow=1765.625000 buy_dom=1787.821362 sell_dom=2104.922664 provisional_current_minute=RESET
+LIVE_OI_SAMPLE time=01:17:16 / 02.10.26 -5 oi=99617.105000 dOI_gap_break=False samples=5404
+LIVE_OI_SAMPLE time=01:17:21 / 02.10.26 -5 oi=99612.522000 dOI_gap_break=False samples=5405
+LIVE_OI_SAMPLE time=01:17:28 / 02.10.26 -5 oi=99616.233000 dOI_gap_break=False samples=5406
+LIVE_OI_SAMPLE time=01:17:34 / 02.10.26 -5 oi=99620.037000 dOI_gap_break=False samples=5406
+LIVE_OI_SAMPLE time=01:17:43 / 02.10.26 -5 oi=99621.143000 dOI_gap_break=False samples=5406
+LIVE_OI_SAMPLE time=01:17:53 / 02.10.26 -5 oi=99620.250000 dOI_gap_break=False samples=5405
+LIVE_OI_SAMPLE time=01:17:59 / 02.10.26 -5 oi=99615.408000 dOI_gap_break=False samples=5405
+LIVE_ANCHOR_CHANGED from=21:00:00 / 01.10.26 -5 to=00:38:00 / 02.10.26 -5 rebuilt_until=01:18:09 / 02.10.26 -5 events=7 oi_flow=35.353000 buy_dom=73.906000 sell_dom=121.763036 provisional_current_minute=RESET
+LIVE_OI_SAMPLE time=01:18:09 / 02.10.26 -5 oi=99604.374000 dOI_gap_break=False samples=5404
+LIVE_OI_SAMPLE time=01:18:15 / 02.10.26 -5 oi=99603.522000 dOI_gap_break=False samples=5405
+LIVE_OI_SAMPLE time=01:18:20 / 02.10.26 -5 oi=99617.378000 dOI_gap_break=False samples=5406
+LIVE_OI_SAMPLE time=01:18:25 / 02.10.26 -5 oi=99616.637000 dOI_gap_break=False samples=5407
+LIVE_OI_SAMPLE time=01:18:33 / 02.10.26 -5 oi=99616.063000 dOI_gap_break=False samples=5408
+LIVE_OI_SAMPLE time=01:18:36 / 02.10.26 -5 oi=99616.079000 dOI_gap_break=False samples=5408
+LIVE_OI_SAMPLE time=01:18:41 / 02.10.26 -5 oi=99616.242000 dOI_gap_break=False samples=5408
+LIVE_OI_SAMPLE time=01:18:54 / 02.10.26 -5 oi=99614.937000 dOI_gap_break=False samples=5407
+LIVE_OI_SAMPLE time=01:18:57 / 02.10.26 -5 oi=99614.998000 dOI_gap_break=False samples=5407
+LIVE_OI_SAMPLE time=01:19:03 / 02.10.26 -5 oi=99613.098000 dOI_gap_break=False samples=5408
+LIVE_OI_SAMPLE time=01:19:10 / 02.10.26 -5 oi=99599.096000 dOI_gap_break=False samples=5407
+LIVE_OI_SAMPLE time=01:19:19 / 02.10.26 -5 oi=99599.941000 dOI_gap_break=False samples=5408
+LIVE_OI_SAMPLE time=01:19:27 / 02.10.26 -5 oi=99600.552000 dOI_gap_break=False samples=5409
+LIVE_OI_SAMPLE time=01:19:32 / 02.10.26 -5 oi=99600.834000 dOI_gap_break=False samples=5410
+LIVE_OI_SAMPLE time=01:19:40 / 02.10.26 -5 oi=99599.344000 dOI_gap_break=False samples=5410
+LIVE_OI_SAMPLE time=01:19:50 / 02.10.26 -5 oi=99598.967000 dOI_gap_break=False samples=5409
+LIVE_OI_SAMPLE time=01:19:55 / 02.10.26 -5 oi=99596.900000 dOI_gap_break=False samples=5409
+LIVE_OI_SAMPLE time=01:19:59 / 02.10.26 -5 oi=99597.050000 dOI_gap_break=False samples=5410
+LIVE_OI_SAMPLE time=01:20:07 / 02.10.26 -5 oi=99595.546000 dOI_gap_break=False samples=5409
+LIVE_OI_SAMPLE time=01:20:12 / 02.10.26 -5 oi=99595.637000 dOI_gap_break=False samples=5410
+LIVE_OI_SAMPLE time=01:20:20 / 02.10.26 -5 oi=99592.933000 dOI_gap_break=False samples=5411
+LIVE_OI_SAMPLE time=01:20:28 / 02.10.26 -5 oi=99605.436000 dOI_gap_break=False samples=5412
+LIVE_OI_SAMPLE time=01:20:33 / 02.10.26 -5 oi=99606.325000 dOI_gap_break=False samples=5412
+LIVE_OI_SAMPLE time=01:20:39 / 02.10.26 -5 oi=99604.841000 dOI_gap_break=False samples=5412
+LIVE_OI_SAMPLE time=01:20:47 / 02.10.26 -5 oi=99603.965000 dOI_gap_break=False samples=5411
+LIVE_OI_SAMPLE time=01:20:54 / 02.10.26 -5 oi=99603.438000 dOI_gap_break=False samples=5411
+LIVE_OI_SAMPLE time=01:21:00 / 02.10.26 -5 oi=99603.341000 dOI_gap_break=False samples=5411
+LIVE_OI_SAMPLE time=01:21:10 / 02.10.26 -5 oi=99594.974000 dOI_gap_break=False samples=5411
+LIVE_OI_SAMPLE time=01:21:16 / 02.10.26 -5 oi=99593.474000 dOI_gap_break=False samples=5412
+LIVE_OI_SAMPLE time=01:21:21 / 02.10.26 -5 oi=99584.392000 dOI_gap_break=False samples=5413
+LIVE_OI_SAMPLE time=01:21:31 / 02.10.26 -5 oi=99584.516000 dOI_gap_break=False samples=5413
+LIVE_OI_SAMPLE time=01:21:37 / 02.10.26 -5 oi=99582.231000 dOI_gap_break=False samples=5413
+LIVE_OI_SAMPLE time=01:21:43 / 02.10.26 -5 oi=99583.117000 dOI_gap_break=False samples=5413
+LIVE_OI_SAMPLE time=01:21:48 / 02.10.26 -5 oi=99583.305000 dOI_gap_break=False samples=5413
+LIVE_OI_SAMPLE time=01:21:58 / 02.10.26 -5 oi=99577.587000 dOI_gap_break=False samples=5412
+LIVE_OI_SAMPLE time=01:22:02 / 02.10.26 -5 oi=99577.987000 dOI_gap_break=False samples=5413
+LIVE_OI_SAMPLE time=01:22:09 / 02.10.26 -5 oi=99580.548000 dOI_gap_break=False samples=5412
+LIVE_OI_SAMPLE time=01:22:19 / 02.10.26 -5 oi=99581.225000 dOI_gap_break=False samples=5413
+LIVE_OI_SAMPLE time=01:22:26 / 02.10.26 -5 oi=99583.569000 dOI_gap_break=False samples=5414
+LIVE_OI_SAMPLE time=01:22:30 / 02.10.26 -5 oi=99580.828000 dOI_gap_break=False samples=5415
+LIVE_OI_SAMPLE time=01:22:35 / 02.10.26 -5 oi=99579.565000 dOI_gap_break=False samples=5415
+LIVE_OI_SAMPLE time=01:22:42 / 02.10.26 -5 oi=99574.016000 dOI_gap_break=False samples=5415
+LIVE_OI_SAMPLE time=01:22:53 / 02.10.26 -5 oi=99571.358000 dOI_gap_break=False samples=5414
+LIVE_OI_SAMPLE time=01:22:57 / 02.10.26 -5 oi=99569.581000 dOI_gap_break=False samples=5414
+LIVE_OI_SAMPLE time=01:23:03 / 02.10.26 -5 oi=99568.762000 dOI_gap_break=False samples=5414
+LIVE_OI_SAMPLE time=01:23:11 / 02.10.26 -5 oi=99561.802000 dOI_gap_break=False samples=5414
+LIVE_OI_SAMPLE time=01:23:20 / 02.10.26 -5 oi=99560.974000 dOI_gap_break=False samples=5415
+LIVE_OI_SAMPLE time=01:23:24 / 02.10.26 -5 oi=99556.998000 dOI_gap_break=False samples=5416
+LIVE_OI_SAMPLE time=01:23:30 / 02.10.26 -5 oi=99556.306000 dOI_gap_break=False samples=5417
+LIVE_OI_SAMPLE time=01:23:40 / 02.10.26 -5 oi=99553.021000 dOI_gap_break=False samples=5416
+LIVE_OI_SAMPLE time=01:23:44 / 02.10.26 -5 oi=99552.087000 dOI_gap_break=False samples=5417
+LIVE_OI_SAMPLE time=01:23:50 / 02.10.26 -5 oi=99550.954000 dOI_gap_break=False samples=5416
+LIVE_OI_SAMPLE time=01:23:57 / 02.10.26 -5 oi=99551.327000 dOI_gap_break=False samples=5416
+LIVE_OI_SAMPLE time=01:24:05 / 02.10.26 -5 oi=99547.065000 dOI_gap_break=False samples=5416
+LIVE_OI_SAMPLE time=01:24:10 / 02.10.26 -5 oi=99546.875000 dOI_gap_break=False samples=5416
+LIVE_OI_SAMPLE time=01:24:17 / 02.10.26 -5 oi=99546.843000 dOI_gap_break=False samples=5417
+LIVE_OI_SAMPLE time=01:24:23 / 02.10.26 -5 oi=99547.828000 dOI_gap_break=False samples=5418
+LIVE_OI_SAMPLE time=01:24:28 / 02.10.26 -5 oi=99548.515000 dOI_gap_break=False samples=5418
+LIVE_OI_SAMPLE time=01:24:34 / 02.10.26 -5 oi=99548.388000 dOI_gap_break=False samples=5418
+LIVE_OI_SAMPLE time=01:24:46 / 02.10.26 -5 oi=99530.050000 dOI_gap_break=False samples=5417
+LIVE_OI_SAMPLE time=01:24:51 / 02.10.26 -5 oi=99529.936000 dOI_gap_break=False samples=5417
+LIVE_OI_SAMPLE time=01:24:58 / 02.10.26 -5 oi=99526.137000 dOI_gap_break=False samples=5417
+LIVE_OI_SAMPLE time=01:25:06 / 02.10.26 -5 oi=99524.311000 dOI_gap_break=False samples=5417
+LIVE_OI_SAMPLE time=01:25:11 / 02.10.26 -5 oi=99524.151000 dOI_gap_break=False samples=5418
+LIVE_OI_SAMPLE time=01:25:18 / 02.10.26 -5 oi=99525.252000 dOI_gap_break=False samples=5419
+LIVE_OI_SAMPLE time=01:25:22 / 02.10.26 -5 oi=99525.139000 dOI_gap_break=False samples=5420
+LIVE_OI_SAMPLE time=01:25:29 / 02.10.26 -5 oi=99521.831000 dOI_gap_break=False samples=5421
+LIVE_OI_SAMPLE time=01:25:38 / 02.10.26 -5 oi=99523.480000 dOI_gap_break=False samples=5420
+LIVE_OI_SAMPLE time=01:25:49 / 02.10.26 -5 oi=99520.856000 dOI_gap_break=False samples=5419
+LIVE_OI_SAMPLE time=01:25:49 / 02.10.26 -5 oi=99520.735000 dOI_gap_break=False samples=5420
+LIVE_OI_SAMPLE time=01:26:00 / 02.10.26 -5 oi=99521.223000 dOI_gap_break=False samples=5419
+LIVE_OI_SAMPLE time=01:26:06 / 02.10.26 -5 oi=99520.807000 dOI_gap_break=False samples=5419
+LIVE_OI_SAMPLE time=01:26:15 / 02.10.26 -5 oi=99519.383000 dOI_gap_break=False samples=5419
+LIVE_OI_SAMPLE time=01:26:21 / 02.10.26 -5 oi=99520.895000 dOI_gap_break=False samples=5420
+LIVE_OI_SAMPLE time=01:26:26 / 02.10.26 -5 oi=99524.719000 dOI_gap_break=False samples=5421
+LIVE_OI_SAMPLE time=01:26:37 / 02.10.26 -5 oi=99524.705000 dOI_gap_break=False samples=5421
+LIVE_OI_SAMPLE time=01:26:43 / 02.10.26 -5 oi=99523.656000 dOI_gap_break=False samples=5421
+LIVE_OI_SAMPLE time=01:26:48 / 02.10.26 -5 oi=99525.092000 dOI_gap_break=False samples=5421
+LIVE_OI_SAMPLE time=01:26:54 / 02.10.26 -5 oi=99518.693000 dOI_gap_break=False samples=5421
+LIVE_OI_SAMPLE time=01:27:00 / 02.10.26 -5 oi=99518.438000 dOI_gap_break=False samples=5421
+LIVE_OI_SAMPLE time=01:27:10 / 02.10.26 -5 oi=99518.763000 dOI_gap_break=False samples=5420
+LIVE_OI_SAMPLE time=01:27:15 / 02.10.26 -5 oi=99517.708000 dOI_gap_break=False samples=5421
+LIVE_OI_SAMPLE time=01:27:20 / 02.10.26 -5 oi=99517.568000 dOI_gap_break=False samples=5422
+LIVE_OI_SAMPLE time=01:27:26 / 02.10.26 -5 oi=99517.821000 dOI_gap_break=False samples=5423
+LIVE_OI_SAMPLE time=01:27:36 / 02.10.26 -5 oi=99322.067000 dOI_gap_break=False samples=5423
+RAW_ACCUM {"time": "2026-10-02 01:27:36.490000-05:00", "dOI": -195.75400000000081, "pctl": 99.75124378109453, "control": "CONTROL LIMIT BUY", "strength": 0.9870531225250586, "flow_delta": -195.75400000000081, "buy_dom_delta": 0.0, "sell_dom_delta": 0.0, "display_flow": -160.40100000000083, "display_buy_dom": 73.906, "display_sell_dom": 121.76303553564}
+LIVE_OI_SAMPLE time=01:27:43 / 02.10.26 -5 oi=99320.239000 dOI_gap_break=False samples=5423
+RAW_ACCUM {"time": "2026-10-02 01:27:43.514000-05:00", "dOI": -1.8279999999940628, "pctl": 99.1474245115453, "control": "CONTROL LIMIT BUY", "strength": 0.9963716264527273, "flow_delta": -1.8279999999940628, "buy_dom_delta": 0.0, "sell_dom_delta": 0.0, "display_flow": -162.2289999999949, "display_buy_dom": 73.906, "display_sell_dom": 121.76303553564}
+LIVE_OI_SAMPLE time=01:27:47 / 02.10.26 -5 oi=99320.292000 dOI_gap_break=False samples=5423
+RAW_ACCUM {"time": "2026-10-02 01:27:47.293000-05:00", "dOI": 0.052999999999883585, "pctl": 99.11158493248045, "control": "CONTROL LIMIT BUY", "strength": 1.0, "flow_delta": 0.052999999999883585, "buy_dom_delta": 0.052999999999883585, "sell_dom_delta": 0.0, "display_flow": -162.175999999995, "display_buy_dom": 73.95899999999989, "display_sell_dom": 121.76303553564}
+LIVE_OI_SAMPLE time=01:27:57 / 02.10.26 -5 oi=99319.376000 dOI_gap_break=False samples=5422
+RAW_MINUTE_FINALIZE {"minute": "2026-10-02T01:27:00-05:00", "raw_samples_counted": 3, "flow_already_counted": -197.528999999995, "canonical_flow": -199.0619999999908, "strong_residual": -1.532999999995809, "double_count": 0}
+ACCUM_FINAL {"time": "2026-10-02T01:27:00-05:00", "source": "STRONG+RAW", "net": -199.0619999999908, "oi_add": 0.6310000000084983, "control": "CONTROL LIMIT BUY", "strength": 1.0, "flow_final": -199.0619999999908, "buy_dom_final": 0.6310000000084983, "sell_dom_final": 0.0, "double_count": 0}
+LIVE_OI_SAMPLE time=01:28:02 / 02.10.26 -5 oi=99320.093000 dOI_gap_break=False samples=5422
+RAW_ACCUM {"time": "2026-10-02 01:28:02.897000-05:00", "dOI": 0.716999999989639, "pctl": 99.14681834340561, "control": "CONTROL LIMIT SELL", "strength": 0.7973004351816941, "flow_delta": 0.716999999989639, "buy_dom_delta": 0.0, "sell_dom_delta": 0.5716644120170139, "display_flow": -162.99200000000118, "display_buy_dom": 74.5370000000085, "display_sell_dom": 122.33469994765701}
+LIVE_OI_SAMPLE time=01:28:07 / 02.10.26 -5 oi=99320.153000 dOI_gap_break=False samples=5423
+RAW_ACCUM {"time": "2026-10-02 01:28:07.799000-05:00", "dOI": 0.06000000001222361, "pctl": 98.11656005685856, "control": "CONTROL MARKET BUY", "strength": 1.0, "flow_delta": 0.06000000001222361, "buy_dom_delta": 0.06000000001222361, "sell_dom_delta": 0.0, "display_flow": -162.93199999998896, "display_buy_dom": 74.59700000002073, "display_sell_dom": 122.33469994765701}
+LIVE_OI_SAMPLE time=01:28:15 / 02.10.26 -5 oi=99319.652000 dOI_gap_break=False samples=5423
+RAW_ACCUM {"time": "2026-10-02 01:28:15.147000-05:00", "dOI": -0.5010000000038417, "pctl": 98.11656005685856, "control": "CONTROL LIMIT SELL", "strength": 0.581901161057709, "flow_delta": -0.5010000000038417, "buy_dom_delta": 0.0, "sell_dom_delta": 0.0, "display_flow": -163.4329999999928, "display_buy_dom": 74.59700000002073, "display_sell_dom": 122.33469994765701}
+LIVE_OI_SAMPLE time=01:28:25 / 02.10.26 -5 oi=99328.144000 dOI_gap_break=False samples=5424
+RAW_ACCUM {"time": "2026-10-02 01:28:25.078000-05:00", "dOI": 8.49199999999837, "pctl": 98.18827708703375, "control": "CONTROL LIMIT SELL", "strength": 0.607994473423829, "flow_delta": 8.49199999999837, "buy_dom_delta": 0.0, "sell_dom_delta": 5.163089068314164, "display_flow": -154.94099999999443, "display_buy_dom": 74.59700000002073, "display_sell_dom": 127.49778901597118}
+LIVE_OI_SAMPLE time=01:28:29 / 02.10.26 -5 oi=99333.321000 dOI_gap_break=False samples=5425
+RAW_ACCUM {"time": "2026-10-02 01:28:29.966000-05:00", "dOI": 5.176999999996042, "pctl": 98.22443181818183, "control": "CONTROL LIMIT SELL", "strength": 1.0, "flow_delta": 5.176999999996042, "buy_dom_delta": 0.0, "sell_dom_delta": 5.176999999996042, "display_flow": -149.7639999999984, "display_buy_dom": 74.59700000002073, "display_sell_dom": 132.67478901596724}
+LIVE_OI_SAMPLE time=01:28:36 / 02.10.26 -5 oi=99325.274000 dOI_gap_break=False samples=5425
+RAW_ACCUM {"time": "2026-10-02 01:28:36.240000-05:00", "dOI": -8.046999999991385, "pctl": 98.40255591054313, "control": "CONTROL MARKET BUY", "strength": 0.6618134978482081, "flow_delta": -8.046999999991385, "buy_dom_delta": 0.0, "sell_dom_delta": 0.0, "display_flow": -157.81099999998978, "display_buy_dom": 74.59700000002073, "display_sell_dom": 132.67478901596724}
+LIVE_OI_SAMPLE time=01:28:46 / 02.10.26 -5 oi=99317.493000 dOI_gap_break=False samples=5425
+LIVE_OI_SAMPLE time=01:28:52 / 02.10.26 -5 oi=99313.918000 dOI_gap_break=False samples=5425
+LIVE_OI_SAMPLE time=01:28:58 / 02.10.26 -5 oi=99313.723000 dOI_gap_break=False samples=5425
+RAW_MINUTE_FINALIZE {"minute": "2026-10-02T01:28:00-05:00", "raw_samples_counted": 6, "flow_already_counted": 5.898000000001048, "canonical_flow": -6.37, "strong_residual": 0.0, "double_count": 0}
+ACCUM_FINAL {"time": "2026-10-02T01:28:00-05:00", "source": "RAW_ONLY", "net": -6.37, "oi_add": 14.445999999996275, "control": "CONTROL LIMIT SELL", "strength": 0.83088979, "flow_final": -6.37, "buy_dom_final": 0.0, "sell_dom_final": 12.003033906339999, "double_count": 0}
+LIVE_OI_SAMPLE time=01:29:03 / 02.10.26 -5 oi=99311.792000 dOI_gap_break=False samples=5425
+LIVE_OI_SAMPLE time=01:29:11 / 02.10.26 -5 oi=99311.201000 dOI_gap_break=False samples=5425
+LIVE_OI_SAMPLE time=01:29:17 / 02.10.26 -5 oi=99311.763000 dOI_gap_break=False samples=5426
+LIVE_OI_SAMPLE time=01:29:23 / 02.10.26 -5 oi=99313.590000 dOI_gap_break=False samples=5427
+LIVE_OI_SAMPLE time=01:29:29 / 02.10.26 -5 oi=99316.040000 dOI_gap_break=False samples=5428
+LIVE_OI_SAMPLE time=01:29:37 / 02.10.26 -5 oi=99315.214000 dOI_gap_break=False samples=5428
+LIVE_OI_SAMPLE time=01:29:46 / 02.10.26 -5 oi=99314.227000 dOI_gap_break=False samples=5427
+LIVE_OI_SAMPLE time=01:29:51 / 02.10.26 -5 oi=99308.476000 dOI_gap_break=False samples=5427
+LIVE_OI_SAMPLE time=01:29:57 / 02.10.26 -5 oi=99311.521000 dOI_gap_break=False samples=5427
+LIVE_OI_SAMPLE time=01:30:04 / 02.10.26 -5 oi=99313.421000 dOI_gap_break=False samples=5427
+LIVE_OI_SAMPLE time=01:30:07 / 02.10.26 -5 oi=99313.220000 dOI_gap_break=False samples=5427
+LIVE_OI_SAMPLE time=01:30:14 / 02.10.26 -5 oi=99310.663000 dOI_gap_break=False samples=5428
+LIVE_OI_SAMPLE time=01:30:22 / 02.10.26 -5 oi=99307.819000 dOI_gap_break=False samples=5429
+LIVE_OI_SAMPLE time=01:30:30 / 02.10.26 -5 oi=99307.790000 dOI_gap_break=False samples=5430
+LIVE_OI_SAMPLE time=01:30:39 / 02.10.26 -5 oi=99306.663000 dOI_gap_break=False samples=5429
+LIVE_OI_SAMPLE time=01:30:44 / 02.10.26 -5 oi=99300.352000 dOI_gap_break=False samples=5429
+LIVE_OI_SAMPLE time=01:30:49 / 02.10.26 -5 oi=99300.533000 dOI_gap_break=False samples=5429
+LIVE_OI_SAMPLE time=01:31:01 / 02.10.26 -5 oi=99300.913000 dOI_gap_break=False samples=5428
+LIVE_OI_SAMPLE time=01:31:07 / 02.10.26 -5 oi=99303.753000 dOI_gap_break=False samples=5428
+LIVE_OI_SAMPLE time=01:31:12 / 02.10.26 -5 oi=99303.717000 dOI_gap_break=False samples=5429
+LIVE_OI_SAMPLE time=01:31:18 / 02.10.26 -5 oi=99304.035000 dOI_gap_break=False samples=5430
+LIVE_OI_SAMPLE time=01:31:28 / 02.10.26 -5 oi=99303.225000 dOI_gap_break=False samples=5431
+LIVE_OI_SAMPLE time=01:31:34 / 02.10.26 -5 oi=99303.472000 dOI_gap_break=False samples=5432
+LIVE_OI_SAMPLE time=01:31:39 / 02.10.26 -5 oi=99304.817000 dOI_gap_break=False samples=5432
+LIVE_OI_SAMPLE time=01:31:49 / 02.10.26 -5 oi=99305.155000 dOI_gap_break=False samples=5431
+LIVE_OI_SAMPLE time=01:31:54 / 02.10.26 -5 oi=99305.694000 dOI_gap_break=False samples=5431
+LIVE_OI_SAMPLE time=01:32:05 / 02.10.26 -5 oi=99299.248000 dOI_gap_break=False samples=5430
+LIVE_OI_SAMPLE time=01:32:10 / 02.10.26 -5 oi=99296.076000 dOI_gap_break=False samples=5430
+LIVE_OI_SAMPLE time=01:32:15 / 02.10.26 -5 oi=99294.919000 dOI_gap_break=False samples=5431
+LIVE_OI_SAMPLE time=01:32:22 / 02.10.26 -5 oi=99295.645000 dOI_gap_break=False samples=5432
+LIVE_OI_SAMPLE time=01:32:32 / 02.10.26 -5 oi=99285.040000 dOI_gap_break=False samples=5433
+LIVE_OI_SAMPLE time=01:32:38 / 02.10.26 -5 oi=99282.671000 dOI_gap_break=False samples=5433
+LIVE_OI_SAMPLE time=01:32:44 / 02.10.26 -5 oi=99282.522000 dOI_gap_break=False samples=5434
+LIVE_OI_SAMPLE time=01:32:54 / 02.10.26 -5 oi=99262.550000 dOI_gap_break=False samples=5433
+LIVE_OI_SAMPLE time=01:32:58 / 02.10.26 -5 oi=99263.507000 dOI_gap_break=False samples=5433
+LIVE_OI_SAMPLE time=01:33:02 / 02.10.26 -5 oi=99263.794000 dOI_gap_break=False samples=5433
+LIVE_OI_SAMPLE time=01:33:09 / 02.10.26 -5 oi=99263.098000 dOI_gap_break=False samples=5433
+LIVE_OI_SAMPLE time=01:33:15 / 02.10.26 -5 oi=99260.851000 dOI_gap_break=False samples=5434
+LIVE_OI_SAMPLE time=01:33:29 / 02.10.26 -5 oi=99258.683000 dOI_gap_break=False samples=5435
+LIVE_OI_SAMPLE time=01:33:34 / 02.10.26 -5 oi=99256.071000 dOI_gap_break=False samples=5436
+LIVE_OI_SAMPLE time=01:33:44 / 02.10.26 -5 oi=99250.434000 dOI_gap_break=False samples=5435
+LIVE_OI_SAMPLE time=01:33:48 / 02.10.26 -5 oi=99250.218000 dOI_gap_break=False samples=5435
+LIVE_OI_SAMPLE time=01:33:55 / 02.10.26 -5 oi=99246.909000 dOI_gap_break=False samples=5435
+LIVE_OI_SAMPLE time=01:34:02 / 02.10.26 -5 oi=99242.146000 dOI_gap_break=False samples=5435
+LIVE_OI_SAMPLE time=01:34:11 / 02.10.26 -5 oi=99228.236000 dOI_gap_break=False samples=5434
+LIVE_OI_SAMPLE time=01:34:14 / 02.10.26 -5 oi=99227.294000 dOI_gap_break=False samples=5435
+LIVE_OI_SAMPLE time=01:34:21 / 02.10.26 -5 oi=99225.907000 dOI_gap_break=False samples=5436
+LIVE_OI_SAMPLE time=01:34:28 / 02.10.26 -5 oi=99226.112000 dOI_gap_break=False samples=5437
+LIVE_OI_SAMPLE time=01:34:39 / 02.10.26 -5 oi=99216.346000 dOI_gap_break=False samples=5437
+LIVE_OI_SAMPLE time=01:34:44 / 02.10.26 -5 oi=99213.962000 dOI_gap_break=False samples=5437
+LIVE_OI_SAMPLE time=01:34:54 / 02.10.26 -5 oi=99217.467000 dOI_gap_break=False samples=5436
+LIVE_OI_SAMPLE time=01:35:00 / 02.10.26 -5 oi=99216.546000 dOI_gap_break=False samples=5436
+LIVE_OI_SAMPLE time=01:35:02 / 02.10.26 -5 oi=99214.582000 dOI_gap_break=False samples=5437
+LIVE_OI_SAMPLE time=01:35:13 / 02.10.26 -5 oi=99208.752000 dOI_gap_break=False samples=5437
+LIVE_OI_SAMPLE time=01:35:22 / 02.10.26 -5 oi=99211.157000 dOI_gap_break=False samples=5438
+LIVE_OI_SAMPLE time=01:35:26 / 02.10.26 -5 oi=99207.553000 dOI_gap_break=False samples=5439
+LIVE_OI_SAMPLE time=01:35:32 / 02.10.26 -5 oi=99205.150000 dOI_gap_break=False samples=5440
+LIVE_OI_SAMPLE time=01:35:40 / 02.10.26 -5 oi=99207.947000 dOI_gap_break=False samples=5439
+LIVE_OI_SAMPLE time=01:35:48 / 02.10.26 -5 oi=99206.510000 dOI_gap_break=False samples=5439
+LIVE_OI_SAMPLE time=01:35:56 / 02.10.26 -5 oi=99214.230000 dOI_gap_break=False samples=5439
+LIVE_OI_SAMPLE time=01:36:01 / 02.10.26 -5 oi=99213.803000 dOI_gap_break=False samples=5439
+LIVE_OI_SAMPLE time=01:36:07 / 02.10.26 -5 oi=99225.036000 dOI_gap_break=False samples=5439
+LIVE_OI_SAMPLE time=01:36:18 / 02.10.26 -5 oi=99225.924000 dOI_gap_break=False samples=5439
+LIVE_OI_SAMPLE time=01:36:20 / 02.10.26 -5 oi=99224.535000 dOI_gap_break=False samples=5440
+LIVE_OI_SAMPLE time=01:36:25 / 02.10.26 -5 oi=99212.549000 dOI_gap_break=False samples=5441
+LIVE_OI_SAMPLE time=01:36:34 / 02.10.26 -5 oi=99209.496000 dOI_gap_break=False samples=5442
+LIVE_OI_SAMPLE time=01:36:41 / 02.10.26 -5 oi=99209.549000 dOI_gap_break=False samples=5441
+LIVE_OI_SAMPLE time=01:36:47 / 02.10.26 -5 oi=99209.891000 dOI_gap_break=False samples=5441
+LIVE_OI_SAMPLE time=01:36:58 / 02.10.26 -5 oi=99198.884000 dOI_gap_break=False samples=5441
+LIVE_OI_SAMPLE time=01:37:01 / 02.10.26 -5 oi=99199.406000 dOI_gap_break=False samples=5441
+LIVE_OI_SAMPLE time=01:37:06 / 02.10.26 -5 oi=99199.159000 dOI_gap_break=False samples=5441
+LIVE_OI_SAMPLE time=01:37:13 / 02.10.26 -5 oi=99199.499000 dOI_gap_break=False samples=5441
+LIVE_OI_SAMPLE time=01:37:23 / 02.10.26 -5 oi=99200.038000 dOI_gap_break=False samples=5442
+LIVE_OI_SAMPLE time=01:37:28 / 02.10.26 -5 oi=99198.120000 dOI_gap_break=False samples=5443
+LIVE_OI_SAMPLE time=01:37:33 / 02.10.26 -5 oi=99198.485000 dOI_gap_break=False samples=5444
+LIVE_OI_SAMPLE time=01:37:39 / 02.10.26 -5 oi=99197.658000 dOI_gap_break=False samples=5444
+LIVE_OI_SAMPLE time=01:37:49 / 02.10.26 -5 oi=99196.404000 dOI_gap_break=False samples=5443
+LIVE_OI_SAMPLE time=01:37:55 / 02.10.26 -5 oi=99196.127000 dOI_gap_break=False samples=5443
+LIVE_OI_SAMPLE time=01:38:00 / 02.10.26 -5 oi=99195.835000 dOI_gap_break=False samples=5443
+LIVE_OI_SAMPLE time=01:38:07 / 02.10.26 -5 oi=99205.995000 dOI_gap_break=False samples=5443
+LIVE_OI_SAMPLE time=01:38:16 / 02.10.26 -5 oi=99206.592000 dOI_gap_break=False samples=5444
+LIVE_OI_SAMPLE time=01:38:27 / 02.10.26 -5 oi=99205.917000 dOI_gap_break=False samples=5445
+LIVE_OI_SAMPLE time=01:38:29 / 02.10.26 -5 oi=99205.538000 dOI_gap_break=False samples=5445
+LIVE_OI_SAMPLE time=01:38:39 / 02.10.26 -5 oi=99199.149000 dOI_gap_break=False samples=5445
+LIVE_OI_SAMPLE time=01:38:43 / 02.10.26 -5 oi=99197.922000 dOI_gap_break=False samples=5445
+LIVE_OI_SAMPLE time=01:38:53 / 02.10.26 -5 oi=99198.498000 dOI_gap_break=False samples=5444
+LIVE_OI_SAMPLE time=01:39:01 / 02.10.26 -5 oi=99197.950000 dOI_gap_break=False samples=5444
+LIVE_OI_SAMPLE time=01:39:03 / 02.10.26 -5 oi=99198.685000 dOI_gap_break=False samples=5444
+LIVE_OI_SAMPLE time=01:39:09 / 02.10.26 -5 oi=99196.062000 dOI_gap_break=False samples=5445
+LIVE_OI_SAMPLE time=01:39:22 / 02.10.26 -5 oi=99195.525000 dOI_gap_break=False samples=5446
+LIVE_OI_SAMPLE time=01:39:24 / 02.10.26 -5 oi=99194.668000 dOI_gap_break=False samples=5447
+LIVE_OI_SAMPLE time=01:39:31 / 02.10.26 -5 oi=99194.950000 dOI_gap_break=False samples=5446
+LIVE_OI_SAMPLE time=01:39:36 / 02.10.26 -5 oi=99193.968000 dOI_gap_break=False samples=5447
+LIVE_OI_SAMPLE time=01:39:46 / 02.10.26 -5 oi=99188.825000 dOI_gap_break=False samples=5446
+LIVE_OI_SAMPLE time=01:39:54 / 02.10.26 -5 oi=99190.362000 dOI_gap_break=False samples=5445
+LIVE_OI_SAMPLE time=01:40:02 / 02.10.26 -5 oi=99183.934000 dOI_gap_break=False samples=5445
+LIVE_OI_SAMPLE time=01:40:08 / 02.10.26 -5 oi=99182.376000 dOI_gap_break=False samples=5445
+LIVE_OI_SAMPLE time=01:40:16 / 02.10.26 -5 oi=99180.719000 dOI_gap_break=False samples=5446
+LIVE_OI_SAMPLE time=01:40:17 / 02.10.26 -5 oi=99180.765000 dOI_gap_break=False samples=5447
+LIVE_OI_SAMPLE time=01:40:29 / 02.10.26 -5 oi=99179.478000 dOI_gap_break=False samples=5448
+LIVE_OI_SAMPLE time=01:40:35 / 02.10.26 -5 oi=99178.722000 dOI_gap_break=False samples=5448
+LIVE_OI_SAMPLE time=01:40:40 / 02.10.26 -5 oi=99178.553000 dOI_gap_break=False samples=5448
+LIVE_OI_SAMPLE time=01:40:50 / 02.10.26 -5 oi=99179.710000 dOI_gap_break=False samples=5447
+LIVE_OI_SAMPLE time=01:40:53 / 02.10.26 -5 oi=99182.031000 dOI_gap_break=False samples=5447
+LIVE_OI_SAMPLE time=01:41:02 / 02.10.26 -5 oi=99182.529000 dOI_gap_break=False samples=5447
+LIVE_OI_SAMPLE time=01:41:09 / 02.10.26 -5 oi=99184.587000 dOI_gap_break=False samples=5447
+LIVE_OI_SAMPLE time=01:41:15 / 02.10.26 -5 oi=99184.676000 dOI_gap_break=False samples=5448
+LIVE_OI_SAMPLE time=01:41:20 / 02.10.26 -5 oi=99181.236000 dOI_gap_break=False samples=5449
+LIVE_OI_SAMPLE time=01:41:28 / 02.10.26 -5 oi=99181.037000 dOI_gap_break=False samples=5448
+LIVE_OI_SAMPLE time=01:41:34 / 02.10.26 -5 oi=99180.356000 dOI_gap_break=False samples=5448
+LIVE_OI_SAMPLE time=01:41:44 / 02.10.26 -5 oi=99178.135000 dOI_gap_break=False samples=5448
+LIVE_OI_SAMPLE time=01:41:52 / 02.10.26 -5 oi=99179.711000 dOI_gap_break=False samples=5447
+LIVE_OI_SAMPLE time=01:41:53 / 02.10.26 -5 oi=99179.783000 dOI_gap_break=False samples=5448
+LIVE_OI_SAMPLE time=01:42:02 / 02.10.26 -5 oi=99176.068000 dOI_gap_break=False samples=5447
+LIVE_OI_SAMPLE time=01:42:13 / 02.10.26 -5 oi=99172.541000 dOI_gap_break=False samples=5447
+LIVE_OI_SAMPLE time=01:42:19 / 02.10.26 -5 oi=99172.396000 dOI_gap_break=False samples=5448
+LIVE_OI_SAMPLE time=01:42:24 / 02.10.26 -5 oi=99172.311000 dOI_gap_break=False samples=5449
+LIVE_OI_SAMPLE time=01:42:30 / 02.10.26 -5 oi=99168.704000 dOI_gap_break=False samples=5450
+LIVE_OI_SAMPLE time=01:42:36 / 02.10.26 -5 oi=99164.173000 dOI_gap_break=False samples=5450
+LIVE_OI_SAMPLE time=01:42:46 / 02.10.26 -5 oi=99161.489000 dOI_gap_break=False samples=5449
+LIVE_OI_SAMPLE time=01:42:54 / 02.10.26 -5 oi=99162.367000 dOI_gap_break=False samples=5448
+LIVE_OI_SAMPLE time=01:42:58 / 02.10.26 -5 oi=99161.108000 dOI_gap_break=False samples=5449
+LIVE_OI_SAMPLE time=01:43:05 / 02.10.26 -5 oi=99161.935000 dOI_gap_break=False samples=5449
+LIVE_OI_SAMPLE time=01:43:08 / 02.10.26 -5 oi=99158.464000 dOI_gap_break=False samples=5449
+LIVE_OI_SAMPLE time=01:43:15 / 02.10.26 -5 oi=99157.768000 dOI_gap_break=False samples=5450
+LIVE_OI_SAMPLE time=01:43:23 / 02.10.26 -5 oi=99157.500000 dOI_gap_break=False samples=5450
+LIVE_OI_SAMPLE time=01:43:29 / 02.10.26 -5 oi=99157.456000 dOI_gap_break=False samples=5450
+LIVE_OI_SAMPLE time=01:43:37 / 02.10.26 -5 oi=99157.486000 dOI_gap_break=False samples=5450
+LIVE_OI_SAMPLE time=01:43:42 / 02.10.26 -5 oi=99157.314000 dOI_gap_break=False samples=5450
+LIVE_OI_SAMPLE time=01:43:55 / 02.10.26 -5 oi=99155.462000 dOI_gap_break=False samples=5449
+LIVE_OI_SAMPLE time=01:43:58 / 02.10.26 -5 oi=99155.182000 dOI_gap_break=False samples=5449
+LIVE_OI_SAMPLE time=01:44:03 / 02.10.26 -5 oi=99154.828000 dOI_gap_break=False samples=5449
+LIVE_OI_SAMPLE time=01:44:17 / 02.10.26 -5 oi=99154.034000 dOI_gap_break=False samples=5449
+LIVE_OI_SAMPLE time=01:44:19 / 02.10.26 -5 oi=99154.529000 dOI_gap_break=False samples=5450
+LIVE_OI_SAMPLE time=01:44:25 / 02.10.26 -5 oi=99155.992000 dOI_gap_break=False samples=5451
+LIVE_OI_SAMPLE time=01:44:36 / 02.10.26 -5 oi=99155.562000 dOI_gap_break=False samples=5452
+LIVE_OI_SAMPLE time=01:44:41 / 02.10.26 -5 oi=99154.964000 dOI_gap_break=False samples=5452
+LIVE_OI_SAMPLE time=01:44:43 / 02.10.26 -5 oi=99155.047000 dOI_gap_break=False samples=5452
+LIVE_OI_SAMPLE time=01:44:55 / 02.10.26 -5 oi=99153.524000 dOI_gap_break=False samples=5452
+LIVE_OI_SAMPLE time=01:45:00 / 02.10.26 -5 oi=99155.090000 dOI_gap_break=False samples=5452
+LIVE_OI_SAMPLE time=01:45:04 / 02.10.26 -5 oi=99155.510000 dOI_gap_break=False samples=5452
+LIVE_OI_SAMPLE time=01:45:16 / 02.10.26 -5 oi=99160.194000 dOI_gap_break=False samples=5452
+LIVE_OI_SAMPLE time=01:45:21 / 02.10.26 -5 oi=99160.256000 dOI_gap_break=False samples=5452
+LIVE_OI_SAMPLE time=01:45:26 / 02.10.26 -5 oi=99161.172000 dOI_gap_break=False samples=5453
+LIVE_OI_SAMPLE time=01:45:37 / 02.10.26 -5 oi=99159.512000 dOI_gap_break=False samples=5452
+LIVE_OI_SAMPLE time=01:45:42 / 02.10.26 -5 oi=99159.476000 dOI_gap_break=False samples=5452
+LIVE_OI_SAMPLE time=01:45:48 / 02.10.26 -5 oi=99160.058000 dOI_gap_break=False samples=5452
+LIVE_OI_SAMPLE time=01:45:54 / 02.10.26 -5 oi=99161.060000 dOI_gap_break=False samples=5452
+LIVE_OI_SAMPLE time=01:46:04 / 02.10.26 -5 oi=99160.106000 dOI_gap_break=False samples=5451
+LIVE_OI_SAMPLE time=01:46:09 / 02.10.26 -5 oi=99160.101000 dOI_gap_break=False samples=5452
+LIVE_OI_SAMPLE time=01:46:14 / 02.10.26 -5 oi=99159.035000 dOI_gap_break=False samples=5453
+LIVE_OI_SAMPLE time=01:46:22 / 02.10.26 -5 oi=99157.238000 dOI_gap_break=False samples=5452
+LIVE_OI_SAMPLE time=01:46:31 / 02.10.26 -5 oi=99156.687000 dOI_gap_break=False samples=5452
+LIVE_OI_SAMPLE time=01:46:41 / 02.10.26 -5 oi=99157.054000 dOI_gap_break=False samples=5451
+LIVE_OI_SAMPLE time=01:46:45 / 02.10.26 -5 oi=99156.942000 dOI_gap_break=False samples=5451
+LIVE_OI_SAMPLE time=01:46:49 / 02.10.26 -5 oi=99156.890000 dOI_gap_break=False samples=5452
+LIVE_OI_SAMPLE time=01:47:02 / 02.10.26 -5 oi=99156.954000 dOI_gap_break=False samples=5451
+LIVE_OI_SAMPLE time=01:47:08 / 02.10.26 -5 oi=99156.928000 dOI_gap_break=False samples=5451
+LIVE_OI_SAMPLE time=01:47:15 / 02.10.26 -5 oi=99156.915000 dOI_gap_break=False samples=5452
+LIVE_OI_SAMPLE time=01:47:24 / 02.10.26 -5 oi=99157.065000 dOI_gap_break=False samples=5453
+LIVE_OI_SAMPLE time=01:47:29 / 02.10.26 -5 oi=99158.262000 dOI_gap_break=False samples=5453
+LIVE_OI_SAMPLE time=01:47:37 / 02.10.26 -5 oi=99160.673000 dOI_gap_break=False samples=5453
+LIVE_OI_SAMPLE time=01:47:45 / 02.10.26 -5 oi=99160.347000 dOI_gap_break=False samples=5453
+LIVE_OI_SAMPLE time=01:47:51 / 02.10.26 -5 oi=99159.794000 dOI_gap_break=False samples=5453
+LIVE_OI_SAMPLE time=01:47:58 / 02.10.26 -5 oi=99159.952000 dOI_gap_break=False samples=5452
+LIVE_OI_SAMPLE time=01:48:06 / 02.10.26 -5 oi=99155.121000 dOI_gap_break=False samples=5452
+LIVE_OI_SAMPLE time=01:48:11 / 02.10.26 -5 oi=99149.535000 dOI_gap_break=False samples=5452
+LIVE_OI_SAMPLE time=01:48:17 / 02.10.26 -5 oi=99151.733000 dOI_gap_break=False samples=5453
+LIVE_OI_SAMPLE time=01:48:25 / 02.10.26 -5 oi=99151.385000 dOI_gap_break=False samples=5454
+LIVE_OI_SAMPLE time=01:48:29 / 02.10.26 -5 oi=99153.630000 dOI_gap_break=False samples=5455
+LIVE_OI_SAMPLE time=01:48:36 / 02.10.26 -5 oi=99153.673000 dOI_gap_break=False samples=5455
+LIVE_OI_SAMPLE time=01:48:42 / 02.10.26 -5 oi=99153.668000 dOI_gap_break=False samples=5455
+LIVE_OI_SAMPLE time=01:48:50 / 02.10.26 -5 oi=99154.097000 dOI_gap_break=False samples=5455
+LIVE_OI_SAMPLE time=01:48:59 / 02.10.26 -5 oi=99151.918000 dOI_gap_break=False samples=5454
+RAW_BASELINE_RESTORED samples=4526 oldest=13:49:28 / 01.10.26 -5 newest=01:49:16 / 02.10.26 -5 span_hours=12.00 source=OLD_002_BOOTSTRAP reference_ready=YES
+RAW_BASELINE_WARMUP reason=available_span_9.2m_required_60m
+LIVE_OI_SAMPLE time=01:49:21 / 02.10.26 -5 oi=99152.382000 dOI_gap_break=False source=COLLECTOR samples=112
+LIVE_OI_SAMPLE time=01:49:26 / 02.10.26 -5 oi=99152.382000 dOI_gap_break=False source=COLLECTOR samples=113
+LIVE_ANCHOR_REJECTED requested='00:38' reason=insufficient_raw_reference earliest_exact=08:10:06 / 02.10.26 -5
+LIVE_OI_SAMPLE time=01:49:31 / 02.10.26 -5 oi=99153.238000 dOI_gap_break=False source=COLLECTOR samples=114
+LIVE_OI_SAMPLE time=01:49:36 / 02.10.26 -5 oi=99153.238000 dOI_gap_break=False source=COLLECTOR samples=115
+LIVE_OI_SAMPLE time=01:49:41 / 02.10.26 -5 oi=99153.340000 dOI_gap_break=False source=COLLECTOR samples=117
+LIVE_OI_SAMPLE time=01:49:46 / 02.10.26 -5 oi=99153.820000 dOI_gap_break=False source=COLLECTOR samples=117
+LIVE_OI_SAMPLE time=01:49:51 / 02.10.26 -5 oi=99150.939000 dOI_gap_break=False source=COLLECTOR samples=118
+LIVE_OI_SAMPLE time=01:49:56 / 02.10.26 -5 oi=99151.167000 dOI_gap_break=False source=COLLECTOR samples=119
+LIVE_OI_SAMPLE time=01:50:01 / 02.10.26 -5 oi=99150.601000 dOI_gap_break=False source=COLLECTOR samples=120
+LIVE_OI_SAMPLE time=01:50:06 / 02.10.26 -5 oi=99150.604000 dOI_gap_break=False source=COLLECTOR samples=121
+LIVE_OI_SAMPLE time=01:50:11 / 02.10.26 -5 oi=99150.594000 dOI_gap_break=False source=COLLECTOR samples=122
+LIVE_OI_SAMPLE time=01:50:16 / 02.10.26 -5 oi=99150.719000 dOI_gap_break=False source=COLLECTOR samples=123
+LIVE_OI_SAMPLE time=01:50:21 / 02.10.26 -5 oi=99150.721000 dOI_gap_break=False source=COLLECTOR samples=124
+LIVE_OI_SAMPLE time=01:50:26 / 02.10.26 -5 oi=99150.726000 dOI_gap_break=False source=COLLECTOR samples=125
+LIVE_OI_SAMPLE time=01:50:31 / 02.10.26 -5 oi=99150.758000 dOI_gap_break=False source=COLLECTOR samples=126
+LIVE_OI_SAMPLE time=01:50:36 / 02.10.26 -5 oi=99151.065000 dOI_gap_break=False source=COLLECTOR samples=127
+LIVE_OI_SAMPLE time=01:50:41 / 02.10.26 -5 oi=99148.708000 dOI_gap_break=False source=COLLECTOR samples=128
+LIVE_OI_SAMPLE time=01:50:46 / 02.10.26 -5 oi=99148.700000 dOI_gap_break=False source=COLLECTOR samples=129
+LIVE_OI_SAMPLE time=01:50:51 / 02.10.26 -5 oi=99149.557000 dOI_gap_break=False source=COLLECTOR samples=130
+LIVE_OI_SAMPLE time=01:50:56 / 02.10.26 -5 oi=99148.905000 dOI_gap_break=False source=COLLECTOR samples=131
+LIVE_OI_SAMPLE time=01:51:01 / 02.10.26 -5 oi=99148.725000 dOI_gap_break=False source=COLLECTOR samples=132
+LIVE_OI_SAMPLE time=01:51:06 / 02.10.26 -5 oi=99146.005000 dOI_gap_break=False source=COLLECTOR samples=133
+LIVE_OI_SAMPLE time=01:51:11 / 02.10.26 -5 oi=99145.495000 dOI_gap_break=False source=COLLECTOR samples=134
+LIVE_OI_SAMPLE time=01:51:16 / 02.10.26 -5 oi=99145.205000 dOI_gap_break=False source=COLLECTOR samples=135
+LIVE_OI_SAMPLE time=01:51:21 / 02.10.26 -5 oi=99140.568000 dOI_gap_break=False source=COLLECTOR samples=136
+LIVE_ANCHOR_REJECTED requested='00:38' reason=insufficient_raw_reference earliest_exact=08:10:06 / 02.10.26 -5
+LIVE_OI_SAMPLE time=01:51:26 / 02.10.26 -5 oi=99140.014000 dOI_gap_break=False source=COLLECTOR samples=137
+LIVE_OI_SAMPLE time=01:51:31 / 02.10.26 -5 oi=99151.148000 dOI_gap_break=False source=COLLECTOR samples=138
+LIVE_OI_SAMPLE time=01:51:36 / 02.10.26 -5 oi=99151.148000 dOI_gap_break=False source=COLLECTOR samples=139
+LIVE_OI_SAMPLE time=01:51:41 / 02.10.26 -5 oi=99158.060000 dOI_gap_break=False source=COLLECTOR samples=140
+LIVE_OI_SAMPLE time=01:51:46 / 02.10.26 -5 oi=99160.790000 dOI_gap_break=False source=COLLECTOR samples=141
+LIVE_OI_SAMPLE time=01:51:51 / 02.10.26 -5 oi=99160.705000 dOI_gap_break=False source=COLLECTOR samples=142
+LIVE_OI_SAMPLE time=01:51:56 / 02.10.26 -5 oi=99160.705000 dOI_gap_break=False source=COLLECTOR samples=143
+LIVE_OI_SAMPLE time=01:52:01 / 02.10.26 -5 oi=99165.066000 dOI_gap_break=False source=COLLECTOR samples=144
+LIVE_OI_SAMPLE time=01:52:06 / 02.10.26 -5 oi=99166.872000 dOI_gap_break=False source=COLLECTOR samples=145
+LIVE_OI_SAMPLE time=01:52:11 / 02.10.26 -5 oi=99166.872000 dOI_gap_break=False source=COLLECTOR samples=146
+LIVE_OI_SAMPLE time=01:52:16 / 02.10.26 -5 oi=99167.229000 dOI_gap_break=False source=COLLECTOR samples=147
+LIVE_OI_SAMPLE time=01:52:21 / 02.10.26 -5 oi=99167.228000 dOI_gap_break=False source=COLLECTOR samples=148
+LIVE_OI_SAMPLE time=01:52:26 / 02.10.26 -5 oi=99167.014000 dOI_gap_break=False source=COLLECTOR samples=149
+LIVE_OI_SAMPLE time=01:52:31 / 02.10.26 -5 oi=99167.721000 dOI_gap_break=False source=COLLECTOR samples=150
+LIVE_OI_SAMPLE time=01:52:36 / 02.10.26 -5 oi=99168.459000 dOI_gap_break=False source=COLLECTOR samples=151
+LIVE_OI_SAMPLE time=01:52:41 / 02.10.26 -5 oi=99169.294000 dOI_gap_break=False source=COLLECTOR samples=152
+LIVE_OI_SAMPLE time=01:52:46 / 02.10.26 -5 oi=99163.877000 dOI_gap_break=False source=COLLECTOR samples=153
+LIVE_OI_SAMPLE time=01:52:51 / 02.10.26 -5 oi=99163.823000 dOI_gap_break=False source=COLLECTOR samples=154
+LIVE_OI_SAMPLE time=01:52:56 / 02.10.26 -5 oi=99162.187000 dOI_gap_break=False source=COLLECTOR samples=155
+LIVE_OI_SAMPLE time=01:53:01 / 02.10.26 -5 oi=99161.874000 dOI_gap_break=False source=COLLECTOR samples=156
+LIVE_OI_SAMPLE time=01:53:06 / 02.10.26 -5 oi=99162.012000 dOI_gap_break=False source=COLLECTOR samples=157
+LIVE_OI_SAMPLE time=01:53:11 / 02.10.26 -5 oi=99161.123000 dOI_gap_break=False source=COLLECTOR samples=158
+LIVE_OI_SAMPLE time=01:53:16 / 02.10.26 -5 oi=99159.378000 dOI_gap_break=False source=COLLECTOR samples=159
+LIVE_OI_SAMPLE time=01:53:21 / 02.10.26 -5 oi=99160.788000 dOI_gap_break=False source=COLLECTOR samples=160
+LIVE_OI_SAMPLE time=01:53:26 / 02.10.26 -5 oi=99160.781000 dOI_gap_break=False source=COLLECTOR samples=161
+LIVE_OI_SAMPLE time=01:53:31 / 02.10.26 -5 oi=99159.182000 dOI_gap_break=False source=COLLECTOR samples=162
+LIVE_OI_SAMPLE time=01:53:36 / 02.10.26 -5 oi=99159.639000 dOI_gap_break=False source=COLLECTOR samples=163
+LIVE_OI_SAMPLE time=01:53:41 / 02.10.26 -5 oi=99160.345000 dOI_gap_break=False source=COLLECTOR samples=164
+LIVE_OI_SAMPLE time=01:53:46 / 02.10.26 -5 oi=99160.004000 dOI_gap_break=False source=COLLECTOR samples=165
+LIVE_OI_SAMPLE time=01:53:51 / 02.10.26 -5 oi=99159.067000 dOI_gap_break=False source=COLLECTOR samples=166
+LIVE_OI_SAMPLE time=01:53:56 / 02.10.26 -5 oi=99159.714000 dOI_gap_break=False source=COLLECTOR samples=167
+LIVE_OI_SAMPLE time=01:54:01 / 02.10.26 -5 oi=99160.751000 dOI_gap_break=False source=COLLECTOR samples=168
+LIVE_OI_SAMPLE time=01:54:06 / 02.10.26 -5 oi=99160.640000 dOI_gap_break=False source=COLLECTOR samples=169
+LIVE_OI_SAMPLE time=01:54:11 / 02.10.26 -5 oi=99163.208000 dOI_gap_break=False source=COLLECTOR samples=170
+LIVE_OI_SAMPLE time=01:54:16 / 02.10.26 -5 oi=99162.983000 dOI_gap_break=False source=COLLECTOR samples=171
+LIVE_OI_SAMPLE time=01:54:21 / 02.10.26 -5 oi=99162.189000 dOI_gap_break=False source=COLLECTOR samples=172
+LIVE_OI_SAMPLE time=01:54:26 / 02.10.26 -5 oi=99161.068000 dOI_gap_break=False source=COLLECTOR samples=173
+LIVE_OI_SAMPLE time=01:54:31 / 02.10.26 -5 oi=99161.061000 dOI_gap_break=False source=COLLECTOR samples=174
+LIVE_OI_SAMPLE time=01:54:36 / 02.10.26 -5 oi=99161.415000 dOI_gap_break=False source=COLLECTOR samples=175
+LIVE_OI_SAMPLE time=01:54:41 / 02.10.26 -5 oi=99161.020000 dOI_gap_break=False source=COLLECTOR samples=176

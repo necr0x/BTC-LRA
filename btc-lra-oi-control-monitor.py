@@ -7,7 +7,6 @@ only a display/aggregation concern outside this monitor.
 from __future__ import annotations
 
 import argparse
-import atexit
 import bisect
 import csv
 import contextlib
@@ -18,7 +17,6 @@ import os
 import re
 import shutil
 import subprocess
-import tempfile
 import sys
 import time
 import urllib.parse
@@ -40,14 +38,22 @@ LIMIT_EFF_RATIO = 0.50
 AGGR_BASELINE_WINDOW = 30
 MIN_AGGR_BASELINE_SAMPLES = 10
 MIN_AGGR_MAG_X = 2.0
-RAW_HISTORY_HOURS = 12
 RAW_BASELINE_MINUTES = 60
-RAW_MAX_NORMAL_GAP_SEC = 15.0
 
 
 def play_event_sound(sound_file: Path | None) -> None:
-    """Play an optional event sound without blocking the replay worker."""
+    """Play an event sound without blocking the replay worker.
+
+    A user-provided WAV/MP3 is preferred.  With ``--sound on`` and no file,
+    use the Windows notification sound so live events are still audible.
+    """
     if sound_file is None or not sound_file.is_file():
+        if sys.platform == 'win32':
+            try:
+                import winsound
+                winsound.MessageBeep(winsound.MB_ICONEXCLAMATION)
+            except (ImportError, RuntimeError, OSError):
+                pass
         return
     try:
         if sound_file.suffix.lower() == '.wav':
@@ -71,6 +77,58 @@ def play_event_sound(sound_file: Path | None) -> None:
             os.startfile(str(sound_file))
         except OSError:
             pass
+
+
+SELL_INTERCEPTION_SOUND_THRESHOLD = 0.75
+
+
+def seller_interception_probability(effort: dict[str, Any] | None,
+                                    depth_level: dict[str, Any] | None = None,
+                                    pctl: float | None = None,
+                                    doi: float | None = None) -> float:
+    """Research score for early seller interception of aggressive buyers.
+
+    This is deliberately a transparent score, not a calibrated probability.
+    It requires BUY taker pressure to meet a LIMIT SELL response and rewards
+    poor price efficiency plus an ASK level that was tested/held.
+    """
+    if not effort or effort.get('aggr_side') != 'BUY':
+        return 0.0
+    if effort.get('control') != 'CONTROL LIMIT SELL':
+        return 0.0
+    share = float(effort.get('aggr_share_pct') or 0.0)
+    share_score = max(0.0, min(1.0, (share - 55.0) / 42.0))
+    eff_ratio = effort.get('eff_ratio')
+    efficiency_score = 0.0 if eff_ratio is None else max(0.0, min(1.0, 1.0 - float(eff_ratio)))
+    absorption_score = max(0.0, min(1.0, float(effort.get('absorption_ratio') or 0.0)))
+    pctl_score = 0.0 if pctl is None else max(0.0, min(1.0, (float(pctl) - 90.0) / 10.0))
+    depth_score = 0.0
+    if depth_level:
+        if depth_level.get('tested'):
+            depth_score += 0.35
+        if depth_level.get('held') or depth_level.get('status') == 'HELD':
+            depth_score += 0.45
+        if float(depth_level.get('last_size') or 0.0) >= float(depth_level.get('initial_size') or 0.0):
+            depth_score += 0.20
+    # A positive price response is not automatically bullish: a large BUY
+    # impulse with a tiny response is still consistent with absorption.
+    result_bps = effort.get('aligned_result_bps')
+    result_score = 0.0 if result_bps is None else max(0.0, min(1.0, 1.0 - max(float(result_bps), 0.0) / 3.0))
+    expansion_score = 0.0 if doi is None else (1.0 if float(doi) > 0 else 0.65)
+    score = (
+        0.18 * share_score + 0.22 * efficiency_score +
+        0.22 * absorption_score + 0.12 * pctl_score +
+        0.18 * depth_score + 0.06 * result_score +
+        0.02 * expansion_score
+    )
+    return max(0.0, min(1.0, score))
+
+
+def is_seller_interception(effort: dict[str, Any] | None,
+                           depth_level: dict[str, Any] | None = None,
+                           pctl: float | None = None,
+                           doi: float | None = None) -> bool:
+    return seller_interception_probability(effort, depth_level, pctl, doi) >= SELL_INTERCEPTION_SOUND_THRESHOLD
 
 
 STATUS_RU = {
@@ -125,11 +183,24 @@ def parse_time(value: str) -> datetime:
         return datetime.fromisoformat(value.replace('Z', '+00:00')).astimezone(PANAMA)
     if 'T' in value:
         return datetime.fromisoformat(value).replace(tzinfo=PANAMA)
+    for pattern in ('%d.%m.%y %H:%M', '%d.%m.%Y %H:%M'):
+        try:
+            return datetime.strptime(value, pattern).replace(tzinfo=PANAMA)
+        except ValueError:
+            continue
     return datetime.strptime(value, '%Y-%m-%d %H:%M').replace(tzinfo=PANAMA)
 
 
 def fmt_time(value: datetime | None) -> str:
     return value.astimezone(PANAMA).strftime('%H:%M:%S / %d.%m.%y -5') if value else '—'
+
+
+def fmt_gui_anchor(value: datetime | None) -> str:
+    return value.astimezone(PANAMA).strftime('%d.%m.%y %H:%M') if value else '—'
+
+
+def fmt_gui_clock(value: datetime | None) -> str:
+    return value.astimezone(PANAMA).strftime('%H:%M') if value else '—'
 
 
 def n(value: Any, digits: int = 1) -> str:
@@ -267,105 +338,170 @@ def load_market(path: Path) -> list[dict[str, Any]]:
     return rows
 
 
-def fetch_binance_1m_klines(limit: int = 120) -> list[dict[str, Any]]:
-    """Fetch public BTCUSDT futures 1m klines; no API key is required."""
-    query = urllib.parse.urlencode({'symbol': 'BTCUSDT', 'interval': '1m', 'limit': limit})
-    request = urllib.request.Request(
-        f'https://fapi.binance.com/fapi/v1/klines?{query}',
-        headers={'User-Agent': 'BTC-LRA-OI-monitor/1.0'},
-    )
-    with urllib.request.urlopen(request, timeout=10) as response:
-        payload = json.loads(response.read().decode('utf-8'))
-    return [
-        {
-            'ts': datetime.fromtimestamp(row[0] / 1000, tz=timezone.utc).astimezone(PANAMA).replace(second=0, microsecond=0),
-            'open': float(row[1]), 'high': float(row[2]), 'low': float(row[3]), 'close': float(row[4]),
-            'buy': float(row[9]), 'sell': float(row[5]) - float(row[9]),
-        }
-        for row in payload
-    ]
-
-
-def fetch_binance_open_interest() -> dict[str, Any]:
-    """Fetch the current public BTCUSDT futures open interest sample."""
-    query = urllib.parse.urlencode({'symbol': 'BTCUSDT'})
-    request = urllib.request.Request(
-        f'https://fapi.binance.com/fapi/v1/openInterest?{query}',
-        headers={'User-Agent': 'BTC-LRA-OI-monitor/1.0'},
-    )
-    with urllib.request.urlopen(request, timeout=10) as response:
-        payload = json.loads(response.read().decode('utf-8'))
-    stamp = datetime.fromtimestamp(float(payload['time']) / 1000, tz=timezone.utc).astimezone(PANAMA)
-    return {'ts': stamp, 'oi': float(payload['openInterest'])}
-
-
-def _raw_history_trim(samples: list[dict[str, Any]], now: datetime) -> list[dict[str, Any]]:
-    cutoff = now - timedelta(hours=RAW_HISTORY_HOURS)
-    unique: dict[datetime, dict[str, Any]] = {}
-    for sample in samples:
-        timestamp = sample.get('ts')
-        if isinstance(timestamp, datetime) and timestamp >= cutoff:
-            unique[timestamp] = {'ts': timestamp, 'oi': float(sample['oi']), **({'gap_break': True} if sample.get('gap_break') else {})}
-    return [unique[timestamp] for timestamp in sorted(unique)]
-
-
-def load_persistent_raw_history(path: Path, now: datetime) -> tuple[list[dict[str, Any]], bool]:
-    """Load tolerant JSONL history; malformed lines are ignored."""
+def load_collector_market_history(path: Path, now: datetime,
+                                  history_hours: float = 24.0) -> list[dict[str, Any]]:
+    """Rebuild 1m market bars from collector's causal unfinished-candle snapshots."""
     if not path.is_file():
-        return [], False
-    samples: list[dict[str, Any]] = []
+        return []
+    cutoff = now - timedelta(hours=history_hours)
+    grouped: dict[datetime, list[dict[str, Any]]] = {}
     try:
         with path.open(encoding='utf-8') as handle:
             for line in handle:
                 try:
                     payload = json.loads(line)
-                    if 'timestamp' in payload:
-                        timestamp = datetime.fromisoformat(str(payload['timestamp'])).astimezone(PANAMA)
-                    elif 'sample_time_ts' in payload:
-                        timestamp = datetime.fromtimestamp(float(payload['sample_time_ts']) / 1000, tz=timezone.utc).astimezone(PANAMA)
-                    else:
+                    minute_value = payload.get('minute_open_time')
+                    sample_value = payload.get('timestamp_utc') or payload.get('timestamp_local')
+                    if not minute_value or not sample_value:
                         continue
-                    oi = payload.get('oi_btc', payload.get('OI_BTC', payload.get('oi')))
-                    if oi is None:
+                    minute = datetime.fromisoformat(str(minute_value)).astimezone(PANAMA).replace(second=0, microsecond=0)
+                    sample_time = datetime.fromisoformat(str(sample_value)).astimezone(PANAMA)
+                    if sample_time < cutoff or minute > now:
                         continue
-                    samples.append({'ts': timestamp, 'oi': float(oi)})
-                except (ValueError, TypeError, KeyError, json.JSONDecodeError):
+                    row = {
+                        'sample_time': sample_time,
+                        'ts': minute,
+                        'open': float(payload['open']),
+                        'high': float(payload['high']),
+                        'low': float(payload['low']),
+                        'close': float(payload['current_close']),
+                        'buy': float(payload.get('taker_buy_base', 0.0)),
+                        'sell': float(payload.get('taker_sell_base', 0.0)),
+                    }
+                    grouped.setdefault(minute, []).append(row)
+                except (OSError, TypeError, ValueError, KeyError, json.JSONDecodeError):
                     continue
     except OSError:
-        return [], False
-    return _raw_history_trim(samples, now), True
+        return []
+    bars: list[dict[str, Any]] = []
+    for minute, snapshots in grouped.items():
+        snapshots.sort(key=lambda row: row['sample_time'])
+        first, last = snapshots[0], snapshots[-1]
+        bars.append({
+            'ts': minute,
+            'open': first['open'],
+            'high': max(row['high'] for row in snapshots),
+            'low': min(row['low'] for row in snapshots),
+            'close': last['close'],
+            'buy': last['buy'],
+            'sell': last['sell'],
+        })
+    return sorted(bars, key=lambda row: row['ts'])
 
 
-def append_persistent_raw_sample(path: Path, sample: dict[str, Any]) -> None:
-    path.parent.mkdir(parents=True, exist_ok=True)
-    with path.open('a', encoding='utf-8') as handle:
-        handle.write(json.dumps({
-            'timestamp': sample['ts'].isoformat(),
-            'oi_btc': sample['oi'],
-        }, ensure_ascii=False) + '\n')
-
-
-def compact_persistent_raw_history(path: Path, samples: list[dict[str, Any]], now: datetime) -> None:
-    """Atomically retain only the bounded recent raw OI history."""
-    retained = _raw_history_trim(samples, now)
-    path.parent.mkdir(parents=True, exist_ok=True)
-    temporary: Path | None = None
+def load_collector_depth_summary(path: Path, now: datetime,
+                                 history_hours: float = 24.0) -> list[dict[str, Any]]:
+    """Read collector depth telemetry for the research-only pre-release layer."""
+    if not path.is_file():
+        return []
+    cutoff = now - timedelta(hours=history_hours)
+    rows: list[dict[str, Any]] = []
     try:
-        with tempfile.NamedTemporaryFile('w', encoding='utf-8', dir=path.parent,
-                                         prefix=f'{path.stem}.', suffix='.tmp', delete=False) as handle:
-            temporary = Path(handle.name)
-            for sample in retained:
-                handle.write(json.dumps({
-                    'timestamp': sample['ts'].isoformat(),
-                    'oi_btc': sample['oi'],
-                }, ensure_ascii=False) + '\n')
-        os.replace(temporary, path)
+        with path.open(encoding='utf-8') as handle:
+            for line in handle:
+                try:
+                    payload = json.loads(line)
+                    value = payload.get('timestamp_local') or payload.get('timestamp_utc')
+                    if not value:
+                        continue
+                    timestamp = datetime.fromisoformat(str(value)).astimezone(PANAMA)
+                    if timestamp < cutoff or timestamp > now:
+                        continue
+                    payload['_ts'] = timestamp
+                    rows.append(payload)
+                except (OSError, TypeError, ValueError, KeyError, json.JSONDecodeError):
+                    continue
     except OSError:
-        if temporary is not None:
-            try:
-                temporary.unlink(missing_ok=True)
-            except OSError:
-                pass
+        return []
+    return sorted(rows, key=lambda row: row['_ts'])
+
+
+def fetch_binance_1m_klines(limit: int = 1000) -> list[dict[str, Any]]:
+    """One-time migration fallback for historical market bars, never a live poll."""
+    query = urllib.parse.urlencode({'symbol': 'BTCUSDT', 'interval': '1m', 'limit': limit})
+    request = urllib.request.Request(
+        f'https://fapi.binance.com/fapi/v1/klines?{query}',
+        headers={'User-Agent': 'BTC-LRA-OI-monitor-migration/1.0'},
+    )
+    with urllib.request.urlopen(request, timeout=10) as response:
+        payload = json.loads(response.read().decode('utf-8'))
+    return [{
+        'ts': datetime.fromtimestamp(row[0] / 1000, tz=timezone.utc).astimezone(PANAMA).replace(second=0, microsecond=0),
+        'open': float(row[1]), 'high': float(row[2]), 'low': float(row[3]), 'close': float(row[4]),
+        'buy': float(row[9]), 'sell': float(row[5]) - float(row[9]),
+    } for row in payload]
+
+
+def merge_market_rows(*sources: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    merged: dict[datetime, dict[str, Any]] = {}
+    for source in sources:
+        for row in source:
+            merged[row['ts']] = row
+    return [merged[timestamp] for timestamp in sorted(merged)]
+
+
+def collector_raw_is_fresh(path: Path, now: datetime, max_age_sec: float = 30.0) -> bool:
+    """Return whether the standalone collector appears to own a fresh OI file."""
+    try:
+        return path.is_file() and (now.timestamp() - path.stat().st_mtime) <= max_age_sec
+    except OSError:
+        return False
+
+
+def load_collector_oi_history(path: Path, now: datetime,
+                              history_hours: float = 24.0) -> list[dict[str, Any]]:
+    """Read collector-owned OI history without modifying the source file."""
+    if not path.is_file():
+        return []
+    cutoff = now - timedelta(hours=history_hours)
+    unique: dict[datetime, dict[str, Any]] = {}
+    try:
+        with path.open(encoding='utf-8') as handle:
+            for line in handle:
+                try:
+                    payload = json.loads(line)
+                    timestamp_value = payload.get('timestamp_utc') or payload.get('timestamp_local') or payload.get('timestamp')
+                    if not timestamp_value:
+                        continue
+                    timestamp = datetime.fromisoformat(str(timestamp_value)).astimezone(PANAMA)
+                    if timestamp < cutoff:
+                        continue
+                    oi = payload.get('oi_btc')
+                    if oi is None:
+                        continue
+                    unique[timestamp] = {
+                        'ts': timestamp,
+                        'oi': float(oi),
+                        **({'gap_break': True} if payload.get('gap_break') else {}),
+                    }
+                except (json.JSONDecodeError, TypeError, ValueError, KeyError):
+                    continue
+    except OSError:
+        return []
+    return [unique[timestamp] for timestamp in sorted(unique)]
+
+
+def collector_latest_timestamp(path: Path) -> datetime | None:
+    """Return the newest valid collector record timestamp for stale diagnostics."""
+    if not path.is_file():
+        return None
+    latest: datetime | None = None
+    try:
+        with path.open(encoding='utf-8') as handle:
+            for line in handle:
+                try:
+                    payload = json.loads(line)
+                    value = payload.get('timestamp_utc') or payload.get('timestamp_local') or payload.get('timestamp')
+                    if not value:
+                        continue
+                    stamp = datetime.fromisoformat(str(value)).astimezone(PANAMA)
+                    if latest is None or stamp > latest:
+                        latest = stamp
+                except (json.JSONDecodeError, TypeError, ValueError):
+                    continue
+    except OSError:
+        return None
+    return latest
 
 
 def decorate_event_interval(event: dict[str, Any], minute_rows: list[dict[str, Any]], market: list[dict[str, Any]]) -> None:
@@ -457,6 +593,37 @@ class GuiBridge:
             return result
 
 
+def append_minute_history(session: 'Session', minute: dict[str, Any],
+                          market_row: dict[str, Any] | None) -> None:
+    """Store one presentation row for each closed minute, independently of events."""
+    if market_row is None:
+        return
+    minute_time = minute['minute']
+    effort = session.effort_result_control(
+        minute_time,
+        float(market_row.get('buy', 0.0)),
+        float(market_row.get('sell', 0.0)),
+        float(market_row.get('close', 0.0)) - float(market_row.get('open', 0.0)),
+        float(market_row.get('open', 0.0)),
+    )
+    row = {
+        'time': minute_time,
+        'btc_price': float(market_row['close']),
+        'oi_activity': float(minute.get('activity', 0.0)),
+        'oi_net': float(minute.get('net', 0.0)),
+        'aggr_side': effort.get('aggr_side', 'HELD'),
+        'aggr_share_pct': float(effort.get('aggr_share_pct', 0.0)),
+        'aggr_mag': float(effort.get('aggr_mag', 0.0)),
+        'price_change': float(market_row['close']) - float(market_row['open']),
+        'control': effort.get('control', 'CONTROL UNCLEAR'),
+    }
+    for index, existing in enumerate(session.minute_history):
+        if existing.get('time') == minute_time:
+            session.minute_history[index] = row
+            return
+    session.minute_history.append(row)
+
+
 def publish_gui(bridge: GuiBridge | None, session: 'Session', clock: datetime,
                 speed: float | None, live: bool, market_price: float | None = None) -> None:
     if bridge is None:
@@ -491,10 +658,78 @@ def publish_gui(bridge: GuiBridge | None, session: 'Session', clock: datetime,
         f'DOMINANCE V2   BUY {v2_buy_pct:.1f}% / SELL {v2_sell_pct:.1f}%'
         if v2_buy_pct is not None else 'DOMINANCE V2   BUY -- / SELL --'
     )
+    pre_release = session.pre_release.snapshot()
+    pre_release_text = 'DEPTH NEUTRAL'
+    last_depth_event = pre_release.get('last_depth_event')
+    if last_depth_event is not None:
+        event_time = last_depth_event.get('time')
+        event_clock = fmt_gui_clock(event_time) if isinstance(event_time, datetime) else '--:--'
+        event_side = 'BID' if last_depth_event.get('side') == 'BUY' else 'ASK'
+        event_status = last_depth_event.get('status', '—')
+        event_side_html = f'<span style="color:#168a2f">{event_side}</span>' if event_side == 'BID' else f'<span style="color:#c62828">{event_side}</span>'
+        if event_status in {'PULLED', 'BROKEN'}:
+            event_side_html = f'<s>{event_side_html}</s>'
+        event_price = last_depth_event.get('price')
+        event_qty = last_depth_event.get('current_qty')
+        price_text = '—' if event_price is None else f'{float(event_price):.1f}'
+        qty_text = '—' if event_qty is None else f'{float(event_qty):.1f}'
+        pre_release_text = (
+            f'DEPTH {event_side_html} {event_status} | '
+            f'{event_clock} | {qty_text} BTC @ {price_text}'
+        )
+    elif pre_release['state'] != 'NEUTRAL':
+        pctl_text = '--' if pre_release.get('pctl') is None else f'{pre_release["pctl"]:.1f}'
+        level = pre_release.get('depth_level') or {}
+        if level:
+            side_text = 'BID' if pre_release.get('side') == 'BUY' else 'ASK'
+            depth_text = (
+                f'{side_text} {level["last_size"]:.1f} BTC @ {level["price"]:.1f} '
+                f'${level["distance"]:.1f} {level["status"]} {level["age_sec"]:.0f}s'
+            )
+        else:
+            depth_text = '--'
+        state_side = 'BID' if pre_release.get('side') == 'BUY' else 'ASK' if pre_release.get('side') == 'SELL' else ''
+        pre_release_text = (
+            f'DEPTH {state_side} {pre_release["state"]} | '
+            f'OI {pre_release.get("oi_flow") or "--"} | PCTL {pctl_text} | {depth_text}'
+        )
+    depth_by_level: dict[Any, dict[str, Any]] = {}
+    depth_order: list[Any] = []
+    display_depth_history = getattr(session, 'display_depth_history', None)
+    if display_depth_history is None:
+        display_depth_history = pre_release.get('depth_history', [])
+    for depth_event in display_depth_history:
+        level_id = depth_event.get('level_id')
+        if level_id is None:
+            level_id = ('legacy', len(depth_order))
+        if level_id not in depth_by_level:
+            depth_by_level[level_id] = dict(depth_event)
+            depth_order.append(level_id)
+        else:
+            depth_by_level[level_id].update(depth_event)
+    depth_rows = []
+    for level_id in depth_order:
+        depth_event = depth_by_level[level_id]
+        event_time = depth_event.get('time')
+        initial_qty = depth_event.get('initial_qty')
+        current_qty = depth_event.get('current_qty')
+        qty_text = (
+            '—' if initial_qty is None or current_qty is None
+            else f'{float(initial_qty):.1f} → {float(current_qty):.1f} BTC'
+        )
+        depth_rows.append({
+            'time': event_time.strftime('%H:%M:%S') if isinstance(event_time, datetime) else '—',
+            'price': price_display(depth_event.get('price')),
+            'side': 'BID' if depth_event.get('side') == 'BUY' else 'ASK',
+            'volume': qty_text,
+            'status': depth_event.get('status', '—'),
+        })
     bridge.publish({
         'live': live,
         'anchor': fmt_time(session.anchor),
         'clock': fmt_time(clock),
+        'anchor_gui': fmt_gui_anchor(session.anchor),
+        'clock_gui': fmt_gui_clock(clock),
         'speed': speed,
         'price': f'{compact(market_price if market_price is not None else session.price, signed=False)} USDT',
         'dominance': old_dominance,
@@ -504,6 +739,12 @@ def publish_gui(bridge: GuiBridge | None, session: 'Session', clock: datetime,
         'oi_flow': f'OI FLOW {compact(session.oi_event_flow + session.provisional_oi_flow)} BTC',
         'raw_baseline_ready': getattr(session, 'raw_baseline_ready', False),
         'raw_baseline_span_minutes': getattr(session, 'raw_baseline_span_minutes', 0.0),
+        'collector_stale': getattr(session, 'collector_stale', True),
+        'collector_last_age_sec': getattr(session, 'collector_last_age_sec', None),
+        'collector_market_last_age_sec': getattr(session, 'collector_market_last_age_sec', None),
+        'pre_release': pre_release,
+        'pre_release_text': pre_release_text,
+        'depth_rows': depth_rows[-12:],
         'events': events,
     })
 
@@ -1841,6 +2082,1021 @@ def run_entry_episode_analysis(args: argparse.Namespace) -> None:
     print(f'EPISODES: {len(episodes)}')
 
 
+EPISODE_DIAGNOSTIC_COLUMNS = [
+    'TIME', 'SIDE', 'PRICE', 'HALF_LIFE_VOTES', 'LONG_VOTES', 'SHORT_VOTES',
+    'LONG_CONFIRM_VOTES', 'SHORT_CONFIRM_VOTES', 'CANDIDATE_HALF_LIVES',
+    'CONFIRM_HALF_LIVES', 'PREMOVE_3M_BPS', 'PREMOVE_5M_BPS', 'PREMOVE_10M_BPS',
+    'SESSION_BUY_PCT', 'SESSION_SELL_PCT', 'OI_FLOW', 'OI_FLOW_CHANGE_5M',
+    'OI_FLOW_CHANGE_10M', 'BUY_CONTROL_EVENTS_5M', 'SELL_CONTROL_EVENTS_5M',
+    'BUY_CONTROL_EVENTS_10M', 'SELL_CONTROL_EVENTS_10M', 'BUY_DOM_WEIGHT_ADDED_5M',
+    'SELL_DOM_WEIGHT_ADDED_5M', 'BUY_DOM_WEIGHT_ADDED_10M', 'SELL_DOM_WEIGHT_ADDED_10M',
+    'BUY_OI_ADD_5M', 'SELL_OI_ADD_5M', 'BUY_OI_ADD_10M', 'SELL_OI_ADD_10M',
+    'CONTROL_SEQUENCE_5M', 'CONTROL_SEQUENCE_10M', 'PREVIOUS_EPISODE_SIDE',
+    'MINUTES_SINCE_PREVIOUS_EPISODE_START', 'MINUTES_SINCE_PREVIOUS_CONFIRM',
+    'MINUTES_SINCE_PREVIOUS_END', 'PREVIOUS_EPISODE_WAS_CONFIRMED',
+    'CONFIRM_TIME', 'CONFIRM_DELAY_MIN', 'CONFIRM_CONTROL', 'CONFIRM_CONTROL_STRENGTH',
+    'CONFIRM_EFF_RATIO', 'CONFIRM_ABSORPTION_RATIO', 'CONFIRM_AGGR_SIDE',
+    'CONFIRM_AGGR_SHARE', 'CONFIRM_AGGR_MAG', 'CONFIRM_AGGR_MAG_X', 'CONFIRM_OI_ADD',
+    'CONFIRM_OI_NET', 'CONFIRM_OI_ACTIVITY', 'CONFIRM_RAW_INTENSITY_PCTL',
+    'CONFIRM_PRICE_CHANGE', 'CONFIRM_PRICE_CHANGE_BPS', 'CONFIRM_REWARD_BPS',
+    'CONFIRM_DISTANCE_FROM_ANCHOR_BPS',
+]
+for _half_life in (10, 15, 20, 30):
+    EPISODE_DIAGNOSTIC_COLUMNS.extend([
+        f'HL{_half_life}_DOM_PCT', f'HL{_half_life}_MASS', f'HL{_half_life}_ANCHOR',
+        f'HL{_half_life}_REWARD_BPS', f'HL{_half_life}_DOM_SLOPE_3M',
+        f'HL{_half_life}_DOM_SLOPE_5M', f'HL{_half_life}_DOM_SLOPE_10M',
+        f'HL{_half_life}_MASS_SLOPE_3M', f'HL{_half_life}_MASS_SLOPE_5M',
+        f'HL{_half_life}_MASS_SLOPE_10M', f'HL{_half_life}_REWARD_CHANGE_3M',
+        f'HL{_half_life}_REWARD_CHANGE_5M', f'HL{_half_life}_REWARD_CHANGE_10M',
+        f'HL{_half_life}_ANCHOR_CHANGE_BPS_3M', f'HL{_half_life}_ANCHOR_CHANGE_BPS_5M',
+        f'HL{_half_life}_ANCHOR_CHANGE_BPS_10M',
+    ])
+for _horizon in (5, 10, 20, 30):
+    EPISODE_DIAGNOSTIC_COLUMNS.extend([f'MFE_{_horizon}M', f'MAE_{_horizon}M'])
+
+
+def _diagnostic_number(value: Any) -> float | None:
+    if value in (None, ''):
+        return None
+    return float(value)
+
+
+def _diagnostic_row_at(parsed: list[tuple[datetime, dict[str, Any]]],
+                       timestamp: datetime) -> dict[str, Any] | None:
+    return next((row for at, row in parsed if at == timestamp), None)
+
+
+def _diagnostic_side_values(row: dict[str, Any], half_life: int,
+                            side: str) -> tuple[float | None, float | None, float | None, float | None]:
+    prefix = 'SELL' if side == 'LONG' else 'BUY'
+    mass = _diagnostic_number(row.get(f'LOCAL_MASS_{half_life}'))
+    dom = _diagnostic_number(row.get(f'LOCAL_{prefix}_{half_life}'))
+    dom_pct = dom / mass * 100.0 if dom is not None and mass else None
+    anchor = _diagnostic_number(row.get(f'{prefix}_ANCHOR_{half_life}'))
+    reward = _diagnostic_number(row.get(f'{prefix}_REWARD_BPS_{half_life}'))
+    return dom_pct, mass, anchor, reward
+
+
+def _diagnostic_outcome(parsed: list[tuple[datetime, dict[str, Any]]],
+                        index: int, side: str, entry_price: float | None,
+                        horizon: int) -> tuple[float | None, float | None]:
+    if entry_price is None:
+        return None, None
+    future = [
+        float(row['PRICE']) for at, row in parsed[index + 1:]
+        if at <= parsed[index][0] + timedelta(minutes=horizon)
+        and row.get('PRICE') not in (None, '')
+    ]
+    if not future:
+        return None, None
+    if side == 'LONG':
+        return max(0.0, max(future) - entry_price), max(0.0, entry_price - min(future))
+    return max(0.0, entry_price - min(future)), max(0.0, max(future) - entry_price)
+
+
+def _episode_diagnostic_rows(local_rows: list[dict[str, Any]],
+                             raw_summaries: list[dict[str, Any]],
+                             episodes: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    parsed = [(_local_time(row), row) for row in local_rows]
+    row_by_time = {at: row for at, row in parsed}
+    raw_by_time = {row['_time']: row for row in raw_summaries}
+    episode_by_key = {
+        (_local_time({'TIME': episode['START TIME']}), episode['SIDE'], episode['HALF LIFE']): episode
+        for episode in episodes
+    }
+    candidate_by_time: dict[datetime, dict[str, list[int]]] = defaultdict(lambda: {'LONG': [], 'SHORT': []})
+    candidate_signal: dict[tuple[datetime, int], dict[str, Any]] = {}
+    for index, (timestamp, row) in enumerate(parsed):
+        for half_life in (10, 15, 20, 30):
+            previous_mass = _diagnostic_number(parsed[index - 1][1].get(f'LOCAL_MASS_{half_life}')) if index else 0.0
+            signal = _episode_signal(row, half_life, previous_mass or 0.0)
+            if signal is not None:
+                candidate_by_time[timestamp][signal['side']].append(half_life)
+                candidate_signal[(timestamp, half_life)] = signal
+    confirmation_by_time: dict[datetime, dict[str, list[int]]] = defaultdict(lambda: {'LONG': [], 'SHORT': []})
+    for episode in episodes:
+        if not episode.get('CONFIRM TIME'):
+            continue
+        confirmed = _local_time({'TIME': episode['CONFIRM TIME']})
+        confirmation_by_time[confirmed][episode['SIDE']].append(episode['HALF LIFE'])
+
+    contribution_by_time: dict[datetime, dict[str, float]] = defaultdict(lambda: {'buy': 0.0, 'sell': 0.0})
+    for summary in raw_summaries:
+        at = summary['_time']
+        control = str(summary.get('CONTROL') or '')
+        if control.endswith('BUY'):
+            contribution_by_time[at]['buy'] += _diagnostic_number(summary.get('OI_ADD')) or 0.0
+        elif control.endswith('SELL'):
+            contribution_by_time[at]['sell'] += _diagnostic_number(summary.get('OI_ADD')) or 0.0
+
+    rows: list[dict[str, Any]] = []
+    for timestamp in sorted(candidate_by_time):
+        for side in ('LONG', 'SHORT'):
+            half_lives = candidate_by_time[timestamp][side]
+            if not half_lives:
+                continue
+            index = next(index for index, (at, _row) in enumerate(parsed) if at == timestamp)
+            row = row_by_time[timestamp]
+            confirm_hls = confirmation_by_time.get(timestamp, {}).get(side, [])
+            diagnostics: dict[str, Any] = {
+                'TIME': timestamp.strftime('%Y-%m-%d %H:%M:%S'), 'SIDE': side,
+                'PRICE': _diagnostic_number(row.get('PRICE')),
+                'HALF_LIFE_VOTES': ','.join(map(str, half_lives)),
+                'LONG_VOTES': len(candidate_by_time[timestamp]['LONG']),
+                'SHORT_VOTES': len(candidate_by_time[timestamp]['SHORT']),
+                'LONG_CONFIRM_VOTES': len(confirmation_by_time.get(timestamp, {}).get('LONG', [])),
+                'SHORT_CONFIRM_VOTES': len(confirmation_by_time.get(timestamp, {}).get('SHORT', [])),
+                'CANDIDATE_HALF_LIVES': ','.join(map(str, half_lives)),
+                'CONFIRM_HALF_LIVES': ','.join(map(str, confirm_hls)),
+            }
+            price = _diagnostic_number(row.get('PRICE'))
+            for minutes_back, field in ((3, 'PREMOVE_3M_BPS'), (5, 'PREMOVE_5M_BPS'), (10, 'PREMOVE_10M_BPS')):
+                previous = _diagnostic_row_at(parsed, timestamp - timedelta(minutes=minutes_back))
+                previous_price = _diagnostic_number(previous.get('PRICE')) if previous else None
+                move = ((price - previous_price) / previous_price * 10000.0) if price and previous_price else None
+                diagnostics[field] = move if side == 'LONG' else (-move if move is not None else None)
+            diagnostics.update({
+                'SESSION_BUY_PCT': row.get('SESSION_BUY_PCT'), 'SESSION_SELL_PCT': row.get('SESSION_SELL_PCT'),
+                'OI_FLOW': row.get('OI_FLOW'),
+            })
+            for minutes_back, field in ((5, 'OI_FLOW_CHANGE_5M'), (10, 'OI_FLOW_CHANGE_10M')):
+                previous = _diagnostic_row_at(parsed, timestamp - timedelta(minutes=minutes_back))
+                current_flow = _diagnostic_number(row.get('OI_FLOW'))
+                previous_flow = _diagnostic_number(previous.get('OI_FLOW')) if previous else None
+                diagnostics[field] = current_flow - previous_flow if current_flow is not None and previous_flow is not None else None
+            for window in (5, 10):
+                recent_times = [timestamp - timedelta(minutes=offset) for offset in range(1, window + 1)]
+                recent = [raw_by_time[at] for at in recent_times if at in raw_by_time]
+                controls = [str(item.get('CONTROL') or '') for item in reversed(recent) if str(item.get('CONTROL') or '') not in ('', 'CONTROL UNCLEAR')]
+                buy_controls = sum(control.endswith('BUY') for control in controls)
+                sell_controls = sum(control.endswith('SELL') for control in controls)
+                weights = {'buy': sum(contribution_by_time[at]['buy'] for at in recent_times),
+                           'sell': sum(contribution_by_time[at]['sell'] for at in recent_times)}
+                adds = {'buy': sum((_diagnostic_number(raw_by_time[at].get('OI_ADD')) or 0.0) for at in recent_times if at in raw_by_time and str(raw_by_time[at].get('CONTROL') or '').endswith('BUY')),
+                        'sell': sum((_diagnostic_number(raw_by_time[at].get('OI_ADD')) or 0.0) for at in recent_times if at in raw_by_time and str(raw_by_time[at].get('CONTROL') or '').endswith('SELL'))}
+                diagnostics.update({
+                    f'BUY_CONTROL_EVENTS_{window}M': buy_controls, f'SELL_CONTROL_EVENTS_{window}M': sell_controls,
+                    f'BUY_DOM_WEIGHT_ADDED_{window}M': weights['buy'], f'SELL_DOM_WEIGHT_ADDED_{window}M': weights['sell'],
+                    f'BUY_OI_ADD_{window}M': adds['buy'], f'SELL_OI_ADD_{window}M': adds['sell'],
+                    f'CONTROL_SEQUENCE_{window}M': ' > '.join(controls),
+                })
+            previous_episodes = sorted(
+                (episode for episode in episodes if _local_time({'TIME': episode['START TIME']}) < timestamp),
+                key=lambda episode: episode['START TIME'],
+            )
+            previous = previous_episodes[-1] if previous_episodes else None
+            if previous:
+                previous_start = _local_time({'TIME': previous['START TIME']})
+                previous_confirm = _local_time({'TIME': previous['CONFIRM TIME']}) if previous.get('CONFIRM TIME') else None
+                previous_end = _local_time({'TIME': previous['END TIME']}) if previous.get('END TIME') else None
+                diagnostics.update({
+                    'PREVIOUS_EPISODE_SIDE': previous['SIDE'],
+                    'MINUTES_SINCE_PREVIOUS_EPISODE_START': (timestamp - previous_start).total_seconds() / 60.0,
+                    'MINUTES_SINCE_PREVIOUS_CONFIRM': (timestamp - previous_confirm).total_seconds() / 60.0 if previous_confirm else None,
+                    'MINUTES_SINCE_PREVIOUS_END': (timestamp - previous_end).total_seconds() / 60.0 if previous_end else None,
+                    'PREVIOUS_EPISODE_WAS_CONFIRMED': 'YES' if previous.get('CONFIRM TIME') else 'NO',
+                })
+            else:
+                diagnostics.update({'PREVIOUS_EPISODE_SIDE': '', 'PREVIOUS_EPISODE_WAS_CONFIRMED': 'NO'})
+            for half_life in (10, 15, 20, 30):
+                dom_pct, mass, anchor, reward = _diagnostic_side_values(row, half_life, side)
+                diagnostics.update({f'HL{half_life}_DOM_PCT': dom_pct, f'HL{half_life}_MASS': mass,
+                                    f'HL{half_life}_ANCHOR': anchor, f'HL{half_life}_REWARD_BPS': reward})
+                for minutes_back in (3, 5, 10):
+                    previous = _diagnostic_row_at(parsed, timestamp - timedelta(minutes=minutes_back))
+                    previous_values = _diagnostic_side_values(previous, half_life, side) if previous else (None, None, None, None)
+                    diagnostics[f'HL{half_life}_DOM_SLOPE_{minutes_back}M'] = dom_pct - previous_values[0] if dom_pct is not None and previous_values[0] is not None else None
+                    diagnostics[f'HL{half_life}_MASS_SLOPE_{minutes_back}M'] = mass - previous_values[1] if mass is not None and previous_values[1] is not None else None
+                    diagnostics[f'HL{half_life}_REWARD_CHANGE_{minutes_back}M'] = reward - previous_values[3] if reward is not None and previous_values[3] is not None else None
+                    diagnostics[f'HL{half_life}_ANCHOR_CHANGE_BPS_{minutes_back}M'] = ((anchor - previous_values[2]) / previous_values[2] * 10000.0
+                                                                                          if anchor is not None and previous_values[2] else None)
+
+            selected_episode = next((episode_by_key.get((timestamp, side, half_life)) for half_life in half_lives if episode_by_key.get((timestamp, side, half_life))), None)
+            confirm_time = _local_time({'TIME': selected_episode['CONFIRM TIME']}) if selected_episode and selected_episode.get('CONFIRM TIME') else None
+            confirm_row = row_by_time.get(confirm_time) if confirm_time else None
+            confirm_summary = raw_by_time.get(confirm_time) if confirm_time else None
+            confirm_control = str(confirm_row.get('CONTROL') or '') if confirm_row else ''
+            confirm_strength = None
+            confirm_eff = _diagnostic_number(confirm_summary.get('EFF_RATIO')) if confirm_summary else None
+            confirm_absorption = _diagnostic_number(confirm_summary.get('ABSORPTION_RATIO')) if confirm_summary else None
+            if 'LIMIT ' in confirm_control:
+                confirm_strength = confirm_absorption
+            elif confirm_control.endswith('BUY') or confirm_control.endswith('SELL'):
+                confirm_strength = max(0.0, min(1.0, confirm_eff or 0.0))
+            if confirm_row and confirm_summary:
+                confirm_price = _diagnostic_number(confirm_row.get('PRICE'))
+                reference = _diagnostic_number(confirm_summary.get('REFERENCE_PRICE'))
+                price_change = _diagnostic_number(confirm_summary.get('PRICE_CHANGE'))
+                confirm_side = str(confirm_summary.get('AGGR_SIDE') or '')
+                reward_key_side = side
+                _dom, _mass, confirm_anchor, confirm_reward = _diagnostic_side_values(confirm_row, selected_episode['HALF LIFE'] if selected_episode else half_lives[0], reward_key_side)
+                distance = ((confirm_price - confirm_anchor) / confirm_anchor * 10000.0 if side == 'LONG' and confirm_price and confirm_anchor else
+                            (confirm_anchor - confirm_price) / confirm_anchor * 10000.0 if side == 'SHORT' and confirm_price and confirm_anchor else None)
+                diagnostics.update({
+                    'CONFIRM_TIME': confirm_time.strftime('%Y-%m-%d %H:%M:%S'),
+                    'CONFIRM_DELAY_MIN': (confirm_time - timestamp).total_seconds() / 60.0,
+                    'CONFIRM_CONTROL': confirm_control, 'CONFIRM_CONTROL_STRENGTH': confirm_strength,
+                    'CONFIRM_EFF_RATIO': confirm_eff, 'CONFIRM_ABSORPTION_RATIO': confirm_absorption,
+                    'CONFIRM_AGGR_SIDE': confirm_side, 'CONFIRM_AGGR_SHARE': _diagnostic_number(confirm_summary.get('AGGR_SHARE')),
+                    'CONFIRM_AGGR_MAG': _diagnostic_number(confirm_summary.get('AGGR_MAG')),
+                    'CONFIRM_AGGR_MAG_X': _diagnostic_number(confirm_summary.get('AGGR_MAG_X')),
+                    'CONFIRM_OI_ADD': _diagnostic_number(confirm_summary.get('OI_ADD')),
+                    'CONFIRM_OI_NET': _diagnostic_number(confirm_summary.get('OI_NET')),
+                    'CONFIRM_OI_ACTIVITY': _diagnostic_number(confirm_summary.get('OI_ACT')),
+                    'CONFIRM_RAW_INTENSITY_PCTL': _diagnostic_number(confirm_summary.get('OI_INTENSITY_PCTL')),
+                    'CONFIRM_PRICE_CHANGE': price_change,
+                    'CONFIRM_PRICE_CHANGE_BPS': price_change / reference * 10000.0 if price_change is not None and reference else None,
+                    'CONFIRM_REWARD_BPS': confirm_reward, 'CONFIRM_DISTANCE_FROM_ANCHOR_BPS': distance,
+                })
+            for key in EPISODE_DIAGNOSTIC_COLUMNS:
+                diagnostics.setdefault(key, '')
+            for horizon in (5, 10, 20, 30):
+                mfe, mae = _diagnostic_outcome(parsed, index, side, price, horizon)
+                diagnostics[f'MFE_{horizon}M'] = mfe
+                diagnostics[f'MAE_{horizon}M'] = mae
+            rows.append(diagnostics)
+    return rows
+
+
+def _episode_diagnostic_report(rows: list[dict[str, Any]], output_csv: Path) -> str:
+    benchmarks = ('21:26', '22:01', '22:37', '22:51')
+    causal_fields = (
+        'LONG_VOTES', 'SHORT_VOTES', 'CANDIDATE_HALF_LIVES', 'PREMOVE_3M_BPS',
+        'PREMOVE_5M_BPS', 'PREMOVE_10M_BPS', 'SESSION_BUY_PCT', 'SESSION_SELL_PCT',
+        'OI_FLOW', 'OI_FLOW_CHANGE_5M', 'BUY_CONTROL_EVENTS_5M', 'SELL_CONTROL_EVENTS_5M',
+        'CONTROL_SEQUENCE_5M', 'PREVIOUS_EPISODE_SIDE', 'PREVIOUS_EPISODE_WAS_CONFIRMED',
+        'CONFIRM_TIME', 'CONFIRM_DELAY_MIN', 'CONFIRM_CONTROL', 'CONFIRM_EFF_RATIO',
+        'CONFIRM_ABSORPTION_RATIO', 'CONFIRM_AGGR_MAG_X', 'CONFIRM_OI_ADD',
+        'CONFIRM_RAW_INTENSITY_PCTL', 'CONFIRM_REWARD_BPS', 'CONFIRM_DISTANCE_FROM_ANCHOR_BPS',
+    )
+    lines = [
+        '# BTC-LRA ENTRY EPISODE DIAGNOSTICS', '',
+        'Research-only diagnostics. Production monitor, episode state machine, CONTROL, DOMINANCE, Pine and thresholds are unchanged.',
+        '', f'CSV: `{output_csv}`', '',
+        'Candidate consensus and all features before/at confirmation are causal. MFE/MAE fields are post-outcome evaluation only.',
+        '', '## Benchmark comparison', '',
+        'FEATURE | 21:26 SHORT | 22:01 LONG | 22:37 LONG | 22:51 LONG',
+        '---|---|---|---|---',
+    ]
+    for field in causal_fields:
+        values = []
+        for benchmark in benchmarks:
+            matches = [row for row in rows if row['TIME'][11:16] == benchmark]
+            values.append('; '.join(f'{row["SIDE"]}={row.get(field, "")}' for row in matches) or '--')
+        lines.append(f'{field} | ' + ' | '.join(values))
+    lines.extend(['', '## Causal features', '', 'The table above is restricted to fields available by candidate/confirmation time. No future endpoint or outcome is used to form them.', '', '## Post-outcome evaluation', '', 'TIME | SIDE | MFE_5M | MAE_5M | MFE_10M | MAE_10M | MFE_20M | MAE_20M | MFE_30M | MAE_30M', '---|---|---:|---:|---:|---:|---:|---:|---:|---:'])
+    for row in rows:
+        if row['TIME'][11:16] in benchmarks:
+            lines.append(' | '.join(str(row.get(field, '')) for field in ('TIME', 'SIDE', 'MFE_5M', 'MAE_5M', 'MFE_10M', 'MAE_10M', 'MFE_20M', 'MAE_20M', 'MFE_30M', 'MAE_30M')))
+    lines.extend(['', '## Interpretation', '', 'No new threshold, score, signal or production filter is selected. The benchmark rows are descriptive comparisons only.', ''])
+    return '\n'.join(lines)
+
+
+def run_entry_episode_diagnostics(args: argparse.Namespace) -> None:
+    root = Path(__file__).resolve().parent
+    raw_paths = args.raw_oi or discover_raw_paths(root)
+    market_path = args.market_csv or discover_market_path(root)
+    if not raw_paths or market_path is None:
+        raise SystemExit('Entry episode diagnostics requires recorded raw OI and market data.')
+    samples = load_raw(raw_paths)
+    market = load_market(market_path)
+    minutes = minute_oi(samples)
+    annotate_minutes(minutes)
+    common = recorded_range(samples, market)
+    if common is None:
+        raise SystemExit('No common recorded raw OI / market range for episode diagnostics.')
+    start, end = common
+    if args.from_time:
+        start = max(start, parse_time(args.from_time))
+    if args.end:
+        end = min(end, parse_time(args.end))
+    samples = [sample for sample in samples if start <= sample['ts'] <= end + timedelta(minutes=1)]
+    minutes = [row for row in minutes if start <= row['minute'] <= end]
+    market = [row for row in market if start <= row['ts'] <= end]
+    local_rows, _ = _local_dominance_contributions(samples, minutes, market, start, end)
+    raw_summaries, _ = _raw_intensity_summary(samples, minutes, market)
+    episodes = _entry_episode_state_machine(local_rows)
+    rows = _episode_diagnostic_rows(local_rows, raw_summaries, episodes)
+    output_csv = root / 'data' / 'research' / 'BTC_LRA_EPISODE_DIAGNOSTICS.csv'
+    output_md = root / 'data' / 'research' / 'BTC_LRA_EPISODE_DIAGNOSTICS.md'
+    output_csv.parent.mkdir(parents=True, exist_ok=True)
+    with output_csv.open('w', newline='', encoding='utf-8') as handle:
+        writer = csv.DictWriter(handle, fieldnames=EPISODE_DIAGNOSTIC_COLUMNS)
+        writer.writeheader()
+        for row in rows:
+            writer.writerow({key: _analysis_value(row.get(key)) for key in EPISODE_DIAGNOSTIC_COLUMNS})
+    output_md.write_text(_episode_diagnostic_report(rows, output_csv), encoding='utf-8')
+    print(f'ENTRY EPISODE DIAGNOSTICS CSV: {output_csv}')
+    print(f'ENTRY EPISODE DIAGNOSTICS REPORT: {output_md}')
+    print(f'CANDIDATE MINUTES: {len(rows)}')
+
+
+RELEASE_STAGE_COLUMNS = [
+    'SIDE', 'HALF_LIFE', 'VOTE_COUNT', 'VOTE_LIST', 'STATE_PATH',
+    'EARLY_TIME', 'EARLY_PRICE', 'DEFENDED_TIME', 'DEFENDED_PRICE',
+    'DEFENDED_CONTROL', 'DEFENDED_EFF_RATIO', 'DEFENDED_AGGR_MAG_X',
+    'DEFENDED_OI_ADD', 'DEFENDED_REWARD_BPS', 'RELEASE_TIME', 'RELEASE_PRICE',
+    'RELEASE_CONTROL', 'RELEASE_EFF_RATIO', 'RELEASE_AGGR_MAG_X',
+    'RELEASE_OI_ADD', 'RELEASE_RAW_PCTL', 'RELEASE_REWARD_BPS',
+    'TIME_EARLY_TO_DEFENDED', 'TIME_EARLY_TO_RELEASE', 'TIME_DEFENDED_TO_RELEASE',
+    'PREVIOUS_RELEASE_SIDE', 'MINUTES_SINCE_PREVIOUS_RELEASE', 'SAME_SIDE_AFTER_RELEASE',
+]
+for _stage_name in ('EARLY', 'DEFENDED', 'RELEASE'):
+    for _horizon in (5, 10, 20, 30):
+        RELEASE_STAGE_COLUMNS.extend([f'{_stage_name}_MFE_{_horizon}M', f'{_stage_name}_MAE_{_horizon}M'])
+
+
+def _release_stage_event_fields(row: dict[str, Any], summary: dict[str, Any] | None,
+                                side: str, half_life: int, index: int) -> dict[str, Any]:
+    reward_key = f'SELL_REWARD_BPS_{half_life}' if side == 'LONG' else f'BUY_REWARD_BPS_{half_life}'
+    return {
+        'index': index, 'time': _local_time(row), 'price': _diagnostic_number(row.get('PRICE')),
+        'control': str((summary or {}).get('CONTROL') or row.get('CONTROL') or ''),
+        'eff_ratio': _diagnostic_number((summary or {}).get('EFF_RATIO')),
+        'absorption_ratio': _diagnostic_number((summary or {}).get('ABSORPTION_RATIO')),
+        'aggr_side': str((summary or {}).get('AGGR_SIDE') or ''),
+        'aggr_share': _diagnostic_number((summary or {}).get('AGGR_SHARE')),
+        'aggr_mag': _diagnostic_number((summary or {}).get('AGGR_MAG')),
+        'aggr_mag_x': _diagnostic_number((summary or {}).get('AGGR_MAG_X')),
+        'oi_add': _diagnostic_number((summary or {}).get('OI_ADD')),
+        'raw_pctl': _diagnostic_number((summary or {}).get('OI_INTENSITY_PCTL')),
+        'reward': _diagnostic_number(row.get(reward_key)),
+    }
+
+
+def _release_stage_episode_rows(local_rows: list[dict[str, Any]],
+                               raw_summaries: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    parsed = [(_local_time(row), row) for row in local_rows]
+    row_by_time = {at: row for at, row in parsed}
+    raw_by_time = {row['_time']: row for row in raw_summaries}
+    candidate_by_time: dict[datetime, dict[str, list[int]]] = defaultdict(lambda: {'LONG': [], 'SHORT': []})
+    signals_by_hl: dict[tuple[datetime, int], dict[str, Any]] = {}
+    for index, (timestamp, row) in enumerate(parsed):
+        for half_life in (10, 15, 20, 30):
+            previous_mass = _diagnostic_number(parsed[index - 1][1].get(f'LOCAL_MASS_{half_life}')) if index else 0.0
+            signal = _episode_signal(row, half_life, previous_mass or 0.0)
+            if signal:
+                candidate_by_time[timestamp][signal['side']].append(half_life)
+                signals_by_hl[(timestamp, half_life)] = signal
+
+    episodes: list[dict[str, Any]] = []
+    last_release: dict[str, Any] | None = None
+
+    def make_episode(timestamp: datetime, index: int, side: str, half_life: int) -> dict[str, Any]:
+        signal = signals_by_hl[(timestamp, half_life)]
+        previous = last_release
+        return {
+            'side': side, 'half_life': half_life, 'state': 'EARLY_' + side,
+            'state_path': ['EARLY_' + side], 'start_index': index, 'early': {
+                'index': index,
+                'time': timestamp, 'price': _diagnostic_number(parsed[index][1].get('PRICE')),
+                'dom_pct': signal['dom_pct'], 'mass': signal['mass'], 'anchor': signal['anchor'],
+                'reward': signal['reward'],
+            }, 'defended': None, 'release': None, 'end_reason': 'OPEN',
+            'previous_release_side': previous['side'] if previous else '',
+            'minutes_since_previous_release': ((timestamp - previous['time']).total_seconds() / 60.0 if previous else None),
+        }
+
+    def finish(current: dict[str, Any], end_index: int) -> None:
+        nonlocal last_release
+        side = current['side']
+        state = current['state']
+        current['end_index'] = end_index
+        current['final_state'] = state
+        current['end_time'] = parsed[end_index][0]
+        current['end_reason'] = current.get('end_reason', 'DATA_END')
+        for stage_name, stage in (('EARLY', current['early']), ('DEFENDED', current['defended']), ('RELEASE', current['release'])):
+            if stage is None:
+                continue
+            if 'index' not in stage:
+                raise AssertionError(f'release-stage {stage_name} is missing causal source index')
+            for horizon in (5, 10, 20, 30):
+                mfe, mae = _diagnostic_outcome(parsed, stage['index'], side, stage['price'], horizon)
+                current[f'{stage_name}_MFE_{horizon}M'] = mfe
+                current[f'{stage_name}_MAE_{horizon}M'] = mae
+        if current['release'] is not None:
+            last_release = {'side': side, 'time': current['release']['time']}
+        episodes.append(current)
+
+    current_by_hl: dict[int, dict[str, Any] | None] = {half_life: None for half_life in (10, 15, 20, 30)}
+    for index, (timestamp, row) in enumerate(parsed):
+        for half_life in (10, 15, 20, 30):
+            current = current_by_hl[half_life]
+            signal = signals_by_hl.get((timestamp, half_life))
+            if current is None:
+                if signal is not None and row.get('PRICE') not in (None, ''):
+                    current_by_hl[half_life] = make_episode(timestamp, index, signal['side'], half_life)
+                continue
+            side = current['side']
+            summary = raw_by_time.get(timestamp)
+            control = str((summary or {}).get('CONTROL') or row.get('CONTROL') or '')
+            meaningful = (summary or {}).get('MEANINGFUL_AGGR', 'YES') == 'YES'
+            target_limit = 'CONTROL LIMIT BUY' if side == 'LONG' else 'CONTROL LIMIT SELL'
+            target_market = 'CONTROL MARKET BUY' if side == 'LONG' else 'CONTROL MARKET SELL'
+            reward_key = f'SELL_REWARD_BPS_{half_life}' if side == 'LONG' else f'BUY_REWARD_BPS_{half_life}'
+            reward = _diagnostic_number(row.get(reward_key))
+            if current['state'] in ('EARLY_LONG', 'EARLY_SHORT'):
+                if meaningful and control == target_limit and current['defended'] is None:
+                    stage = _release_stage_event_fields(row, summary, side, half_life, index)
+                    current['defended'] = stage
+                    current['state'] = 'LONG_DEFENDED' if side == 'LONG' else 'SHORT_DEFENDED'
+                    current['state_path'].append(current['state'])
+                elif meaningful and control == target_market:
+                    stage = _release_stage_event_fields(row, summary, side, half_life, index)
+                    current['release'] = stage
+                    current['state'] = 'LONG_RELEASE' if side == 'LONG' else 'SHORT_RELEASE'
+                    current['state_path'].append(current['state'])
+                    current['end_reason'] = 'RELEASE'
+                    finish(current, index)
+                    current_by_hl[half_life] = None
+                    continue
+                elif reward is not None and reward >= ENTRY_INVALIDATION_REWARD_BPS:
+                    current['state'] = 'INVALIDATED'
+                    current['state_path'].append('INVALIDATED')
+                    current['end_reason'] = 'INVALIDATED'
+                    finish(current, index)
+                    current_by_hl[half_life] = None
+                    if signal is not None and row.get('PRICE') not in (None, ''):
+                        current_by_hl[half_life] = make_episode(timestamp, index, signal['side'], half_life)
+                    continue
+            elif current['state'] in ('LONG_DEFENDED', 'SHORT_DEFENDED'):
+                if meaningful and control == target_market:
+                    stage = _release_stage_event_fields(row, summary, side, half_life, index)
+                    current['release'] = stage
+                    current['state'] = 'LONG_RELEASE' if side == 'LONG' else 'SHORT_RELEASE'
+                    current['state_path'].append(current['state'])
+                    current['end_reason'] = 'RELEASE'
+                    finish(current, index)
+                    current_by_hl[half_life] = None
+                    continue
+                if reward is not None and reward >= ENTRY_INVALIDATION_REWARD_BPS:
+                    current['state'] = 'INVALIDATED'
+                    current['state_path'].append('INVALIDATED')
+                    current['end_reason'] = 'INVALIDATED'
+                    finish(current, index)
+                    current_by_hl[half_life] = None
+                    continue
+
+    for half_life, current in current_by_hl.items():
+        if current is not None:
+            current['end_reason'] = 'DATA_END'
+            finish(current, len(parsed) - 1)
+
+    output: list[dict[str, Any]] = []
+    for episode in episodes:
+        early = episode['early']
+        defended = episode['defended']
+        release = episode['release']
+        votes = candidate_by_time[early['time']][episode['side']]
+        result: dict[str, Any] = {
+            'SIDE': episode['side'], 'HALF_LIFE': episode['half_life'], 'VOTE_COUNT': len(votes),
+            'VOTE_LIST': ','.join(map(str, votes)), 'STATE_PATH': ' -> '.join(episode['state_path']),
+            'EARLY_TIME': early['time'].strftime('%Y-%m-%d %H:%M:%S'), 'EARLY_PRICE': early['price'],
+            'DEFENDED_TIME': defended['time'].strftime('%Y-%m-%d %H:%M:%S') if defended else '',
+            'DEFENDED_PRICE': defended['price'] if defended else None,
+            'DEFENDED_CONTROL': defended['control'] if defended else '',
+            'DEFENDED_EFF_RATIO': defended['eff_ratio'] if defended else None,
+            'DEFENDED_AGGR_MAG_X': defended['aggr_mag_x'] if defended else None,
+            'DEFENDED_OI_ADD': defended['oi_add'] if defended else None,
+            'DEFENDED_REWARD_BPS': defended['reward'] if defended else None,
+            'RELEASE_TIME': release['time'].strftime('%Y-%m-%d %H:%M:%S') if release else '',
+            'RELEASE_PRICE': release['price'] if release else None,
+            'RELEASE_CONTROL': release['control'] if release else '',
+            'RELEASE_EFF_RATIO': release['eff_ratio'] if release else None,
+            'RELEASE_AGGR_MAG_X': release['aggr_mag_x'] if release else None,
+            'RELEASE_OI_ADD': release['oi_add'] if release else None,
+            'RELEASE_RAW_PCTL': release['raw_pctl'] if release else None,
+            'RELEASE_REWARD_BPS': release['reward'] if release else None,
+            'TIME_EARLY_TO_DEFENDED': (defended['time'] - early['time']).total_seconds() / 60.0 if defended else None,
+            'TIME_EARLY_TO_RELEASE': (release['time'] - early['time']).total_seconds() / 60.0 if release else None,
+            'TIME_DEFENDED_TO_RELEASE': (release['time'] - defended['time']).total_seconds() / 60.0 if release and defended else None,
+            'PREVIOUS_RELEASE_SIDE': episode['previous_release_side'],
+            'MINUTES_SINCE_PREVIOUS_RELEASE': episode['minutes_since_previous_release'],
+            'SAME_SIDE_AFTER_RELEASE': 'YES' if episode['previous_release_side'] == episode['side'] and episode['previous_release_side'] else 'NO',
+            '_END_TIME': episode['end_time'].strftime('%Y-%m-%d %H:%M:%S'),
+            '_END_PRICE': _diagnostic_number(parsed[episode['end_index']][1].get('PRICE')),
+            '_END_REASON': episode.get('end_reason', ''),
+            '_DEFENDED_EVENT': defended,
+            '_RELEASE_EVENT': release,
+        }
+        for stage_name in ('EARLY', 'DEFENDED', 'RELEASE'):
+            for horizon in (5, 10, 20, 30):
+                result[f'{stage_name}_MFE_{horizon}M'] = episode.get(f'{stage_name}_MFE_{horizon}M')
+                result[f'{stage_name}_MAE_{horizon}M'] = episode.get(f'{stage_name}_MAE_{horizon}M')
+        output.append(result)
+    return output
+
+
+def _release_stage_report(rows: list[dict[str, Any]], output_csv: Path) -> str:
+    benchmark_times = ('21:26', '22:01', '22:37', '22:51')
+    lines = [
+        '# BTC-LRA RELEASE STAGES', '',
+        'Research-only layer. Existing ENTRY EPISODES, production CONTROL, DOMINANCE, thresholds and Pine are unchanged.', '',
+        f'CSV: `{output_csv}`', '',
+        'LIMIT target-side control is classified as DEFENDED. MARKET target-side control is classified as RELEASE. No score or new threshold is introduced.', '',
+        '## Benchmark causal timelines', '',
+    ]
+    for benchmark in benchmark_times:
+        matches = [row for row in rows if row['EARLY_TIME'][11:16] == benchmark]
+        lines.append(f'### {benchmark}')
+        if not matches:
+            lines.append('NONE')
+            continue
+        for row in matches:
+            lines.append(f"{row['EARLY_TIME'][11:16]} EARLY {row['SIDE']} | votes {row['VOTE_COUNT']}/4 | state {row['STATE_PATH']}")
+            if row.get('DEFENDED_TIME'):
+                lines.append(f"{row['DEFENDED_TIME'][11:16]} {row['DEFENDED_CONTROL']} | {row['STATE_PATH'].split(' -> ')[1]}")
+            if row.get('RELEASE_TIME'):
+                lines.append(f"{row['RELEASE_TIME'][11:16]} {row['RELEASE_CONTROL']} | {row['STATE_PATH'].split(' -> ')[-1]}")
+            else:
+                lines.append('MARKET release: NONE')
+    counts = defaultdict(int)
+    for row in rows:
+        path = row['STATE_PATH']
+        if path.endswith('INVALIDATED'):
+            counts['EARLY -> INVALIDATED'] += 1
+        elif 'RELEASE' in path and 'DEFENDED' in path:
+            counts['EARLY -> DEFENDED -> RELEASE'] += 1
+        elif 'RELEASE' in path:
+            counts['EARLY -> RELEASE'] += 1
+        elif 'DEFENDED' in path:
+            counts['EARLY -> DEFENDED'] += 1
+        else:
+            counts['NO-CONFIRM'] += 1
+    lines.extend(['', '## Full dataset comparison', '', 'PATH | COUNT', '---|---:'])
+    for key in ('EARLY -> INVALIDATED', 'EARLY -> DEFENDED', 'EARLY -> RELEASE', 'EARLY -> DEFENDED -> RELEASE', 'NO-CONFIRM'):
+        lines.append(f'| {key} | {counts[key]} |')
+    lines.extend(['', '## Outcome groups', '', 'GROUP | COUNT | EARLY MFE 10M | EARLY MAE 10M | RELEASE MFE 10M | RELEASE MAE 10M', '---|---:|---:|---:|---:|---:'])
+    groups = {
+        'RELEASE episodes': [row for row in rows if row.get('RELEASE_TIME')],
+        'DEFENDED-only episodes': [row for row in rows if row.get('DEFENDED_TIME') and not row.get('RELEASE_TIME')],
+        'NO-confirm episodes': [row for row in rows if not row.get('DEFENDED_TIME') and not row.get('RELEASE_TIME')],
+    }
+    for name, group in groups.items():
+        average = lambda field: (sum(float(row[field]) for row in group if row.get(field) not in (None, '')) / len([row for row in group if row.get(field) not in (None, '')]) if any(row.get(field) not in (None, '') for row in group) else None)
+        lines.append(f'| {name} | {len(group)} | {average("EARLY_MFE_10M")} | {average("EARLY_MAE_10M")} | {average("RELEASE_MFE_10M")} | {average("RELEASE_MAE_10M")} |')
+    def benchmark_summary(label: str) -> str:
+        matches = [row for row in rows if row['EARLY_TIME'][11:16] == label]
+        if not matches:
+            return f'{label}: NONE in the loaded causal episode set.'
+        descriptions = []
+        for row in matches:
+            release = row.get('RELEASE_TIME') or 'NONE'
+            descriptions.append(f"{row['SIDE']} votes={row['VOTE_COUNT']}/4 path={row['STATE_PATH']} release={release}")
+        return f'{label}: ' + '; '.join(descriptions)
+    release_delays = [float(row['TIME_EARLY_TO_RELEASE']) for row in rows if row.get('TIME_EARLY_TO_RELEASE') not in (None, '')]
+    lines.extend([
+        '', '## Answers', '',
+        'The report compares LIMIT defense and MARKET release using observed causal rows. It does not select a threshold or declare a strategy.',
+        '', '1. LIMIT and MARKET are reported as separate stages; the benchmark paths below show whether the distinction separates defense from active release.',
+        '2. ' + benchmark_summary('21:26'),
+        '3. ' + benchmark_summary('22:51'),
+        f'4. EARLY-to-MARKET-RELEASE delays observed: {release_delays}; no delay threshold is selected.',
+        '5. Outcome tables compare RELEASE, DEFENDED-only and NO-confirm groups without using outcomes in state formation.',
+        '',
+    ])
+    return '\n'.join(lines)
+
+
+def run_release_stage_analysis(args: argparse.Namespace) -> None:
+    root = Path(__file__).resolve().parent
+    raw_paths = args.raw_oi or discover_raw_paths(root)
+    market_path = args.market_csv or discover_market_path(root)
+    if not raw_paths or market_path is None:
+        raise SystemExit('Release stage analysis requires recorded raw OI and market data.')
+    samples = load_raw(raw_paths)
+    market = load_market(market_path)
+    minutes = minute_oi(samples)
+    annotate_minutes(minutes)
+    common = recorded_range(samples, market)
+    if common is None:
+        raise SystemExit('No common recorded raw OI / market range for release stages.')
+    start, end = common
+    if args.from_time:
+        start = max(start, parse_time(args.from_time))
+    if args.end:
+        end = min(end, parse_time(args.end))
+    samples = [sample for sample in samples if start <= sample['ts'] <= end + timedelta(minutes=1)]
+    minutes = [row for row in minutes if start <= row['minute'] <= end]
+    market = [row for row in market if start <= row['ts'] <= end]
+    local_rows, _ = _local_dominance_contributions(samples, minutes, market, start, end)
+    raw_summaries, _ = _raw_intensity_summary(samples, minutes, market)
+    rows = _release_stage_episode_rows(local_rows, raw_summaries)
+    output_csv = root / 'data' / 'research' / 'BTC_LRA_RELEASE_STAGES.csv'
+    output_md = root / 'data' / 'research' / 'BTC_LRA_RELEASE_STAGES.md'
+    output_csv.parent.mkdir(parents=True, exist_ok=True)
+    with output_csv.open('w', newline='', encoding='utf-8') as handle:
+        writer = csv.DictWriter(handle, fieldnames=RELEASE_STAGE_COLUMNS)
+        writer.writeheader()
+        for row in rows:
+            writer.writerow({key: _analysis_value(row.get(key)) for key in RELEASE_STAGE_COLUMNS})
+    output_md.write_text(_release_stage_report(rows, output_csv), encoding='utf-8')
+    print(f'RELEASE STAGES CSV: {output_csv}')
+    print(f'RELEASE STAGES REPORT: {output_md}')
+    print(f'EPISODES: {len(rows)}')
+
+
+CONSENSUS_EPISODE_COLUMNS = [
+    'SIDE', 'EARLIEST_EARLY_TIME', 'LATEST_EARLY_TIME', 'EARLY_PRICE',
+    'VOTE_COUNT', 'VOTE_HALF_LIVES', 'DEFENDED_TIME', 'RELEASE_TIME',
+    'PATH', 'PATHS_SEEN', 'PATH_DISAGREEMENT', 'CONSENSUS_1_TIME',
+    'CONSENSUS_2_TIME', 'CONSENSUS_3_TIME', 'CONSENSUS_4_TIME', 'EPISODE_CLASS',
+]
+for _consensus_stage in ('EARLIEST_EARLY', 'CONSENSUS_2', 'CONSENSUS_3', 'CONSENSUS_4', 'DEFENDED', 'RELEASE'):
+    for _horizon in (5, 10, 20, 30):
+        CONSENSUS_EPISODE_COLUMNS.extend([
+            f'{_consensus_stage}_MFE_{_horizon}M', f'{_consensus_stage}_MAE_{_horizon}M',
+        ])
+
+
+def _consensus_episode_rows(local_rows: list[dict[str, Any]],
+                            release_rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    parsed = [(_local_time(row), row) for row in local_rows]
+    row_index = {at: index for index, (at, _row) in enumerate(parsed)}
+    candidate_votes: dict[tuple[datetime, str], list[int]] = defaultdict(list)
+    for index, (timestamp, row) in enumerate(parsed):
+        for half_life in (10, 15, 20, 30):
+            previous_mass = _diagnostic_number(parsed[index - 1][1].get(f'LOCAL_MASS_{half_life}')) if index else 0.0
+            signal = _episode_signal(row, half_life, previous_mass or 0.0)
+            if signal:
+                candidate_votes[(timestamp, signal['side'])].append(half_life)
+
+    ordered = sorted(release_rows, key=lambda row: (row['SIDE'], row['EARLY_TIME'], row['HALF_LIFE']))
+    groups: list[list[dict[str, Any]]] = []
+    for item in ordered:
+        early_time = _local_time({'TIME': item['EARLY_TIME']})
+        release_time = _local_time({'TIME': item['RELEASE_TIME']}) if item.get('RELEASE_TIME') else None
+        matching_group = None
+        for group in reversed(groups):
+            if group[-1]['SIDE'] != item['SIDE']:
+                continue
+            group_early = [_local_time({'TIME': row['EARLY_TIME']}) for row in group]
+            same_release = bool(release_time and any(
+                row.get('RELEASE_TIME') and _local_time({'TIME': row['RELEASE_TIME']}) == release_time
+                for row in group
+            ))
+            if abs((early_time - max(group_early)).total_seconds()) <= 120 or (
+                    same_release and abs((early_time - max(group_early)).total_seconds()) <= 120):
+                matching_group = group
+                break
+        if matching_group is None:
+            groups.append([item])
+        else:
+            matching_group.append(item)
+
+    collapsed: list[dict[str, Any]] = []
+    for group in groups:
+        side = group[0]['SIDE']
+        early_times = sorted(_local_time({'TIME': row['EARLY_TIME']}) for row in group)
+        earliest = early_times[0]
+        latest = early_times[-1]
+        release_times = [_local_time({'TIME': row['RELEASE_TIME']}) for row in group if row.get('RELEASE_TIME')]
+        defended_times = [_local_time({'TIME': row['DEFENDED_TIME']}) for row in group if row.get('DEFENDED_TIME')]
+        stage_end = max([latest, *release_times, *defended_times])
+        vote_times = [at for (at, vote_side) in candidate_votes if vote_side == side and earliest <= at <= stage_end]
+        consensus_times: dict[int, datetime | None] = {}
+        for required in (1, 2, 3, 4):
+            consensus_times[required] = next((at for at in sorted(vote_times) if len(candidate_votes[(at, side)]) >= required), None)
+        vote_snapshot = max(
+            (candidate_votes[(at, side)] for at in vote_times),
+            key=len,
+        ) if vote_times else []
+        # The max above is intentionally based only on votes available by the
+        # episode's observed stage end; it is not used to form any signal.
+        paths = sorted(set(row['STATE_PATH'] for row in group))
+        path = max(group, key=lambda row: len(row.get('VOTE_LIST', '').split(',')))['STATE_PATH']
+        earliest_row = min(group, key=lambda row: row['EARLY_TIME'])
+        result: dict[str, Any] = {
+            'SIDE': side, 'EARLIEST_EARLY_TIME': earliest.strftime('%Y-%m-%d %H:%M:%S'),
+            'LATEST_EARLY_TIME': latest.strftime('%Y-%m-%d %H:%M:%S'),
+            'EARLY_PRICE': earliest_row.get('EARLY_PRICE'), 'VOTE_COUNT': len(vote_snapshot),
+            'VOTE_HALF_LIVES': ','.join(map(str, sorted(vote_snapshot))),
+            'DEFENDED_TIME': min(defended_times).strftime('%Y-%m-%d %H:%M:%S') if defended_times else '',
+            'RELEASE_TIME': min(release_times).strftime('%Y-%m-%d %H:%M:%S') if release_times else '',
+            'PATH': path, 'PATHS_SEEN': ' || '.join(paths), 'PATH_DISAGREEMENT': 'YES' if len(paths) > 1 else 'NO',
+            'EPISODE_CLASS': 'RELEASE' if release_times else 'DEFENDED_ONLY' if defended_times else 'INVALIDATED' if any(row['STATE_PATH'].endswith('INVALIDATED') for row in group) else 'NO_CONFIRM',
+        }
+        for required, at in consensus_times.items():
+            result[f'CONSENSUS_{required}_TIME'] = at.strftime('%Y-%m-%d %H:%M:%S') if at else ''
+
+        def add_outcomes(prefix: str, timestamp: datetime | None) -> None:
+            index = row_index.get(timestamp) if timestamp is not None else None
+            price = _diagnostic_number(row_by_time.get(timestamp, {}).get('PRICE')) if timestamp is not None else None
+            for horizon in (5, 10, 20, 30):
+                mfe, mae = _diagnostic_outcome(parsed, index, side, price, horizon) if index is not None else (None, None)
+                result[f'{prefix}_MFE_{horizon}M'] = mfe
+                result[f'{prefix}_MAE_{horizon}M'] = mae
+
+        row_by_time = {at: row for at, row in parsed}
+        add_outcomes('EARLIEST_EARLY', earliest)
+        add_outcomes('CONSENSUS_2', consensus_times[2])
+        add_outcomes('CONSENSUS_3', consensus_times[3])
+        add_outcomes('CONSENSUS_4', consensus_times[4])
+        add_outcomes('DEFENDED', min(defended_times) if defended_times else None)
+        add_outcomes('RELEASE', min(release_times) if release_times else None)
+        collapsed.append(result)
+    return collapsed
+
+
+def _consensus_episode_report(rows: list[dict[str, Any]], output_csv: Path) -> str:
+    benchmarks = ('21:26', '22:01', '22:37', '22:51')
+    lines = [
+        '# BTC-LRA CONSENSUS EPISODES', '',
+        'Research-only collapse of BTC_LRA_RELEASE_STAGES. Production monitor, CONTROL, DOMINANCE, release-stage detector, thresholds and Pine are unchanged.', '',
+        f'CSV: `{output_csv}`', '',
+        'Grouping uses same SIDE and EARLY-time proximity <= 2 minutes. Consensus timestamps are causal first-vote timestamps.', '',
+        '## Collapsed benchmark episodes', '',
+        'SIDE | EARLIEST EARLY | VOTES | DEFENDED | RELEASE | PATH | PATHS SEEN',
+        '---|---|---:|---|---|---|---',
+    ]
+    for benchmark in benchmarks:
+        matches = [row for row in rows if row['EARLIEST_EARLY_TIME'][11:16] == benchmark]
+        for row in matches:
+            lines.append(f"{row['SIDE']} | {row['EARLIEST_EARLY_TIME']} | {row['VOTE_COUNT']}/4 ({row['VOTE_HALF_LIVES']}) | {row['DEFENDED_TIME'] or 'NONE'} | {row['RELEASE_TIME'] or 'NONE'} | {row['PATH']} | {row['PATHS_SEEN']}")
+        if not matches:
+            lines.append(f'-- | {benchmark} | NONE | -- | -- | -- | --')
+    lines.extend(['', '## Independent episode comparison', '', 'CLASS | COUNT | 10m MFE MEAN | 10m MFE MEDIAN | 10m MAE MEAN | 10m MAE MEDIAN', '---|---:|---:|---:|---:|---:'])
+    import statistics
+    for category in ('RELEASE', 'DEFENDED_ONLY', 'NO_CONFIRM', 'INVALIDATED'):
+        group = [row for row in rows if row['EPISODE_CLASS'] == category]
+        mfes = [float(row['EARLIEST_EARLY_MFE_10M']) for row in group if row.get('EARLIEST_EARLY_MFE_10M') not in (None, '')]
+        maes = [float(row['EARLIEST_EARLY_MAE_10M']) for row in group if row.get('EARLIEST_EARLY_MAE_10M') not in (None, '')]
+        lines.append(f'| {category} | {len(group)} | {statistics.mean(mfes) if mfes else None} | {statistics.median(mfes) if mfes else None} | {statistics.mean(maes) if maes else None} | {statistics.median(maes) if maes else None} |')
+    lines.extend(['', '## Vote-level comparison', '', 'VOTES | COUNT | 10m MFE MEAN | 10m MFE MEDIAN | 10m MAE MEAN | 10m MAE MEDIAN', '---|---:|---:|---:|---:|---:'])
+    for vote_count in (1, 2, 3, 4):
+        group = [row for row in rows if row['VOTE_COUNT'] == vote_count]
+        mfes = [float(row['EARLIEST_EARLY_MFE_10M']) for row in group if row.get('EARLIEST_EARLY_MFE_10M') not in (None, '')]
+        maes = [float(row['EARLIEST_EARLY_MAE_10M']) for row in group if row.get('EARLIEST_EARLY_MAE_10M') not in (None, '')]
+        lines.append(f'| {vote_count}/4 | {len(group)} | {statistics.mean(mfes) if mfes else None} | {statistics.median(mfes) if mfes else None} | {statistics.mean(maes) if maes else None} | {statistics.median(maes) if maes else None} |')
+    release_delays = [
+        (_local_time({'TIME': row['CONSENSUS_4_TIME']}) - _local_time({'TIME': row['EARLIEST_EARLY_TIME']})).total_seconds() / 60.0
+        for row in rows if row.get('CONSENSUS_4_TIME')
+    ]
+    lines.extend(['', '## Questions', '', f'- Episodes after half-life collapse: **{len(rows)}**.', f'- EARLY to 4/4 consensus delays: `{release_delays}` minutes where available.', '- MARKET RELEASE and DEFENDED-only outcomes are reported separately; no threshold is selected.', '- Good episodes without MARKET RELEASE remain visible in the DEFENDED_ONLY/NO_CONFIRM groups.', ''])
+    return '\n'.join(lines)
+
+
+def run_consensus_episode_analysis(args: argparse.Namespace) -> None:
+    root = Path(__file__).resolve().parent
+    raw_paths = args.raw_oi or discover_raw_paths(root)
+    market_path = args.market_csv or discover_market_path(root)
+    if not raw_paths or market_path is None:
+        raise SystemExit('Consensus episode analysis requires recorded raw OI and market data.')
+    samples = load_raw(raw_paths)
+    market = load_market(market_path)
+    minutes = minute_oi(samples)
+    annotate_minutes(minutes)
+    common = recorded_range(samples, market)
+    if common is None:
+        raise SystemExit('No common recorded range for consensus episodes.')
+    start, end = common
+    if args.from_time:
+        start = max(start, parse_time(args.from_time))
+    if args.end:
+        end = min(end, parse_time(args.end))
+    samples = [sample for sample in samples if start <= sample['ts'] <= end + timedelta(minutes=1)]
+    minutes = [row for row in minutes if start <= row['minute'] <= end]
+    market = [row for row in market if start <= row['ts'] <= end]
+    local_rows, _ = _local_dominance_contributions(samples, minutes, market, start, end)
+    raw_summaries, _ = _raw_intensity_summary(samples, minutes, market)
+    release_rows = _release_stage_episode_rows(local_rows, raw_summaries)
+    rows = _consensus_episode_rows(local_rows, release_rows)
+    output_csv = root / 'data' / 'research' / 'BTC_LRA_CONSENSUS_EPISODES.csv'
+    output_md = root / 'data' / 'research' / 'BTC_LRA_CONSENSUS_EPISODES.md'
+    output_csv.parent.mkdir(parents=True, exist_ok=True)
+    with output_csv.open('w', newline='', encoding='utf-8') as handle:
+        writer = csv.DictWriter(handle, fieldnames=CONSENSUS_EPISODE_COLUMNS)
+        writer.writeheader()
+        for row in rows:
+            writer.writerow({key: _analysis_value(row.get(key)) for key in CONSENSUS_EPISODE_COLUMNS})
+    output_md.write_text(_consensus_episode_report(rows, output_csv), encoding='utf-8')
+    print(f'CONSENSUS EPISODES CSV: {output_csv}')
+    print(f'CONSENSUS EPISODES REPORT: {output_md}')
+    print(f'COLLAPSED EPISODES: {len(rows)}')
+
+
+TV_STRUCTURE_COLUMNS = [
+    'TIME', 'PRICE', 'SIDE', 'STAGE', 'CONSENSUS_TIER', 'LOCAL_DOM_PCT',
+    'LOCAL_MASS', 'PRICE_REWARD_BPS', 'CONTROL', 'EFF_RATIO', 'ABSORPTION',
+    'OI_ADD', 'AGGR_SIDE', 'AGGR_SHARE', 'AGGR_MAG',
+]
+
+
+def _structure_time(value: Any) -> datetime | None:
+    if value in (None, ''):
+        return None
+    return _local_time({'TIME': value})
+
+
+def _structure_local_metadata(local_rows: list[dict[str, Any]], timestamp: datetime,
+                              side: str, votes: str) -> dict[str, Any]:
+    row = next((item for item in local_rows if _local_time(item) == timestamp), {})
+    vote_list = [int(value) for value in str(votes).split(',') if value]
+    half_life = vote_list[0] if vote_list else 10
+    prefix = 'SELL' if side == 'LONG' else 'BUY'
+    return {
+        'price': _diagnostic_number(row.get('PRICE')),
+        'local_dom_pct': _diagnostic_number(row.get(f'LOCAL_{prefix}_{half_life}')) / (_diagnostic_number(row.get(f'LOCAL_MASS_{half_life}')) or 1.0) * 100.0 if _diagnostic_number(row.get(f'LOCAL_MASS_{half_life}')) else None,
+        'local_mass': _diagnostic_number(row.get(f'LOCAL_MASS_{half_life}')),
+        'price_reward_bps': _diagnostic_number(row.get(f'{prefix}_REWARD_BPS_{half_life}')),
+    }
+
+
+def _structure_stage_event(event: dict[str, Any], stage: str, side: str,
+                           consensus_tier: int, local_rows: list[dict[str, Any]],
+                           raw_by_time: dict[datetime, dict[str, Any]]) -> dict[str, Any]:
+    timestamp = event['time']
+    metadata = _structure_local_metadata(local_rows, timestamp, side, str(consensus_tier))
+    summary = raw_by_time.get(timestamp, {})
+    return {
+        'TIME': timestamp.strftime('%Y-%m-%d %H:%M:%S'),
+        'PRICE': event.get('price') if event.get('price') is not None else metadata['price'],
+        'SIDE': side,
+        'STAGE': stage,
+        'CONSENSUS_TIER': f'{consensus_tier}/4',
+        'LOCAL_DOM_PCT': metadata['local_dom_pct'],
+        'LOCAL_MASS': metadata['local_mass'],
+        'PRICE_REWARD_BPS': event.get('reward') if event.get('reward') is not None else metadata['price_reward_bps'],
+        'CONTROL': event.get('control') or summary.get('CONTROL') or '',
+        'EFF_RATIO': event.get('eff_ratio') if event.get('eff_ratio') is not None else _diagnostic_number(summary.get('EFF_RATIO')),
+        'ABSORPTION': event.get('absorption_ratio') if event.get('absorption_ratio') is not None else _diagnostic_number(summary.get('ABSORPTION_RATIO')),
+        'OI_ADD': event.get('oi_add') if event.get('oi_add') is not None else _diagnostic_number(summary.get('OI_ADD')),
+        'AGGR_SIDE': event.get('aggr_side') or summary.get('AGGR_SIDE') or '',
+        'AGGR_SHARE': event.get('aggr_share') if event.get('aggr_share') is not None else _diagnostic_number(summary.get('AGGR_SHARE')),
+        'AGGR_MAG': event.get('aggr_mag') if event.get('aggr_mag') is not None else _diagnostic_number(summary.get('AGGR_MAG')),
+    }
+
+
+def build_causal_structure_events(local_rows: list[dict[str, Any]],
+                                  raw_summaries: list[dict[str, Any]],
+                                  selected_votes: int) -> list[dict[str, Any]]:
+    """Build structural labels from the existing release/consensus research layers."""
+    if selected_votes not in (1, 2, 3, 4):
+        raise ValueError('selected consensus votes must be 1, 2, 3 or 4')
+    release_rows = _release_stage_episode_rows(local_rows, raw_summaries)
+    consensus_rows = _consensus_episode_rows(local_rows, release_rows)
+    raw_by_time = {row['_time']: row for row in raw_summaries}
+    structures: list[dict[str, Any]] = []
+    for consensus in consensus_rows:
+        early_time = _structure_time(consensus.get(f'CONSENSUS_{selected_votes}_TIME'))
+        if early_time is None:
+            continue
+        side = consensus['SIDE']
+        early_bound = _structure_time(consensus['EARLIEST_EARLY_TIME'])
+        latest_bound = _structure_time(consensus['LATEST_EARLY_TIME'])
+        if early_bound is None or latest_bound is None:
+            continue
+        matching = [
+            row for row in release_rows
+            if row['SIDE'] == side
+            and early_bound - timedelta(minutes=2) <= _structure_time(row['EARLY_TIME']) <= latest_bound + timedelta(minutes=2)
+        ]
+        matching.sort(key=lambda row: row['EARLY_TIME'])
+        structures.append(_structure_stage_event({
+            'time': early_time,
+            'price': _diagnostic_number(next((row.get('EARLY_PRICE') for row in matching if row.get('EARLY_PRICE') not in (None, '')), None)),
+            'reward': _diagnostic_number(next((row.get('START REWARD') for row in matching if row.get('START REWARD') not in (None, '')), None)),
+        }, 'E-LONG' if side == 'LONG' else 'E-SHORT', side, selected_votes, local_rows, raw_by_time))
+
+        stage_events: list[tuple[datetime, str, dict[str, Any]]] = []
+        for row in matching:
+            defended = row.get('_DEFENDED_EVENT')
+            release = row.get('_RELEASE_EVENT')
+            for event, stage in ((defended, 'L-HOLD' if side == 'LONG' else 'S-HOLD'), (release, 'LONG' if side == 'LONG' else 'SHORT')):
+                if event is not None and event['time'] >= early_time:
+                    stage_events.append((event['time'], stage, event))
+            if row.get('_END_REASON') == 'INVALIDATED':
+                invalidation_time = _structure_time(row.get('_END_TIME'))
+                if invalidation_time is not None and invalidation_time >= early_time:
+                    stage_events.append((invalidation_time, 'X', {
+                        'time': invalidation_time,
+                        'price': _diagnostic_number(row.get('_END_PRICE')),
+                        'control': '', 'reward': None,
+                    }))
+        released = False
+        emitted_stages: set[tuple[datetime, str]] = set()
+        for timestamp, stage, event in sorted(stage_events, key=lambda item: item[0]):
+            if timestamp < early_time:
+                continue
+            if released:
+                continue
+            if (timestamp, stage) in emitted_stages:
+                continue
+            if stage in ('L-HOLD', 'S-HOLD'):
+                if any(item_stage in ('LONG', 'SHORT') and item_time <= timestamp for item_time, item_stage, _ in stage_events):
+                    continue
+            if stage in ('LONG', 'SHORT'):
+                released = True
+            emitted_stages.add((timestamp, stage))
+            structures.append(_structure_stage_event(event, stage, side, selected_votes, local_rows, raw_by_time))
+    structures.sort(key=lambda row: row['TIME'])
+    return structures
+
+
+def write_tv_structure_pine(path: Path, events: list[dict[str, Any]]) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    lines = [
+        '//@version=6',
+        '// BTC-LRA structural research events',
+        '// Generated from causal EARLY -> LIMIT defense -> MARKET release research state.',
+        'indicator("BTC-LRA OI Structure", overlay=true, max_labels_count=500)',
+        '',
+        'consensus_votes = input.int(2, "EARLY consensus votes", options=[1, 2, 3, 4])',
+        'show_early = input.bool(true, "Show EARLY")',
+        'show_hold = input.bool(true, "Show HOLD")',
+        'show_release = input.bool(true, "Show RELEASE")',
+        'show_invalidated = input.bool(true, "Show invalidated")',
+        'show_details = input.bool(false, "Show details")',
+        '',
+    ]
+    for index, event in enumerate(events):
+        timestamp = _structure_time(event['TIME'])
+        price = _diagnostic_number(event.get('PRICE'))
+        if timestamp is None or price is None or price <= 0:
+            continue
+        stage = event['STAGE']
+        show = 'show_early' if stage in ('E-LONG', 'E-SHORT') else 'show_hold' if stage.endswith('HOLD') else 'show_release' if stage in ('LONG', 'SHORT') else 'show_invalidated'
+        color = 'color.green' if stage in ('E-LONG', 'L-HOLD', 'LONG') else 'color.red' if stage in ('E-SHORT', 'S-HOLD', 'SHORT') else 'color.gray'
+        style = 'label.style_label_up' if stage in ('E-LONG', 'L-HOLD', 'LONG') else 'label.style_label_down' if stage in ('E-SHORT', 'S-HOLD', 'SHORT') else 'label.style_label_left'
+        y = f'{price:.10f} * 0.999' if stage in ('E-LONG', 'L-HOLD', 'LONG') else f'{price:.10f} * 1.001' if stage in ('E-SHORT', 'S-HOLD', 'SHORT') else f'{price:.10f}'
+        details = '\\n'.join([
+            f'TIME: {event["TIME"]} Panama', f'STAGE: {stage}',
+            f'CONSENSUS: {event.get("CONSENSUS_TIER", "")}',
+            f'LOCAL DOM: {_analysis_value(event.get("LOCAL_DOM_PCT"))}%',
+            f'LOCAL MASS: {_analysis_value(event.get("LOCAL_MASS"))} BTC',
+            f'REWARD: {_analysis_value(event.get("PRICE_REWARD_BPS"))} bps',
+            f'CONTROL: {event.get("CONTROL", "")}',
+            f'EFF_RATIO: {_analysis_value(event.get("EFF_RATIO"))}',
+            f'ABSORPTION: {_analysis_value(event.get("ABSORPTION"))}',
+            f'OI ADD: {_analysis_value(event.get("OI_ADD"))} BTC',
+            f'AGGR: {event.get("AGGR_SIDE", "")} {_analysis_value(event.get("AGGR_SHARE"))}% {_analysis_value(event.get("AGGR_MAG"))} BTC',
+        ])
+        lines.extend([
+            f'structure_{index}_time = {pine_timestamp(timestamp)}',
+            f'structure_{index}_shown = {show} and consensus_votes == {int(str(event["CONSENSUS_TIER"]).split("/")[0])}',
+            f'if structure_{index}_shown and time <= structure_{index}_time and time_close > structure_{index}_time',
+            f'    label.new(x=structure_{index}_time, y={y}, xloc=xloc.bar_time, yloc=yloc.price, text=show_details ? {pine_quote(details)} : {pine_quote(stage)}, style={style}, color={color}, textcolor=color.white, size=size.tiny)',
+            '',
+        ])
+    temporary = path.with_name(path.name + '.tmp')
+    temporary.write_text('\n'.join(lines) + '\n', encoding='utf-8')
+    temporary.replace(path)
+
+
+def write_tv_structure_csv(path: Path, events: list[dict[str, Any]]) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with path.open('w', newline='', encoding='utf-8') as handle:
+        writer = csv.DictWriter(handle, fieldnames=TV_STRUCTURE_COLUMNS)
+        writer.writeheader()
+        for event in events:
+            writer.writerow({key: _analysis_value(event.get(key)) for key in TV_STRUCTURE_COLUMNS})
+
+
+def write_tv_structure_for_data(root: Path, samples: list[dict[str, Any]],
+                                market: list[dict[str, Any]], start: datetime,
+                                end: datetime, selected_votes: int) -> list[dict[str, Any]]:
+    samples = [sample for sample in samples if start <= sample['ts'] <= end + timedelta(minutes=1)]
+    minutes = [row for row in minute_oi(samples) if start <= row['minute'] <= end]
+    market = [row for row in market if start <= row['ts'] <= end]
+    annotate_minutes(minutes)
+    local_rows, _ = _local_dominance_contributions(samples, minutes, market, start, end)
+    raw_summaries, _ = _raw_intensity_summary(samples, minutes, market)
+    events = build_causal_structure_events(local_rows, raw_summaries, selected_votes)
+    write_tv_structure_csv(root / 'data' / 'research' / 'BTC_LRA_TV_STRUCTURE_EVENTS.csv', events)
+    write_tv_structure_pine(root / 'BTC_LRA_TV_STRUCTURE.pine', events)
+    return events
+
+
+def run_tv_structure_export(args: argparse.Namespace) -> None:
+    root = Path(__file__).resolve().parent
+    raw_paths = args.raw_oi or discover_raw_paths(root)
+    market_path = args.market_csv or discover_market_path(root)
+    if not raw_paths or market_path is None:
+        raise SystemExit('TV structure export requires recorded raw OI and market data.')
+    samples = load_raw(raw_paths)
+    market = load_market(market_path)
+    minutes = minute_oi(samples)
+    annotate_minutes(minutes)
+    common = recorded_range(samples, market)
+    if common is None:
+        raise SystemExit('No common recorded range for TV structure export.')
+    start, end = common
+    if args.from_time:
+        start = max(start, parse_time(args.from_time))
+    if args.end:
+        end = min(end, parse_time(args.end))
+    events = write_tv_structure_for_data(root, samples, market, start, end, args.tv_structure_votes)
+    csv_path = root / 'data' / 'research' / 'BTC_LRA_TV_STRUCTURE_EVENTS.csv'
+    pine_path = root / 'BTC_LRA_TV_STRUCTURE.pine'
+    write_tv_structure_csv(csv_path, events)
+    write_tv_structure_pine(pine_path, events)
+    print(f'TV STRUCTURE PINE: {pine_path}')
+    print(f'TV STRUCTURE CSV: {csv_path}')
+    print(f'STRUCTURE EVENTS: {len(events)}')
+    print(f'CONSENSUS TIER: {args.tv_structure_votes}/4')
+
+
 def _raw_float(value: Any) -> float | None:
     if value in (None, ''):
         return None
@@ -1943,9 +3199,310 @@ def apply_raw_event_to_session(session: 'Session', summary: dict[str, Any]) -> d
     return event
 
 
+class PreReleaseState:
+    """Research-only causal state machine; it never changes production accounting."""
+
+    PCTL_THRESHOLD = 97.5
+    MIN_DEPTH_LEVEL_BTC = 20.0
+    MAX_DEPTH_DISTANCE_USDT = 50.0
+    TEST_DISTANCE_USDT = 10.0
+    REQUIRED_SAMPLES = 2
+    CANCEL_MISSES = 3
+
+    def __init__(self) -> None:
+        self.state = 'NEUTRAL'
+        self.side: str | None = None
+        self.streak = 0
+        self.misses = 0
+        self.last_sample: datetime | None = None
+        self.last_detail: dict[str, Any] | None = None
+        self.depth_levels: dict[str, dict[str, Any] | None] = {'BUY': None, 'SELL': None}
+        self.depth_events: list[dict[str, Any]] = []
+        self.last_depth_event: dict[str, Any] | None = None
+        self.depth_history: list[dict[str, Any]] = []
+        self._next_level_id = 1
+
+    def _record_depth_event(self, event: dict[str, Any]) -> None:
+        self.depth_events.append(event)
+        self.depth_history.append(dict(event))
+        self.depth_history = self.depth_history[-200:]
+        self.last_depth_event = event
+
+    def pop_depth_events(self) -> list[dict[str, Any]]:
+        events = self.depth_events
+        self.depth_events = []
+        return events
+
+    def _finish_depth_level(self, side: str, previous: dict[str, Any],
+                            timestamp: datetime, mid: float | None,
+                            status: str | None = None) -> None:
+        level_price = float(previous['price'])
+        if status is None:
+            crossed = mid is not None and (mid < level_price if side == 'BUY' else mid > level_price)
+            status = 'BROKEN' if crossed else 'PULLED'
+        initial = float(previous.get('initial_size', 0.0))
+        current = float(previous.get('last_size', 0.0))
+        self._record_depth_event({
+            'level_id': previous.get('level_id'),
+            'side': side,
+            'status': status,
+            'price': level_price,
+            'initial_qty': initial,
+            'current_qty': current,
+            'remaining_pct': current / initial * 100.0 if initial > 0 else None,
+            'min_distance': previous.get('min_distance'),
+            'age_sec': previous.get('age_sec', 0.0),
+            'time': timestamp,
+        })
+
+    def _depth_level(self, side: str, depth: dict[str, Any] | None,
+                     timestamp: datetime) -> dict[str, Any] | None:
+        if depth is None:
+            self.depth_levels[side] = None
+            return None
+        price_key = 'largest_bid_level_price' if side == 'BUY' else 'largest_ask_level_price'
+        size_key = 'largest_bid_level_qty' if side == 'BUY' else 'largest_ask_level_qty'
+        try:
+            level_price = float(depth.get(price_key))
+            level_size = float(depth.get(size_key))
+            mid = float(depth.get('mid'))
+        except (TypeError, ValueError):
+            previous = self.depth_levels.get(side)
+            if previous is not None:
+                self._finish_depth_level(side, previous, timestamp, None)
+            self.depth_levels[side] = None
+            return None
+        distance = abs(mid - level_price)
+        previous = self.depth_levels.get(side)
+        if level_size < self.MIN_DEPTH_LEVEL_BTC or distance > self.MAX_DEPTH_DISTANCE_USDT:
+            if previous is not None:
+                self._finish_depth_level(side, previous, timestamp, mid)
+            self.depth_levels[side] = None
+            return None
+        same_level = previous is not None and abs(float(previous['price']) - level_price) <= 1.0
+        if not same_level:
+            if previous is not None:
+                self._finish_depth_level(side, previous, timestamp, mid)
+            previous = {
+                'level_id': self._next_level_id,
+                'first_seen': timestamp,
+                'price': level_price,
+                'initial_size': level_size,
+                'min_size': level_size,
+            }
+            self._next_level_id += 1
+        previous['price'] = level_price
+        previous['last_size'] = level_size
+        previous['min_size'] = min(float(previous.get('min_size', level_size)), level_size)
+        previous['distance'] = distance
+        previous['min_distance'] = min(float(previous.get('min_distance', distance)), distance)
+        previous['age_sec'] = max(0.0, (timestamp - previous['first_seen']).total_seconds())
+        previous['tested'] = distance <= self.TEST_DISTANCE_USDT
+        moved_away = mid > level_price if side == 'BUY' else mid < level_price
+        previous['held'] = bool(previous['tested'] and moved_away and level_size >= float(previous['initial_size']) * 0.25)
+        new_status = 'HELD' if previous['held'] else 'TESTED' if previous['tested'] else 'NEAR'
+        if new_status != previous.get('status'):
+            initial = float(previous.get('initial_size', level_size))
+            self._record_depth_event({
+                'level_id': previous.get('level_id'),
+                'side': side,
+                'status': new_status,
+                'price': level_price,
+                'initial_qty': initial,
+                'current_qty': level_size,
+                'remaining_pct': level_size / initial * 100.0 if initial > 0 else None,
+                'min_distance': previous.get('min_distance'),
+                'age_sec': previous['age_sec'],
+                'time': timestamp,
+            })
+        previous['status'] = new_status
+        self.depth_levels[side] = previous
+        return dict(previous)
+
+    @staticmethod
+    def _target_control(side: str, control: str) -> bool:
+        return control in {
+            'CONTROL LIMIT BUY' if side == 'BUY' else 'CONTROL LIMIT SELL',
+            'CONTROL MARKET BUY' if side == 'BUY' else 'CONTROL MARKET SELL',
+        }
+
+    def _detail(self, sample: dict[str, Any], metric: dict[str, Any],
+                effort: dict[str, Any], depth: dict[str, Any] | None,
+                price: float | None) -> dict[str, Any]:
+        doi = float(metric.get('doi') or 0.0)
+        pctl = max((metric.get(key) for key in ('impulse_pctl', 'burst_30_pctl', 'burst_60_pctl')
+                    if metric.get(key) is not None), default=None)
+        ratio = depth.get('bid_ask_notional_ratio') if depth else None
+        side = str(effort.get('aggr_side') or 'HELD')
+        depth_level = self._depth_level(side, depth, sample['ts']) if side in ('BUY', 'SELL') else None
+        anomaly_probability = seller_interception_probability(effort, depth_level, pctl, doi)
+        return {
+            'time': sample['ts'],
+            'price': price,
+            'side': side,
+            'pctl': pctl,
+            'peak_type': metric.get('peak_type'),
+            'doi': doi,
+            'oi_flow': 'EXPANSION' if doi > 0 else 'CONTRACTION' if doi < 0 else 'FLAT',
+            'aggr_mag': effort.get('aggr_mag'),
+            'aggr_share': effort.get('aggr_share_pct'),
+            'control': effort.get('control', 'CONTROL UNCLEAR'),
+            'eff_ratio': effort.get('eff_ratio'),
+            'absorption_ratio': effort.get('absorption_ratio'),
+            'depth_ratio': depth.get('bid_ask_notional_ratio') if depth else None,
+            'depth_level': depth_level,
+            'anomaly_probability': anomaly_probability,
+            'anomaly_label': 'SELL INTERCEPT' if anomaly_probability >= SELL_INTERCEPTION_SOUND_THRESHOLD else None,
+        }
+
+    def observe(self, sample: dict[str, Any], metric: dict[str, Any],
+                effort: dict[str, Any] | None, depth: dict[str, Any] | None,
+                price: float | None) -> dict[str, Any] | None:
+        """Advance only from information available at this raw sample timestamp."""
+        timestamp = sample['ts']
+        if self.last_sample is not None and timestamp <= self.last_sample:
+            return None
+        self.last_sample = timestamp
+        # Collector gaps, duplicate timestamps and out-of-order samples are
+        # valid telemetry but never valid impulse evidence for this layer.
+        if (metric.get('doi') is None or sample.get('gap_break') or
+                (metric.get('dt_sec') is not None and metric.get('dt_sec') <= 0)):
+            return None
+        if effort is None:
+            self.misses += 1
+            return self._maybe_cancel(timestamp)
+
+        detail = self._detail(sample, metric, effort, depth, price)
+        self.last_detail = detail
+        side = detail['side']
+        qualified = (
+            detail['pctl'] is not None and detail['pctl'] >= self.PCTL_THRESHOLD and
+            side in ('BUY', 'SELL') and bool(effort.get('meaningful_aggression')) and
+            detail['control'] != 'CONTROL UNCLEAR' and detail['depth_level'] is not None
+        )
+        if not qualified:
+            self.misses += 1
+            return self._maybe_cancel(timestamp)
+
+        if self.side is not None and side != self.side and self.state != 'NEUTRAL':
+            previous = self.state
+            self.state = 'NEUTRAL'
+            self.side = None
+            self.streak = 0
+            self.misses = 0
+            return {'state': 'CANCEL', 'previous_state': previous, **detail}
+
+        self.side = side
+        self.streak += 1
+        self.misses = 0
+        prefix = 'BUY' if side == 'BUY' else 'SELL'
+        limit = f'CONTROL LIMIT {side}'
+        market = f'CONTROL MARKET {side}'
+        previous = self.state
+        if self.state == 'NEUTRAL':
+            self.state = f'{prefix}_WATCH'
+        elif self.state in (f'{prefix}_WATCH', f'{prefix}_BUILDING'):
+            if self.streak >= self.REQUIRED_SAMPLES and detail['control'] == market:
+                self.state = f'{prefix}_RELEASE'
+            elif detail['control'] == limit:
+                self.state = f'{prefix}_BUILDING'
+        if self.state != previous:
+            return {'state': self.state, 'previous_state': previous, **detail}
+        return None
+
+    def _maybe_cancel(self, timestamp: datetime) -> dict[str, Any] | None:
+        if self.state == 'NEUTRAL' or self.misses < self.CANCEL_MISSES:
+            return None
+        previous = self.state
+        side = self.side
+        self.state = 'NEUTRAL'
+        self.side = None
+        self.streak = 0
+        self.misses = 0
+        return {
+            'state': 'CANCEL',
+            'previous_state': previous,
+            'time': timestamp,
+            'side': side,
+            'price': self.last_detail.get('price') if self.last_detail else None,
+            'pctl': self.last_detail.get('pctl') if self.last_detail else None,
+            'oi_flow': self.last_detail.get('oi_flow') if self.last_detail else None,
+            'control': self.last_detail.get('control') if self.last_detail else 'CONTROL UNCLEAR',
+        }
+
+    def snapshot(self) -> dict[str, Any]:
+        detail = self.last_detail or {}
+        return {
+            'state': self.state,
+            'side': self.side,
+            'streak': self.streak,
+            'pctl': detail.get('pctl'),
+            'oi_flow': detail.get('oi_flow'),
+            'depth_ratio': detail.get('depth_ratio'),
+            'depth_level': detail.get('depth_level'),
+            'anomaly_probability': detail.get('anomaly_probability', 0.0),
+            'anomaly_label': detail.get('anomaly_label'),
+            'control': detail.get('control'),
+            'time': detail.get('time'),
+            'last_depth_event': self.last_depth_event,
+            'depth_history': list(self.depth_history),
+        }
+
+
+def build_depth_timeline(rows: list[dict[str, Any]], anchor: datetime,
+                        clock: datetime) -> list[dict[str, Any]]:
+    """Reconstruct a display-only depth timeline from stored REST snapshots."""
+    tracker = PreReleaseState()
+    selected = [
+        row for row in rows
+        if anchor <= row.get('_ts', anchor) <= clock
+    ]
+    for row in selected:
+        try:
+            timestamp = row['_ts']
+            mid = float(row['mid'])
+            for side, price_key, size_key in (
+                ('BUY', 'largest_bid_level_price', 'largest_bid_level_qty'),
+                ('SELL', 'largest_ask_level_price', 'largest_ask_level_qty'),
+            ):
+                depth = {
+                    'mid': mid,
+                    price_key: row.get(price_key),
+                    size_key: row.get(size_key),
+                }
+                tracker._depth_level(side, depth, timestamp)
+        except (KeyError, TypeError, ValueError):
+            continue
+
+    # Keep currently active levels visible even though they have not finished.
+    for side, level in tracker.depth_levels.items():
+        if level is None or level.get('level_id') is None:
+            continue
+        level_id = level['level_id']
+        if any(event.get('level_id') == level_id for event in tracker.depth_history):
+            tracker.depth_history.append({
+                'level_id': level_id,
+                'side': side,
+                'status': level.get('status', 'ACTIVE'),
+                'price': level.get('price'),
+                'initial_qty': level.get('initial_size'),
+                'current_qty': level.get('last_size'),
+                'remaining_pct': (
+                    float(level.get('last_size', 0.0)) /
+                    float(level.get('initial_size', 1.0)) * 100.0
+                    if float(level.get('initial_size', 0.0)) > 0 else None
+                ),
+                'min_distance': level.get('min_distance'),
+                'age_sec': level.get('age_sec', 0.0),
+                'time': selected[-1]['_ts'] if selected else clock,
+            })
+    return tracker.depth_history[-200:]
+
+
 class Session:
     def __init__(self, anchor: datetime) -> None:
         self.anchor = anchor
+        self.display_depth_history: list[dict[str, Any]] = []
         self.oi_start: float | None = None
         self.oi_current: float | None = None
         self.oi_add = self.oi_exit = 0.0
@@ -1955,6 +3512,7 @@ class Session:
         self.previous_event: dict[str, Any] | None = None
         self.last_events: deque[dict[str, Any]] = deque(maxlen=10)
         self.event_history: list[dict[str, Any]] = []
+        self.minute_history: list[dict[str, Any]] = []
         self.oi_event_flow = 0.0
         self.market_history: list[dict[str, Any]] = []
         self.buy_dominance_weight_usdt = 0.0
@@ -1967,6 +3525,9 @@ class Session:
         self.raw_minute_ledgers: dict[datetime, dict[str, Any]] = {}
         self.raw_baseline_ready = False
         self.raw_baseline_span_minutes = 0.0
+        self.collector_stale = True
+        self.collector_last_age_sec: float | None = None
+        self.collector_market_last_age_sec: float | None = None
         self.buy_peak = self.sell_peak = 0.0
         self.last_control: str | None = None
         self.last_low: float | None = None
@@ -1984,6 +3545,7 @@ class Session:
         self.sell_effort_btc = 0.0
         self.buy_effort_btc = 0.0
         self.early_status = 'OBSERVATION'
+        self.pre_release = PreReleaseState()
 
     def reset(self, anchor: datetime) -> None:
         self.__init__(anchor)
@@ -2668,6 +4230,7 @@ def run_replay_live(args: argparse.Namespace, gui: GuiBridge | None = None) -> N
             market_row = market_by_minute.get(minute_time)
             if market_row is not None and market_row['ts'] + timedelta(minutes=1) <= clock:
                 rebuilt.apply_market(market_row)
+            append_minute_history(rebuilt, minute, market_row)
             canonical_event = None
             if minute_time in event_by_time:
                 event = dict(event_by_time[minute_time])
@@ -2817,6 +4380,7 @@ def run_replay_live(args: argparse.Namespace, gui: GuiBridge | None = None) -> N
             if market_row is not None and market_row['ts'] + timedelta(minutes=1) <= clock and minute_time not in applied_market:
                 session.apply_market(market_row)
                 applied_market.add(minute_time)
+            append_minute_history(session, minute, market_row)
             current = session.snapshot(minute_time)
             if current['dominant'] in ('BUY', 'SELL') and previous_flow and current['dominant'] != previous_flow:
                 flow_cross_count += 1
@@ -2976,40 +4540,54 @@ def run_live(args: argparse.Namespace, gui: GuiBridge | None = None) -> None:
         import msvcrt
     except ImportError:
         msvcrt = None
-    anchor = datetime.now(PANAMA) if args.from_now or not args.from_time else parse_time(args.from_time)
+    startup_now = datetime.now(PANAMA)
+    requested_default_anchor = startup_now - timedelta(hours=12)
+    anchor = parse_time(args.from_time) if args.from_time else (startup_now if args.from_now else requested_default_anchor)
     session = Session(anchor)
     processed: set[datetime] = set()
     processed_raw_samples: set[datetime] = set()
     root = Path(__file__).resolve().parent
-    log_path = root / 'data' / 'research' / 'BTC_LRA_LIVE_MONITOR.log'
-    persistent_raw_path = root / 'runtime' / 'monitor' / 'BTC_LRA_MONITOR_RAW_OI_12H.jsonl'
+    log_path = root / 'runtime' / 'monitor' / 'BTC_LRA_LIVE_MONITOR.log'
+    collector_directory = root / 'runtime' / 'collector'
+    collector_raw_path = collector_directory / 'BTC_LRA_OI_RAW.jsonl'
+    collector_market_path = collector_directory / 'BTC_LRA_MARKET_RAW.jsonl'
+    collector_depth_path = collector_directory / 'BTC_LRA_DEPTH_SUMMARY.jsonl'
     tv_path = root / 'BTC_LRA_TV_EVENTS.pine'
     tv_event_history: dict[datetime, dict[str, Any]] = {}
     print('BTC-LRA OI МОНИТОР ПОТОКА | ТОЛЬКО ЧТЕНИЕ')
     print('R = СБРОСИТЬ ОТСЧЁТ НА СЕЙЧАС | Ctrl+C = выход')
     market_history: list[dict[str, Any]] = []
     raw_flow_by_time: dict[datetime, dict[str, Any]] = {}
-    startup_now = datetime.now(PANAMA)
-    raw_samples, persistent_exists = load_persistent_raw_history(persistent_raw_path, startup_now)
-    source = 'PERSISTENT' if raw_samples else 'EMPTY'
+    collector_owns_raw = collector_raw_is_fresh(collector_raw_path, startup_now)
+    collector_owns_market = collector_raw_is_fresh(collector_market_path, startup_now)
+    raw_samples = load_collector_oi_history(collector_raw_path, startup_now, 24.0)
+    source = 'COLLECTOR' if raw_samples else 'EMPTY'
     history_span = ((raw_samples[-1]['ts'] - raw_samples[0]['ts']).total_seconds() / 3600
                     if len(raw_samples) >= 2 else 0.0)
-    if history_span < RAW_BASELINE_MINUTES / 60:
-        bootstrap_samples: list[dict[str, Any]] = []
-        old_paths = discover_raw_paths(root)
-        if old_paths:
-            try:
-                bootstrap_samples = _raw_history_trim(load_raw(old_paths), startup_now)
-            except (OSError, ValueError, json.JSONDecodeError):
-                bootstrap_samples = []
-        if bootstrap_samples:
-            raw_samples = _raw_history_trim(raw_samples + bootstrap_samples, startup_now)
-            source = 'OLD_002_BOOTSTRAP'
-            compact_persistent_raw_history(persistent_raw_path, raw_samples, startup_now)
-            history_span = ((raw_samples[-1]['ts'] - raw_samples[0]['ts']).total_seconds() / 3600
-                            if len(raw_samples) >= 2 else 0.0)
     processed_raw_samples.update(sample['ts'] for sample in raw_samples)
-    last_oi_timestamp: datetime | None = raw_samples[-1]['ts'] if raw_samples else None
+    collector_oi_latest = collector_latest_timestamp(collector_raw_path)
+    collector_market_latest = collector_latest_timestamp(collector_market_path)
+    earliest_exact = raw_samples[0]['ts'] + timedelta(hours=6, minutes=30) if raw_samples else None
+    if not args.from_time and not args.from_now and earliest_exact is not None and anchor < earliest_exact:
+        actual_anchor = min(max(earliest_exact, raw_samples[0]['ts']), startup_now)
+        write_bounded_live_log(
+            log_path,
+            f'DEFAULT_ANCHOR_CLAMPED requested={fmt_time(anchor)} actual={fmt_time(actual_anchor)} '
+            f'reason=insufficient_raw_reference earliest_exact={fmt_time(earliest_exact)}',
+        )
+        anchor = actual_anchor
+        session = Session(anchor)
+    session.collector_stale = not (collector_owns_raw and collector_owns_market)
+    session.collector_last_age_sec = ((startup_now - collector_oi_latest).total_seconds() if collector_oi_latest else None)
+    session.collector_market_last_age_sec = ((startup_now - collector_market_latest).total_seconds() if collector_market_latest else None)
+    migration_market = load_collector_market_history(collector_market_path, startup_now, 24.0)
+    if len(migration_market) < 120:
+        try:
+            migration_market = merge_market_rows(fetch_binance_1m_klines(1000), migration_market)
+            write_bounded_live_log(log_path, f'MARKET_MIGRATION_FALLBACK bars={len(migration_market)} source=BINANCE_HISTORICAL_ONLY')
+        except (OSError, ValueError, TypeError, urllib.error.URLError) as exc:
+            write_bounded_live_log(log_path, f'MARKET_MIGRATION_FALLBACK_ERROR {type(exc).__name__}: {exc}')
+    market_history = merge_market_rows(migration_market)[-120:]
     baseline_ready = history_span >= RAW_BASELINE_MINUTES / 60
     session.raw_baseline_ready = baseline_ready
     session.raw_baseline_span_minutes = history_span * 60
@@ -3020,6 +4598,14 @@ def run_live(args: argparse.Namespace, gui: GuiBridge | None = None) -> None:
         f'span_hours={history_span:.2f} source={source} '
         f'reference_ready={"YES" if baseline_ready else "NO"}'
     )
+    collector_line = (
+        f'COLLECTOR_OI_RESTORED path={collector_raw_path} samples={len(raw_samples)} '
+        f'oldest={fmt_time(raw_samples[0]["ts"]) if raw_samples else "--"} '
+        f'newest={fmt_time(raw_samples[-1]["ts"]) if raw_samples else "--"} '
+        f'span_hours={history_span:.2f} reference_ready={"YES" if baseline_ready else "NO"}'
+    )
+    print(collector_line)
+    write_bounded_live_log(log_path, collector_line)
     print(baseline_line)
     write_bounded_live_log(log_path, baseline_line)
     baseline_warmup_logged = False
@@ -3028,9 +4614,6 @@ def run_live(args: argparse.Namespace, gui: GuiBridge | None = None) -> None:
         print(warmup_line)
         write_bounded_live_log(log_path, warmup_line)
         baseline_warmup_logged = True
-    last_compact = startup_now
-    atexit.register(lambda: compact_persistent_raw_history(persistent_raw_path, raw_samples, datetime.now(PANAMA)))
-
     def parse_live_anchor(value: str, clock: datetime) -> datetime:
         value = value.strip()
         if re.fullmatch(r'\d{1,2}:\d{2}', value):
@@ -3040,6 +4623,8 @@ def run_live(args: argparse.Namespace, gui: GuiBridge | None = None) -> None:
             if requested > clock:
                 requested -= timedelta(days=1)
             return requested
+        if not re.fullmatch(r'\d{1,2}\.\d{1,2}\.\d{2,4}\s+\d{1,2}:\d{2}', value):
+            raise ValueError('используйте HH:MM или DD.MM.YY HH:MM')
         requested = parse_time(value)
         if requested > clock:
             raise ValueError('anchor позже текущего времени')
@@ -3050,10 +4635,6 @@ def run_live(args: argparse.Namespace, gui: GuiBridge | None = None) -> None:
                                  Session, set[datetime], set[datetime], dict[datetime, dict[str, Any]]]:
         """Causally rebuild session state without replaying raw sensors as new samples."""
         closed_market = [row for row in rebuild_market if row['ts'] + timedelta(minutes=1) <= clock]
-        current_market_row = next(
-            (row for row in reversed(rebuild_market) if row['ts'] + timedelta(minutes=1) > clock),
-            None,
-        )
         if not closed_market:
             raise ValueError('нет закрытых Binance 1m свечей для rebuild')
         if not any(row['ts'] <= new_anchor for row in closed_market):
@@ -3068,8 +4649,6 @@ def run_live(args: argparse.Namespace, gui: GuiBridge | None = None) -> None:
         rebuilt_until = clock.replace(second=0, microsecond=0)
         rebuild_minutes = minute_oi(raw_samples)
         annotate_minutes(rebuild_minutes)
-        rebuild_metrics = _raw_intensity_metrics(raw_samples)
-        rebuild_metric_by_ts = {row['ts']: row for row in rebuild_metrics}
         rebuild_summaries, _ = _raw_intensity_summary(raw_samples, rebuild_minutes, closed_market)
         rebuild_raw_by_time = {row['_time']: row for row in rebuild_summaries}
         rebuild_events = {
@@ -3091,6 +4670,7 @@ def run_live(args: argparse.Namespace, gui: GuiBridge | None = None) -> None:
             market_row = market_by_time.get(minute_time)
             if market_row is not None:
                 rebuilt.apply_market(market_row)
+            append_minute_history(rebuilt, minute, market_row)
             canonical_event: dict[str, Any] | None = None
             raw_event: dict[str, Any] | None = None
             if minute_time in rebuild_events:
@@ -3110,29 +4690,19 @@ def run_live(args: argparse.Namespace, gui: GuiBridge | None = None) -> None:
             if canonical_event is not None:
                 rebuilt.finalize_raw_minute(minute_time, canonical_event)
 
-        # Samples in the current unfinished minute are restored only as a
-        # causal provisional state. Older samples are already represented by
-        # finalized minutes and must not be applied a second time.
+        # Do not restore provisional samples from the unfinished minute. The
+        # historical partial kline is not available causally at each sample
+        # timestamp, so replaying it could attribute future market state to
+        # earlier OI samples. The next new sample continues normal LIVE
+        # processing and starts the provisional ledger from zero.
+        # Mark the current-minute samples as observed, but intentionally do
+        # not apply them. This prevents the next LIVE loop from replaying
+        # historical provisional samples; only a newly arriving sample can
+        # start the fresh provisional ledger.
         processed_samples = {
             sample['ts'] for sample in raw_samples
-            if new_anchor <= sample['ts'] < rebuilt_until
+            if new_anchor <= sample['ts'] <= clock
         }
-        if current_market_row is not None:
-            diagnostic = Session(current_market_row['ts'])
-            diagnostic.market_history = closed_market
-            for sample in raw_samples:
-                if sample['ts'] < new_anchor or sample['ts'] >= rebuilt_until:
-                    continue
-                if sample['ts'].replace(second=0, microsecond=0) != current_market_row['ts']:
-                    continue
-                metric = rebuild_metric_by_ts.get(sample['ts'])
-                if metric is None:
-                    continue
-                partial_effort = diagnostic.effort_result_control(
-                    sample['ts'], current_market_row['buy'], current_market_row['sell'],
-                    current_market_row['close'] - current_market_row['open'], current_market_row['open'],
-                )
-                rebuilt.apply_raw_sample(sample, metric, partial_effort=partial_effort)
 
         return rebuilt, rebuilt_processed, processed_samples, current_tv
 
@@ -3156,17 +4726,37 @@ def run_live(args: argparse.Namespace, gui: GuiBridge | None = None) -> None:
                     old_anchor = session.anchor
                     clock = datetime.now(PANAMA)
                     try:
+                        raw_samples = load_collector_oi_history(collector_raw_path, clock, 24.0)
+                        if raw_samples:
+                            history_span = (raw_samples[-1]['ts'] - raw_samples[0]['ts']).total_seconds() / 3600.0
+                            baseline_ready = history_span >= RAW_BASELINE_MINUTES / 60
                         requested = parse_live_anchor(value, clock)
                         earliest_exact = (raw_samples[0]['ts'] + timedelta(hours=6, minutes=30)) if raw_samples else None
                         if earliest_exact is None or requested < earliest_exact:
                             raise ValueError(
                                 f'insufficient_raw_reference earliest_exact={fmt_time(earliest_exact)}'
                             )
-                        rebuild_market = fetch_binance_1m_klines(1000)
+                        rebuild_market = merge_market_rows(
+                            migration_market,
+                            load_collector_market_history(collector_market_path, clock, 24.0),
+                        )
+                        if len(rebuild_market) < 31:
+                            rebuild_market = merge_market_rows(fetch_binance_1m_klines(1000), rebuild_market)
                         rebuilt, rebuilt_processed, rebuilt_samples, rebuilt_tv = rebuild_live_session(
                             requested, clock, rebuild_market,
                         )
+                        preserved_depth_history = list(session.pre_release.depth_history)
                         session = rebuilt
+                        session.pre_release.depth_history = preserved_depth_history[-200:]
+                        session.pre_release.last_depth_event = (
+                            session.pre_release.depth_history[-1]
+                            if session.pre_release.depth_history else None
+                        )
+                        numeric_level_ids = [
+                            event.get('level_id') for event in session.pre_release.depth_history
+                            if isinstance(event.get('level_id'), int)
+                        ]
+                        session.pre_release._next_level_id = max(numeric_level_ids, default=0) + 1
                         processed = rebuilt_processed
                         processed_raw_samples = rebuilt_samples
                         tv_event_history = {
@@ -3179,7 +4769,7 @@ def run_live(args: argparse.Namespace, gui: GuiBridge | None = None) -> None:
                             if row['ts'] + timedelta(minutes=1) <= clock
                         ][-120:]
                         session.market_history = market_history
-                        write_bounded_live_log(log_path, f'LIVE_ANCHOR_CHANGED from={fmt_time(old_anchor)} to={fmt_time(requested)} rebuilt_until={fmt_time(clock)} events={len(session.event_history)} oi_flow={session.oi_event_flow + session.provisional_oi_flow:.6f} buy_dom={session.buy_dominance_v2_btc + session.provisional_buy_dominance_v2_btc:.6f} sell_dom={session.sell_dominance_v2_btc + session.provisional_sell_dominance_v2_btc:.6f}')
+                        write_bounded_live_log(log_path, f'LIVE_ANCHOR_CHANGED from={fmt_time(old_anchor)} to={fmt_time(requested)} rebuilt_until={fmt_time(clock)} events={len(session.event_history)} oi_flow={session.oi_event_flow + session.provisional_oi_flow:.6f} buy_dom={session.buy_dominance_v2_btc + session.provisional_buy_dominance_v2_btc:.6f} sell_dom={session.sell_dominance_v2_btc + session.provisional_sell_dominance_v2_btc:.6f} provisional_current_minute=RESET')
                     except (ValueError, TypeError, OSError, urllib.error.URLError) as exc:
                         write_bounded_live_log(log_path, f'LIVE_ANCHOR_REJECTED requested={value!r} reason={exc}')
                 elif key == 'RIGHT':
@@ -3203,47 +4793,34 @@ def run_live(args: argparse.Namespace, gui: GuiBridge | None = None) -> None:
                 print(f'\nОТСЧЁТ СБРОШЕН: {session.anchor.strftime("%H:%M:%S / %d.%m.%y -5")}')
             elif key == 'T':
                 print('LIVE T доступен через GUI: нажмите T и задайте HH:MM или YYYY-MM-DD HH:MM')
-        try:
-            live_klines = fetch_binance_1m_klines(122)
-        except Exception as exc:
-            live_klines = market_history[-120:]
-            write_bounded_live_log(log_path, f'LIVE_BINANCE_KLINES_ERROR {type(exc).__name__}: {exc}')
-        try:
-            oi_sample = fetch_binance_open_interest()
-        except Exception as exc:
-            oi_sample = None
-            write_bounded_live_log(log_path, f'LIVE_BINANCE_OPEN_INTEREST_ERROR {type(exc).__name__}: {exc}')
-        if oi_sample is not None and oi_sample['ts'] != last_oi_timestamp:
-            gap_break = (
-                last_oi_timestamp is None
-                or (oi_sample['ts'] - last_oi_timestamp).total_seconds() > RAW_MAX_NORMAL_GAP_SEC
-            )
-            live_sample = {
-                'ts': oi_sample['ts'], 'oi': oi_sample['oi'],
-                **({'gap_break': True} if gap_break else {}),
-            }
-            raw_samples.append(live_sample)
-            append_persistent_raw_sample(persistent_raw_path, live_sample)
-            last_oi_timestamp = oi_sample['ts']
-            raw_samples = _raw_history_trim(raw_samples, oi_sample['ts'])
-            span_minutes = ((raw_samples[-1]['ts'] - raw_samples[0]['ts']).total_seconds() / 60
-                            if len(raw_samples) >= 2 else 0.0)
+        now = datetime.now(PANAMA)
+        collector_fresh = collector_raw_is_fresh(collector_raw_path, now)
+        collector_market_fresh = collector_raw_is_fresh(collector_market_path, now)
+        collector_market_rows = load_collector_market_history(collector_market_path, now, 24.0)
+        live_klines = merge_market_rows(migration_market, collector_market_rows)
+        depth_rows = load_collector_depth_summary(collector_depth_path, now, 24.0)
+        session.display_depth_history = build_depth_timeline(depth_rows, session.anchor, now)
+        if collector_fresh:
+            raw_samples = load_collector_oi_history(collector_raw_path, now, 24.0)
+
+        if raw_samples:
+            span_minutes = (raw_samples[-1]['ts'] - raw_samples[0]['ts']).total_seconds() / 60
             history_span = span_minutes / 60.0
             baseline_ready = span_minutes >= RAW_BASELINE_MINUTES
-            session.raw_baseline_ready = baseline_ready
-            session.raw_baseline_span_minutes = span_minutes
-            if not session.raw_baseline_ready and not baseline_warmup_logged:
-                warmup_line = f'RAW_BASELINE_WARMUP reason=available_span_{span_minutes:.1f}m_required_{RAW_BASELINE_MINUTES}m'
-                write_bounded_live_log(log_path, warmup_line)
-                baseline_warmup_logged = True
-            write_bounded_live_log(log_path, f'LIVE_OI_SAMPLE time={fmt_time(oi_sample["ts"])} oi={oi_sample["oi"]:.6f} dOI_gap_break={gap_break} samples={len(raw_samples)}')
-            if (oi_sample['ts'] - last_compact).total_seconds() >= 15 * 60:
-                compact_persistent_raw_history(persistent_raw_path, raw_samples, oi_sample['ts'])
-                last_compact = oi_sample['ts']
+        oi_latest = collector_latest_timestamp(collector_raw_path)
+        market_latest = collector_latest_timestamp(collector_market_path)
+        session.collector_stale = not (collector_fresh and collector_market_fresh)
+        session.collector_last_age_sec = ((now - oi_latest).total_seconds() if oi_latest else None)
+        session.collector_market_last_age_sec = ((now - market_latest).total_seconds() if market_latest else None)
+        session.raw_baseline_ready = baseline_ready
+        session.raw_baseline_span_minutes = history_span * 60
+        if not session.raw_baseline_ready and not baseline_warmup_logged:
+            warmup_line = f'RAW_BASELINE_WARMUP reason=available_span_{history_span * 60:.1f}m_required_{RAW_BASELINE_MINUTES}m'
+            write_bounded_live_log(log_path, warmup_line)
+            baseline_warmup_logged = True
         samples = raw_samples
         minutes = minute_oi(samples)
         annotate_minutes(minutes)
-        now = datetime.now(PANAMA)
         closed_market = [row for row in live_klines if row['ts'] + timedelta(minutes=1) <= now]
         current_market = next((row for row in reversed(live_klines) if row['ts'] + timedelta(minutes=1) > now), None)
         if closed_market:
@@ -3267,6 +4844,7 @@ def run_live(args: argparse.Namespace, gui: GuiBridge | None = None) -> None:
             market_row = next((row for row in market_history if row['ts'] == minute['minute']), None)
             if market_row is not None:
                 session.apply_market(market_row)
+            append_minute_history(session, minute, market_row)
             canonical_event = None
             raw_event: dict[str, Any] | None = None
             if minute['minute'] in event_by_time:
@@ -3316,6 +4894,37 @@ def run_live(args: argparse.Namespace, gui: GuiBridge | None = None) -> None:
                         current_market['close'] - current_market['open'], current_market['open'],
                     )
                 session.apply_raw_sample(sample, metric, partial_effort=partial_effort, log_path=log_path)
+                if partial_effort is not None:
+                    depth = next((row for row in reversed(depth_rows) if row['_ts'] <= sample['ts']), None)
+                    pre_release_event = session.pre_release.observe(
+                        sample, metric, partial_effort, depth,
+                        current_market['close'] if current_market is not None else session.price,
+                    )
+                    for depth_event in session.pre_release.pop_depth_events():
+                        write_bounded_live_log(
+                            log_path,
+                            'PRE_RELEASE_DEPTH ' + json.dumps(
+                                depth_event, ensure_ascii=False, default=str,
+                            ),
+                        )
+                        if args.sound == 'on' and depth_event.get('status') in {
+                                'NEAR', 'TESTED', 'HELD', 'DEFENDED', 'BROKEN', 'PULLED',
+                        }:
+                            write_bounded_live_log(
+                                log_path,
+                                f'SOUND_TRIGGER depth status={depth_event.get("status")} '
+                                f'side={depth_event.get("side")} price={depth_event.get("price")}',
+                            )
+                            play_event_sound(args.sound_file)
+                    if pre_release_event is not None:
+                        write_bounded_live_log(
+                            log_path,
+                            'PRE_RELEASE_STATE ' + json.dumps(
+                                pre_release_event, ensure_ascii=False, default=str,
+                            ),
+                        )
+                        if args.sound == 'on':
+                            play_event_sound(args.sound_file)
             processed_raw_samples.add(sample['ts'])
         session.print_status('LIVE STATUS', current_time=datetime.now(PANAMA), live=True)
         publish_gui(gui, session, datetime.now(PANAMA), None, live=True)
@@ -3326,7 +4935,7 @@ def launch_gui(args: argparse.Namespace) -> None:
     """Run the existing monitor in a worker and render only snapshots in Qt."""
     try:
         from PySide6.QtCore import QThread, QTimer, Qt
-        from PySide6.QtGui import QFont, QFontMetrics
+        from PySide6.QtGui import QColor, QFont, QFontMetrics
         from PySide6.QtWidgets import QApplication, QAbstractItemView, QFrame, QHeaderView, QInputDialog, QLabel, QTableWidget, QTableWidgetItem, QVBoxLayout, QWidget, QSizePolicy
     except ImportError as exc:
         raise SystemExit('Для --gui установите зависимость PySide6: python -m pip install PySide6') from exc
@@ -3402,6 +5011,27 @@ def launch_gui(args: argparse.Namespace) -> None:
                 if item is not None:
                     item.setText('')
             self.table.setRowCount(0)
+            self.depth_table = QTableWidget(0, 5)
+            self.depth_table.setHorizontalHeaderLabels(['TIME', 'PRICE', 'SIDE', 'VOLUME', 'STATUS'])
+            self.depth_table.setFont(font)
+            self.depth_table.verticalHeader().setVisible(False)
+            self.depth_table.verticalHeader().setDefaultSectionSize(22)
+            self.depth_table.setEditTriggers(QAbstractItemView.EditTrigger.NoEditTriggers)
+            self.depth_table.setSelectionMode(QAbstractItemView.SelectionMode.NoSelection)
+            self.depth_table.setFocusPolicy(Qt.FocusPolicy.NoFocus)
+            self.depth_table.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
+            self.depth_table.setMaximumHeight(6 * 22 + 30)
+            depth_horizontal = self.depth_table.horizontalHeader()
+            depth_horizontal.setDefaultAlignment(Qt.AlignmentFlag.AlignCenter | Qt.AlignmentFlag.AlignVCenter)
+            depth_horizontal.setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
+            depth_horizontal.setFixedHeight(30)
+            depth_horizontal.setStyleSheet('QHeaderView::section { border-bottom: 1px solid #a8a8a8; }')
+            self.depth_table.setStyleSheet(
+                'QTableWidget {'
+                ' border: 1px solid #c7c7c7;'
+                ' border-radius: 0px;'
+                '}'
+            )
             top_block = QWidget()
             top_block.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
             top_layout = QVBoxLayout(top_block)
@@ -3409,13 +5039,13 @@ def launch_gui(args: argparse.Namespace) -> None:
             top_layout.setSpacing(3)
             top_layout.setAlignment(Qt.AlignmentFlag.AlignTop)
             top_layout.addWidget(self.header, 0)
-            top_layout.addWidget(self.replay_line, 0)
             top_layout.addWidget(self.current, 0)
             layout = QVBoxLayout(self)
             layout.setContentsMargins(8, 8, 8, 8)
             layout.setSpacing(10)
             layout.addWidget(top_block, 0)
             layout.addWidget(self.table, 1)
+            layout.addWidget(self.depth_table, 0)
             self._cells: dict[tuple[int, int], str] = {}
             self._last_event_count = 0
             self._last_anchor = None
@@ -3433,7 +5063,7 @@ def launch_gui(args: argparse.Namespace) -> None:
             initial_headers = ['TIME', 'BTC PRICE', 'OI ACT', 'NET', 'AGGR', 'ΔPRICE', 'CONTROL']
             initial_width = sum(initial_metrics.horizontalAdvance(header) + 22
                                 for header in initial_headers) + 20
-            initial_height = 10 * 22 + 3 * 24 + 26 + 28
+            initial_height = 10 * 22 + 6 * 22 + 2 * 24 + 26 + 58
             self.resize(initial_width, initial_height)
             self._setting_initial_size = False
             self.table.verticalScrollBar().rangeChanged.connect(lambda _min, _max: self.resize_columns())
@@ -3590,7 +5220,7 @@ def launch_gui(args: argparse.Namespace) -> None:
             elif key == Qt.Key.Key_Left:
                 bridge.command('LEFT')
             elif key == Qt.Key.Key_T:
-                value, accepted = QInputDialog.getText(self, 'НОВЫЙ ОТСЧЁТ', 'Введите HH:MM или YYYY-MM-DD HH:MM')
+                value, accepted = QInputDialog.getText(self, 'НОВЫЙ ОТСЧЁТ', 'Введите HH:MM или DD.MM.YY HH:MM')
                 if accepted and value.strip():
                     bridge.command('T', value.strip())
             else:
@@ -3604,18 +5234,21 @@ def launch_gui(args: argparse.Namespace) -> None:
             baseline_text = ''
             if snapshot['live'] and not snapshot.get('raw_baseline_ready', False):
                 baseline_text = f' | RAW WARMUP {snapshot.get("raw_baseline_span_minutes", 0.0):.0f}m'
-            self.header.setText(f'OI FLOW MONITOR v0.0.1 | {mode} {snapshot["anchor"]}{baseline_text}')
-            self.replay_line.setText('' if snapshot['live'] else f'HISTORICAL TIME {snapshot["clock"]} | SPEED {snapshot["speed"]:g}x')
+            self.header.setText(f'OI FLOW MONITOR v0.0.1 | {mode} {snapshot["anchor_gui"]}{baseline_text}')
+            self.replay_line.setText(
+                snapshot.get('pre_release_text', '') if snapshot['live']
+                else f'HISTORICAL TIME {snapshot["clock"]} | SPEED {snapshot["speed"]:g}x'
+            )
             buy_pct = snapshot.get('dominance_v2_buy_pct')
             sell_pct = snapshot.get('dominance_v2_sell_pct')
             buy_text = '--' if buy_pct is None else f'{buy_pct:.1f}%'
             sell_text = '--' if sell_pct is None else f'{sell_pct:.1f}%'
             self._current_plain_text = (
-                f'{snapshot["clock"].split(" / ")[0]} | '
+                f'{snapshot["clock_gui"]} | '
                 f'DOMINANCE {buy_text} {sell_text} | {snapshot["oi_flow"]}'
             )
             self.current.setText(
-                f'{snapshot["clock"].split(" / ")[0]} | DOMINANCE '
+                f'{snapshot["clock_gui"]} | DOMINANCE '
                 f'<span style="color:#168a2f">{buy_text}</span> '
                 f'<span style="color:#c62828">{sell_text}</span> | '
                 f'{snapshot["oi_flow"]}'
@@ -3649,6 +5282,21 @@ def launch_gui(args: argparse.Namespace) -> None:
                         item.setTextAlignment(Qt.AlignmentFlag.AlignCenter | Qt.AlignmentFlag.AlignVCenter)
                         item.setText(text)
                         self._cells[(row_index, col_index)] = text
+            depth_rows = snapshot.get('depth_rows', [])
+            self.depth_table.setRowCount(len(depth_rows))
+            for row_index, row in enumerate(depth_rows):
+                for col_index, value in enumerate(row.values()):
+                    item = self.depth_table.item(row_index, col_index)
+                    if item is None:
+                        item = QTableWidgetItem()
+                        self.depth_table.setItem(row_index, col_index, item)
+                    item.setTextAlignment(Qt.AlignmentFlag.AlignCenter | Qt.AlignmentFlag.AlignVCenter)
+                    item.setText(str(value))
+                    if col_index == 2:
+                        item.setForeground(QColor('#168a2f' if value == 'BID' else '#c62828'))
+                        side_font = item.font()
+                        side_font.setStrikeOut(row.get('status') in {'PULLED', 'BROKEN'})
+                        item.setFont(side_font)
             row_height = max(1, self.table.verticalHeader().defaultSectionSize())
             visible_real_rows = max(1, self.table.viewport().height() // row_height)
             if anchor_changed:
@@ -3709,6 +5357,16 @@ def main() -> None:
                         help='write research-only local dominance entry hypotheses')
     parser.add_argument('--entry-episodes-analysis', action='store_true',
                         help='write research-only local dominance episode states')
+    parser.add_argument('--entry-episode-diagnostics', action='store_true',
+                        help='write research-only entry episode quality diagnostics')
+    parser.add_argument('--release-stage-analysis', action='store_true',
+                        help='write research-only LIMIT defense / MARKET release stages')
+    parser.add_argument('--consensus-episodes-analysis', action='store_true',
+                        help='collapse release-stage rows into research-only consensus episodes')
+    parser.add_argument('--tv-structure-export', action='store_true',
+                        help='write research-only causal TradingView structure export')
+    parser.add_argument('--tv-structure-votes', type=int, choices=(1, 2, 3, 4), default=2,
+                        help='selected causal EARLY consensus tier for TradingView structure export')
     args = parser.parse_args()
     if args.neighbor_analysis:
         run_neighbor_flow_analysis(args)
@@ -3724,6 +5382,18 @@ def main() -> None:
         return
     if args.entry_episodes_analysis:
         run_entry_episode_analysis(args)
+        return
+    if args.entry_episode_diagnostics:
+        run_entry_episode_diagnostics(args)
+        return
+    if args.release_stage_analysis:
+        run_release_stage_analysis(args)
+        return
+    if args.consensus_episodes_analysis:
+        run_consensus_episode_analysis(args)
+        return
+    if args.tv_structure_export:
+        run_tv_structure_export(args)
         return
     if args.gui:
         if args.mode not in ('replay-live', 'live'):
