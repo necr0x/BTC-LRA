@@ -767,6 +767,102 @@ def write_bounded_live_log(path: Path, line: str, max_bytes: int = 8 * 1024 * 10
         pass
 
 
+def _event_datetime(value: Any) -> datetime | None:
+    return value if isinstance(value, datetime) else None
+
+
+class EventRowArchive:
+    """Append-only archive for canonical rows shown in the upper GUI table."""
+
+    def __init__(self, path: Path, diagnostic_log: Path | None = None) -> None:
+        self.path = path
+        self.diagnostic_log = diagnostic_log
+        self.event_ids: set[str] = set()
+        self._load_event_ids()
+
+    def _load_event_ids(self) -> None:
+        if not self.path.is_file():
+            return
+        try:
+            with self.path.open('r', encoding='utf-8') as handle:
+                for line in handle:
+                    try:
+                        event_id = json.loads(line).get('event_id')
+                    except (json.JSONDecodeError, AttributeError):
+                        continue
+                    if isinstance(event_id, str):
+                        self.event_ids.add(event_id)
+        except OSError as exc:
+            self._diagnose(f'EVENT_ROW_ARCHIVE_READ_ERROR {type(exc).__name__}: {exc}')
+
+    def _diagnose(self, message: str) -> None:
+        if self.diagnostic_log is None:
+            return
+        try:
+            write_bounded_live_log(self.diagnostic_log, message)
+        except OSError:
+            pass
+
+    @staticmethod
+    def _number(event: dict[str, Any], *names: str) -> float | None:
+        for name in names:
+            value = event.get(name)
+            if value is not None:
+                try:
+                    return float(value)
+                except (TypeError, ValueError):
+                    return None
+        return None
+
+    def persist(self, event: dict[str, Any], session: 'Session',
+                record_origin: str) -> bool:
+        event_time = _event_datetime(event.get('time'))
+        if event_time is None:
+            return False
+        event_id = event_time.isoformat()
+        if event_id in self.event_ids:
+            return False
+        flags = event.get('event_flags')
+        if not isinstance(flags, list):
+            flags = []
+        row = {
+            'event_id': event_id,
+            'time': event_id,
+            'btc_price': self._number(event, 'display_event_price', 'price'),
+            'oi_activity_btc': self._number(event, 'event_oi_activity'),
+            'oi_net_btc': self._number(event, 'event_oi_net'),
+            'aggr_side': event.get('aggr_side'),
+            'aggr_share_pct': self._number(event, 'aggr_share_pct'),
+            'aggr_mag_btc': self._number(event, 'aggr_mag'),
+            'price_change_usdt': self._number(event, 'display_price_change', 'price_change'),
+            'control': event.get('control') or event.get('control_label'),
+            'event_source': event.get('event_source'),
+            'event_flags': list(flags),
+            'raw_oi_intensity_pctl': self._number(event, 'raw_oi_intensity_pctl'),
+            'raw_peak_type': event.get('raw_peak_type'),
+            'oi_flow_mode': event.get('raw_oi_flow'),
+            'eff_ratio': self._number(event, 'eff_ratio'),
+            'absorption_ratio': self._number(event, 'absorption_ratio'),
+            'oi_flow_contribution_btc': self._number(event, 'oi_flow_contribution'),
+            'buy_dominance_contribution_btc': self._number(event, 'v2_buy_delta_btc'),
+            'sell_dominance_contribution_btc': self._number(event, 'v2_sell_delta_btc'),
+            'oi_flow_after_btc': float(session.oi_event_flow),
+            'buy_dominance_after_btc': float(session.buy_dominance_v2_btc),
+            'sell_dominance_after_btc': float(session.sell_dominance_v2_btc),
+            'record_origin': record_origin,
+        }
+        try:
+            self.path.parent.mkdir(parents=True, exist_ok=True)
+            with self.path.open('a', encoding='utf-8') as handle:
+                handle.write(json.dumps(row, ensure_ascii=False, separators=(',', ':')) + '\n')
+                handle.flush()
+        except (OSError, TypeError, ValueError) as exc:
+            self._diagnose(f'EVENT_ROW_ARCHIVE_WRITE_ERROR {type(exc).__name__}: {exc}')
+            return False
+        self.event_ids.add(event_id)
+        return True
+
+
 def pine_quote(value: str) -> str:
     return '"' + value.replace('\\', '\\\\').replace('"', '\\"').replace('\n', '\\n') + '"'
 
@@ -4000,7 +4096,7 @@ class Session:
         # V2 is calculated here but committed only by finalize_raw_minute().
         # This keeps STRONG/RAW reconciliation single-entry and idempotent.
         v2 = self.dominance_v2_contribution(float(minute.get('add', 0.0)), effort)
-        current = dict(snap, time=minute['minute'], flow=flow, flow_adv=abs(flow_delta), price_change=price_change, classification=classification, control_label=control_label, event_oi_net=event_oi_net, event_oi_activity=event_oi_activity, display_flow=display_flow, display_flow_adv=abs(display_delta), display_price_change=display_price_change, display_event_price=event.get('display_event_price'), display_reference_price=event.get('display_reference_price'), display_taker_buy=event.get('display_taker_buy', 0.0), display_taker_sell=event.get('display_taker_sell', 0.0), display_flow_delta=event.get('display_flow_delta', display_delta), display_oi_add=float(minute.get('add', 0.0)), display_oi_exit=float(minute.get('exit', 0.0)), display_oi_jump=float(minute.get('jump', 0.0)), oi_add_mass=float(minute.get('add', 0.0)), **effort, **v2)
+        current = dict(snap, time=minute['minute'], flow=flow, flow_adv=abs(flow_delta), price_change=price_change, classification=classification, event_source=event.get('event_source'), control_label=control_label, event_oi_net=event_oi_net, event_oi_activity=event_oi_activity, display_flow=display_flow, display_flow_adv=abs(display_delta), display_price_change=display_price_change, display_event_price=event.get('display_event_price'), display_reference_price=event.get('display_reference_price'), display_taker_buy=event.get('display_taker_buy', 0.0), display_taker_sell=event.get('display_taker_sell', 0.0), display_flow_delta=event.get('display_flow_delta', display_delta), display_oi_add=float(minute.get('add', 0.0)), display_oi_exit=float(minute.get('exit', 0.0)), display_oi_jump=float(minute.get('jump', 0.0)), oi_add_mass=float(minute.get('add', 0.0)), **effort, **v2)
         current['buy_dominance_v2_btc'] = self.buy_dominance_v2_btc
         current['sell_dominance_v2_btc'] = self.sell_dominance_v2_btc
         current['buy_v2_pct'], current['sell_v2_pct'] = dominance_percentages(
@@ -4134,6 +4230,7 @@ def run_replay_live(args: argparse.Namespace, gui: GuiBridge | None = None) -> N
     session = Session(start)
     session.market_history = market
     log_path = args.log or root / 'data' / 'research' / 'BTC_LRA_RECORDED_LIVE_REPLAY.log'
+    event_archive = EventRowArchive(root / 'runtime' / 'monitor' / 'BTC_LRA_EVENT_ROWS.jsonl', log_path)
     tv_path = root / 'BTC_LRA_TV_EVENTS.pine'
     tv_event_history: dict[datetime, dict[str, Any]] = {}
     v2_report_path = root / 'data' / 'research' / 'BTC_LRA_DOMINANCE_V2_REPLAY.txt'
@@ -4247,6 +4344,7 @@ def run_replay_live(args: argparse.Namespace, gui: GuiBridge | None = None) -> N
                     canonical_event = raw_event
             if canonical_event is not None:
                 rebuilt.finalize_raw_minute(minute_time, canonical_event)
+                event_archive.persist(canonical_event, rebuilt, 'BACKFILL')
             rebuilt.snapshot(minute_time)
         return rebuilt
 
@@ -4480,6 +4578,7 @@ def run_replay_live(args: argparse.Namespace, gui: GuiBridge | None = None) -> N
             if canonical_event_for_finalize is not None:
                 source = 'STRONG+RAW' if canonical_event_for_finalize.get('event_source') != 'RAW_OI_INTENSITY' and raw_summary is not None and raw_event is not None else 'STRONG' if canonical_event_for_finalize.get('event_source') != 'RAW_OI_INTENSITY' else 'RAW_ONLY'
                 session.finalize_raw_minute(minute_time, canonical_event_for_finalize, log_path=log_path)
+                event_archive.persist(canonical_event_for_finalize, session, 'BACKFILL')
                 write_replay_log(log_path, 'ACCUM_FINAL ' + json.dumps({
                     'time': minute_time.isoformat(),
                     'source': source,
@@ -4548,6 +4647,8 @@ def run_live(args: argparse.Namespace, gui: GuiBridge | None = None) -> None:
     processed_raw_samples: set[datetime] = set()
     root = Path(__file__).resolve().parent
     log_path = root / 'runtime' / 'monitor' / 'BTC_LRA_LIVE_MONITOR.log'
+    event_archive = EventRowArchive(root / 'runtime' / 'monitor' / 'BTC_LRA_EVENT_ROWS.jsonl', log_path)
+    live_event_cutoff = startup_now.replace(second=0, microsecond=0)
     collector_directory = root / 'runtime' / 'collector'
     collector_raw_path = collector_directory / 'BTC_LRA_OI_RAW.jsonl'
     collector_market_path = collector_directory / 'BTC_LRA_MARKET_RAW.jsonl'
@@ -4689,6 +4790,7 @@ def run_live(args: argparse.Namespace, gui: GuiBridge | None = None) -> None:
                 canonical_event = raw_event
             if canonical_event is not None:
                 rebuilt.finalize_raw_minute(minute_time, canonical_event)
+                event_archive.persist(canonical_event, rebuilt, 'BACKFILL')
 
         # Do not restore provisional samples from the unfinished minute. The
         # historical partial kline is not available causally at each sample
@@ -4866,6 +4968,11 @@ def run_live(args: argparse.Namespace, gui: GuiBridge | None = None) -> None:
                 canonical_event = raw_event
             if canonical_event is not None:
                 session.finalize_raw_minute(minute['minute'], canonical_event, log_path=log_path)
+                event_archive.persist(
+                    canonical_event,
+                    session,
+                    'LIVE' if minute['minute'] >= live_event_cutoff else 'BACKFILL',
+                )
                 write_bounded_live_log(log_path, 'ACCUM_FINAL ' + json.dumps({
                     'time': minute['minute'].isoformat(),
                     'source': 'STRONG+RAW' if minute['minute'] in event_by_time and raw_event is not None else 'STRONG' if minute['minute'] in event_by_time else 'RAW_ONLY',
