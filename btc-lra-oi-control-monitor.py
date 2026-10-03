@@ -855,9 +855,11 @@ def publish_gui(bridge: GuiBridge | None, session: 'Session', clock: datetime,
         'collector_market_last_age_sec': getattr(session, 'collector_market_last_age_sec', None),
         'pre_release': pre_release,
         'pre_release_text': pre_release_text,
+        'research_alert_text': getattr(session, 'research_alert_text', None),
         'depth_rows': depth_rows[-12:],
         'events': events,
     })
+    session.research_alert_text = None
 
 
 def write_replay_log(path: Path, line: str) -> None:
@@ -972,6 +974,160 @@ class EventRowArchive:
             return False
         self.event_ids.add(event_id)
         return True
+
+
+RISK_BUILD_PURITY_MIN = 0.70
+RISK_BUILD_AGGR_SHARE_MIN_PCT = 60.0
+
+
+def risk_build_collision_candidate(event: dict[str, Any]) -> dict[str, Any] | None:
+    """Classify an already-canonical event as a research collision candidate."""
+    try:
+        oi_activity = float(event.get('event_oi_activity') or 0.0)
+        oi_net = float(event.get('event_oi_net') or 0.0)
+        aggr_share = float(event.get('aggr_share_pct') or 0.0)
+    except (TypeError, ValueError):
+        return None
+    if oi_activity <= 0.0 or oi_net <= 0.0:
+        return None
+    purity = oi_net / oi_activity
+    if purity < RISK_BUILD_PURITY_MIN or aggr_share < RISK_BUILD_AGGR_SHARE_MIN_PCT:
+        return None
+    aggr_side = event.get('aggr_side')
+    control = event.get('control') or event.get('control_label')
+    collision_type = None
+    if aggr_side == 'SELL' and control == 'CONTROL LIMIT BUY':
+        collision_type = 'SELL_RISK_BUILD_COLLISION'
+    elif aggr_side == 'BUY' and control == 'CONTROL LIMIT SELL':
+        collision_type = 'BUY_RISK_BUILD_COLLISION'
+    if collision_type is None:
+        return None
+    return {
+        'collision_type': collision_type,
+        'oi_build_purity': purity,
+        'human_text': 'RISK BUILD COLLISION\\n'
+                      f'{aggr_side} → {control.removeprefix("CONTROL ")}',
+    }
+
+
+class RiskBuildCollisionArchive:
+    """Append-only research persistence for canonical risk-build collisions."""
+
+    def __init__(self, path: Path, diagnostic_log: Path | None = None) -> None:
+        self.path = path
+        self.diagnostic_log = diagnostic_log
+        self.event_ids: set[str] = set()
+        self._load_event_ids()
+
+    def _load_event_ids(self) -> None:
+        if not self.path.is_file():
+            return
+        try:
+            with self.path.open('r', encoding='utf-8') as handle:
+                for line in handle:
+                    try:
+                        event_id = json.loads(line).get('event_id')
+                    except (json.JSONDecodeError, AttributeError):
+                        continue
+                    if isinstance(event_id, str):
+                        self.event_ids.add(event_id)
+        except OSError as exc:
+            self._diagnose(f'RISK_COLLISION_READ_ERROR {type(exc).__name__}: {exc}')
+
+    def _diagnose(self, message: str) -> None:
+        if self.diagnostic_log is None:
+            return
+        try:
+            write_bounded_live_log(self.diagnostic_log, message)
+        except OSError:
+            pass
+
+    @staticmethod
+    def _number(value: Any) -> float | None:
+        if value is None:
+            return None
+        try:
+            return float(value)
+        except (TypeError, ValueError):
+            return None
+
+    def persist(self, event: dict[str, Any], session: 'Session',
+                event_source: str | None = None) -> dict[str, Any] | None:
+        event_time = _event_datetime(event.get('time'))
+        candidate = risk_build_collision_candidate(event)
+        if event_time is None or candidate is None:
+            return None
+        event_id = event_time.isoformat()
+        if event_id in self.event_ids:
+            return None
+        control = event.get('control') or event.get('control_label')
+        price = event.get('display_event_price', event.get('price'))
+        price_change = event.get('display_price_change', event.get('price_change'))
+        row = {
+            'event_id': event_id,
+            'time': event_id,
+            'collision_type': candidate['collision_type'],
+            'price': self._number(price),
+            'side': event.get('aggr_side'),
+            'oi_activity_btc': self._number(event.get('event_oi_activity')),
+            'oi_net_btc': self._number(event.get('event_oi_net')),
+            'oi_build_purity': candidate['oi_build_purity'],
+            'aggr_side': event.get('aggr_side'),
+            'aggr_share_pct': self._number(event.get('aggr_share_pct')),
+            'aggr_mag_btc': self._number(event.get('aggr_mag')),
+            'price_change_usdt': self._number(price_change),
+            'control': control,
+            'eff_ratio': self._number(event.get('eff_ratio')),
+            'absorption_ratio': self._number(event.get('absorption_ratio')),
+            'raw_oi_intensity_pctl': self._number(event.get('raw_oi_intensity_pctl')),
+            'event_source': event_source or event.get('event_source'),
+            'f_buy_pct': self._number(session.continuous_buy_pct),
+            'f_sell_pct': self._number(session.continuous_sell_pct),
+            'e_buy_pct': self._number(session.continuous_dominance_partition().get('event_buy_pct')),
+            'e_sell_pct': self._number(session.continuous_dominance_partition().get('event_sell_pct')),
+            'r_buy_pct': self._number(session.continuous_dominance_partition().get('rest_buy_pct')),
+            'r_sell_pct': self._number(session.continuous_dominance_partition().get('rest_sell_pct')),
+            'total_oi_flow_btc': self._number(session.total_oi_flow_btc),
+            'price_1m': None,
+            'price_3m': None,
+            'price_5m': None,
+            'oi_flow_change_1m': None,
+            'oi_flow_change_3m': None,
+            'oi_flow_change_5m': None,
+            'outcome': None,
+        }
+        try:
+            self.path.parent.mkdir(parents=True, exist_ok=True)
+            with self.path.open('a', encoding='utf-8') as handle:
+                handle.write(json.dumps(row, ensure_ascii=False, separators=(',', ':')) + '\n')
+                handle.flush()
+        except (OSError, TypeError, ValueError) as exc:
+            self._diagnose(f'RISK_COLLISION_WRITE_ERROR {type(exc).__name__}: {exc}')
+            return None
+        self.event_ids.add(event_id)
+        return {**row, **candidate}
+
+
+def dispatch_important_pattern(pattern: str, candidate: dict[str, Any],
+                               session: 'Session', args: argparse.Namespace,
+                               *, live_alert: bool) -> None:
+    """Central dispatcher for research-only important-pattern alerts."""
+    if pattern != 'RISK_BUILD_COLLISION':
+        return
+    side = candidate['aggr_side']
+    control = str(candidate['control']).removeprefix('CONTROL ')
+    line = (
+        f'{fmt_time(datetime.fromisoformat(candidate["time"]))} RISK BUILD COLLISION | '
+        f'{side} → {control} | '
+        f'OI {compact(candidate["oi_net_btc"])} / ACT {compact(candidate["oi_activity_btc"], signed=False)} | '
+        f'PURITY {candidate["oi_build_purity"] * 100:.1f}% | '
+        f'{side} {candidate["aggr_share_pct"]:.1f}% {compact(candidate["aggr_mag_btc"])} BTC | '
+        f'ΔP {compact(candidate["price_change_usdt"])}'
+    )
+    print(line)
+    session.research_alert_text = line
+    if live_alert and getattr(args, 'sound', 'off') == 'on':
+        play_event_sound(getattr(args, 'risk_collision_sound_file', None) or args.sound_file)
 
 
 def pine_quote(value: str) -> str:
@@ -3873,6 +4029,7 @@ class Session:
         self.collector_market_last_age_sec: float | None = None
         self.buy_peak = self.sell_peak = 0.0
         self.last_control: str | None = None
+        self.research_alert_text: str | None = None
         self.last_low: float | None = None
         self.last_high: float | None = None
         self.previous_low: float | None = None
@@ -4612,6 +4769,7 @@ def run_replay_live(args: argparse.Namespace, gui: GuiBridge | None = None) -> N
     session.initialize_continuous_baseline(market)
     log_path = args.log or root / 'data' / 'research' / 'BTC_LRA_RECORDED_LIVE_REPLAY.log'
     event_archive = EventRowArchive(root / 'runtime' / 'monitor' / 'BTC_LRA_EVENT_ROWS.jsonl', log_path)
+    risk_archive = RiskBuildCollisionArchive(root / 'research' / 'dominance' / 'BTC_LRA_RISK_BUILD_COLLISIONS.jsonl', log_path)
     tv_path = root / 'BTC_LRA_TV_EVENTS.pine'
     tv_event_history: dict[datetime, dict[str, Any]] = {}
     v2_report_path = root / 'data' / 'research' / 'BTC_LRA_DOMINANCE_V2_REPLAY.txt'
@@ -4745,6 +4903,8 @@ def run_replay_live(args: argparse.Namespace, gui: GuiBridge | None = None) -> N
                 if canonical_event is None and raw_event is not None:
                     canonical_event = raw_event
             if canonical_event is not None:
+                if minute_time in rebuild_events:
+                    risk_archive.persist(canonical_event, rebuilt, 'STRONG+RAW' if raw_event is not None else 'STRONG')
                 rebuilt.finalize_raw_minute(minute_time, canonical_event)
                 event_archive.persist(canonical_event, rebuilt, 'BACKFILL')
             rebuilt.snapshot(minute_time)
@@ -4899,8 +5059,6 @@ def run_replay_live(args: argparse.Namespace, gui: GuiBridge | None = None) -> N
                 decorate_event_interval(event, prefix_minutes, market)
                 emitted_events.add(minute_time)
                 event_count += 1
-                if args.sound == 'on':
-                    play_event_sound(args.sound_file)
                 session.emit_event(event, minute, [market_row] if market_row else [])
                 canonical_event_for_finalize = session.event_history[-1]
                 tv_event_history[minute_time] = dict(session.event_history[-1])
@@ -4981,6 +5139,10 @@ def run_replay_live(args: argparse.Namespace, gui: GuiBridge | None = None) -> N
                     }, ensure_ascii=False))
             if canonical_event_for_finalize is not None:
                 source = 'STRONG+RAW' if canonical_event_for_finalize.get('event_source') != 'RAW_OI_INTENSITY' and raw_summary is not None and raw_event is not None else 'STRONG' if canonical_event_for_finalize.get('event_source') != 'RAW_OI_INTENSITY' else 'RAW_ONLY'
+                if minute_time in event_by_time:
+                    candidate = risk_archive.persist(canonical_event_for_finalize, session, source)
+                    if candidate is not None:
+                        dispatch_important_pattern('RISK_BUILD_COLLISION', candidate, session, args, live_alert=False)
                 session.finalize_raw_minute(minute_time, canonical_event_for_finalize, log_path=log_path)
                 event_archive.persist(canonical_event_for_finalize, session, 'BACKFILL')
                 write_replay_log(log_path, 'ACCUM_FINAL ' + json.dumps({
@@ -5054,6 +5216,7 @@ def run_live(args: argparse.Namespace, gui: GuiBridge | None = None) -> None:
     root = Path(__file__).resolve().parent
     log_path = root / 'runtime' / 'monitor' / 'BTC_LRA_LIVE_MONITOR.log'
     event_archive = EventRowArchive(root / 'runtime' / 'monitor' / 'BTC_LRA_EVENT_ROWS.jsonl', log_path)
+    risk_archive = RiskBuildCollisionArchive(root / 'research' / 'dominance' / 'BTC_LRA_RISK_BUILD_COLLISIONS.jsonl', log_path)
     live_event_cutoff = startup_now.replace(second=0, microsecond=0)
     collector_directory = root / 'runtime' / 'collector'
     collector_raw_path = collector_directory / 'BTC_LRA_OI_RAW.jsonl'
@@ -5201,6 +5364,8 @@ def run_live(args: argparse.Namespace, gui: GuiBridge | None = None) -> None:
             if canonical_event is None and raw_event is not None:
                 canonical_event = raw_event
             if canonical_event is not None:
+                if minute_time in rebuild_events:
+                    risk_archive.persist(canonical_event, rebuilt, 'STRONG+RAW' if raw_event is not None else 'STRONG')
                 rebuilt.finalize_raw_minute(minute_time, canonical_event)
                 event_archive.persist(canonical_event, rebuilt, 'BACKFILL')
 
@@ -5438,8 +5603,6 @@ def run_live(args: argparse.Namespace, gui: GuiBridge | None = None) -> None:
                 event['start_time'] = minutes[event['start']]['minute']
                 event['kind'] = 'MEGA' if minutes[event['confirmed']]['mega'] else 'STRONG'
                 decorate_event_interval(event, minutes, market_history)
-                if args.sound == 'on':
-                    play_event_sound(args.sound_file)
                 session.emit_event(event, minute, [market_row] if market_row else [])
                 canonical_event = session.event_history[-1]
                 tv_event_history[minute['minute']] = dict(canonical_event)
@@ -5454,6 +5617,11 @@ def run_live(args: argparse.Namespace, gui: GuiBridge | None = None) -> None:
             if canonical_event is None and raw_event is not None:
                 canonical_event = raw_event
             if canonical_event is not None:
+                if minute['minute'] in event_by_time:
+                    source = 'STRONG+RAW' if raw_event is not None else 'STRONG'
+                    candidate = risk_archive.persist(canonical_event, session, source)
+                    if candidate is not None:
+                        dispatch_important_pattern('RISK_BUILD_COLLISION', candidate, session, args, live_alert=True)
                 session.finalize_raw_minute(minute['minute'], canonical_event, log_path=log_path)
                 event_archive.persist(
                     canonical_event,
@@ -5501,15 +5669,6 @@ def run_live(args: argparse.Namespace, gui: GuiBridge | None = None) -> None:
                                 depth_event, ensure_ascii=False, default=str,
                             ),
                         )
-                        if args.sound == 'on' and depth_event.get('status') in {
-                                'NEAR', 'TESTED', 'HELD', 'DEFENDED', 'BROKEN', 'PULLED',
-                        }:
-                            write_bounded_live_log(
-                                log_path,
-                                f'SOUND_TRIGGER depth status={depth_event.get("status")} '
-                                f'side={depth_event.get("side")} price={depth_event.get("price")}',
-                            )
-                            play_event_sound(args.sound_file)
                     if pre_release_event is not None:
                         write_bounded_live_log(
                             log_path,
@@ -5517,8 +5676,6 @@ def run_live(args: argparse.Namespace, gui: GuiBridge | None = None) -> None:
                                 pre_release_event, ensure_ascii=False, default=str,
                             ),
                         )
-                        if args.sound == 'on':
-                            play_event_sound(args.sound_file)
             processed_raw_samples.add(sample['ts'])
         session.print_status('LIVE STATUS', current_time=processing_end, live=True)
         session.update_total_oi(raw_samples, processing_end)
@@ -5993,6 +6150,8 @@ def main() -> None:
     parser.add_argument('--sound', choices=('on', 'off'), default='off')
     parser.add_argument('--sound-file', type=Path,
                         help='path to event sound file, e.g. MP3 or WAV; use with --sound on')
+    parser.add_argument('--risk-collision-sound-file', type=Path,
+                        help='optional separate sound for RISK_BUILD_COLLISION research alerts')
     parser.add_argument('--log', type=Path)
     parser.add_argument('--gui', action='store_true', help='запустить PySide6 dashboard')
     parser.add_argument('--neighbor-analysis', action='store_true',
