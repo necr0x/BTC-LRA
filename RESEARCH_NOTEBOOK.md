@@ -113,6 +113,14 @@ The 1m engine derives 5m, 15m, 1h, and 4h context. Higher-timeframe context is a
 4. Prospective validation of effort/result degradation and restoration sequences.
 5. Separate audit of swing-candidate rehydration semantics.
 
+## WORKING HYPOTHESIS — F/E/R DOMINANCE DIVERGENCE
+
+The canonical benchmark episode store is [`research/dominance/BTC_LRA_DOMINANCE_EPISODES.jsonl`](research/dominance/BTC_LRA_DOMINANCE_EPISODES.jsonl). It keeps causal F/E/R observations separate from future outcomes and supports `BENCHMARK_ONLY` and `LIVE_CANDIDATE` statuses.
+
+The first episode is benchmark evidence only: EVENT flow was strongly SELL-dominant while REST flow was BUY-dominant, FULL dominance remained near balance, and OI contracted materially while downside price progress remained limited relative to observed SELL-side event dominance. SELL-side event aggression during OI contraction may represent closing/pressure that is being accepted without proportional downside continuation.
+
+This is a working hypothesis, not a confirmed causal explanation. Opposite-side and control cases are required before any stronger interpretation.
+
 ## Decision history
 
 Historical decisions are preserved in `archive/docs/BTC_LRA_RESEARCH_DECISION_LOG.md`. The current parity decision is: deterministic ordering is the minimal restart parity fix; TEST 1 and TEST 2 passed; no detector or threshold changes were made. The pre-result risk-transfer theory and benchmark agenda are preserved in this notebook from the former canonical hypothesis document.
