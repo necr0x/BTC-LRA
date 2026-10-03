@@ -413,6 +413,24 @@ def individual_events(minutes: list[dict[str, Any]]) -> list[dict[str, Any]]:
     ]
 
 
+def canonical_minute_available(minutes: list[dict[str, Any]], target: datetime) -> bool:
+    """Return whether the 30 closed minutes before target are present."""
+    available = {row['minute'] for row in minutes}
+    target_minute = target.replace(second=0, microsecond=0)
+    return all(
+        target_minute - timedelta(minutes=offset) in available
+        for offset in range(1, 31)
+    )
+
+
+def canonical_events(minutes: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """Return STRONG/MEGA events whose own detector window is causal-complete."""
+    return [
+        event for event in individual_events(minutes)
+        if canonical_minute_available(minutes, minutes[event['confirmed']]['minute'])
+    ]
+
+
 def event_source_validation(minutes: list[dict[str, Any]]) -> list[str]:
     individual = individual_events(minutes)
     grouped = anomaly_events(minutes)
@@ -845,13 +863,16 @@ def publish_gui(bridge: GuiBridge | None, session: 'Session', clock: datetime,
     continuous_sell_pct = session.continuous_sell_pct
     continuous_partition = session.continuous_dominance_partition()
     partition_buy_error = partition_sell_error = None
-    if session.event_exact_available:
-        partition_buy_error = session.continuous_buy_dominance_btc - (
-            continuous_partition['event_buy_btc'] + continuous_partition['rest_buy_btc']
-        )
-        partition_sell_error = session.continuous_sell_dominance_btc - (
-            continuous_partition['event_sell_btc'] + continuous_partition['rest_sell_btc']
-        )
+    partition_buy_error = session.continuous_buy_dominance_btc - (
+        continuous_partition['event_buy_btc']
+        + continuous_partition['rest_buy_btc']
+        + continuous_partition['unknown_buy_btc']
+    )
+    partition_sell_error = session.continuous_sell_dominance_btc - (
+        continuous_partition['event_sell_btc']
+        + continuous_partition['rest_sell_btc']
+        + continuous_partition['unknown_sell_btc']
+    )
     dominance_relative = session.dominance_relative_snapshot(
         continuous_buy_pct, continuous_sell_pct, clock
     )
@@ -958,6 +979,12 @@ def publish_gui(bridge: GuiBridge | None, session: 'Session', clock: datetime,
         'event_sell_dominance_btc': continuous_partition['event_sell_btc'],
         'event_buy_pct': continuous_partition['event_buy_pct'],
         'event_sell_pct': continuous_partition['event_sell_pct'],
+        'unknown_buy_dominance_btc': continuous_partition['unknown_buy_btc'],
+        'unknown_sell_dominance_btc': continuous_partition['unknown_sell_btc'],
+        'unknown_buy_pct': continuous_partition['unknown_buy_pct'],
+        'unknown_sell_pct': continuous_partition['unknown_sell_pct'],
+        'canonical_valid_minutes': continuous_partition['canonical_valid_minutes'],
+        'canonical_invalid_minutes': continuous_partition['canonical_invalid_minutes'],
         'rest_buy_dominance_btc': continuous_partition['rest_buy_btc'],
         'rest_sell_dominance_btc': continuous_partition['rest_sell_btc'],
         'rest_buy_pct': continuous_partition['rest_buy_pct'],
@@ -4590,6 +4617,9 @@ class Session:
         self.previous_event: dict[str, Any] | None = None
         self.last_events: deque[dict[str, Any]] = deque(maxlen=10)
         self.event_history: list[dict[str, Any]] = []
+        self.canonical_event_times: set[datetime] = set()
+        self.canonical_valid_minutes: set[datetime] = set()
+        self.canonical_invalid_minutes: set[datetime] = set()
         self.minute_history: list[dict[str, Any]] = []
         self.oi_event_flow = 0.0
         self.market_history: list[dict[str, Any]] = []
@@ -4705,26 +4735,21 @@ class Session:
             self.dominance_reference_frozen_just_now = True
         return result
 
+    def record_canonical_minute(self, minute: datetime, available: bool) -> None:
+        minute = minute.replace(second=0, microsecond=0)
+        target = self.canonical_valid_minutes if available else self.canonical_invalid_minutes
+        target.add(minute)
+
     def continuous_dominance_partition(self) -> dict[str, float | None]:
-        """Split the existing continuous contributions by canonical event minute."""
-        if not self.event_exact_available:
-            return {
-                'event_buy_btc': None,
-                'event_sell_btc': None,
-                'event_buy_pct': None,
-                'event_sell_pct': None,
-                'rest_buy_btc': None,
-                'rest_sell_btc': None,
-                'rest_buy_pct': None,
-                'rest_sell_pct': None,
-            }
-        event_times = {
-            event.get('time') for event in self.event_history
-            if isinstance(event.get('time'), datetime)
-        }
+        """Split F contributions into canonical event, rest, and unknown buckets."""
+        event_times = self.canonical_event_times
         event_buy = event_sell = rest_buy = rest_sell = 0.0
+        unknown_buy = unknown_sell = 0.0
         for minute, contribution in self.continuous_contributions_by_minute.items():
-            if minute in event_times:
+            if minute in self.canonical_invalid_minutes:
+                unknown_buy += contribution['buy']
+                unknown_sell += contribution['sell']
+            elif minute in event_times:
                 event_buy += contribution['buy']
                 event_sell += contribution['sell']
             else:
@@ -4732,6 +4757,7 @@ class Session:
                 rest_sell += contribution['sell']
         event_buy_pct, event_sell_pct = dominance_percentages(event_buy, event_sell)
         rest_buy_pct, rest_sell_pct = dominance_percentages(rest_buy, rest_sell)
+        unknown_buy_pct, unknown_sell_pct = dominance_percentages(unknown_buy, unknown_sell)
         return {
             'event_buy_btc': event_buy,
             'event_sell_btc': event_sell,
@@ -4741,6 +4767,12 @@ class Session:
             'rest_sell_btc': rest_sell,
             'rest_buy_pct': rest_buy_pct,
             'rest_sell_pct': rest_sell_pct,
+            'unknown_buy_btc': unknown_buy,
+            'unknown_sell_btc': unknown_sell,
+            'unknown_buy_pct': unknown_buy_pct,
+            'unknown_sell_pct': unknown_sell_pct,
+            'canonical_valid_minutes': len(self.canonical_valid_minutes),
+            'canonical_invalid_minutes': len(self.canonical_invalid_minutes),
         }
 
     def update_total_oi(self, samples: list[dict[str, Any]], clock: datetime) -> None:
@@ -5249,6 +5281,8 @@ class Session:
             self.buy_dominance_v2_btc, self.sell_dominance_v2_btc
         )
         current['event_flags'] = ['STRONG/MEGA']
+        current['canonical_event'] = True
+        self.canonical_event_times.add(minute['minute'])
         current['oi_flow_contribution'] = float(event_oi_net or 0.0)
         current['oi_event_flow'] = self.oi_event_flow
         self.last_events.append(current)
@@ -5967,7 +6001,7 @@ def run_live(args: argparse.Namespace, gui: GuiBridge | None = None) -> None:
         rebuild_raw_by_time = {row['_time']: row for row in rebuild_summaries}
         rebuild_events = {
             rebuild_minutes[event['confirmed']]['minute']: event
-            for event in individual_events(rebuild_minutes)
+            for event in canonical_events(rebuild_minutes)
         } if canonical_event_available else {}
         market_by_time = {row['ts']: row for row in closed_market}
         rebuilt_processed: set[datetime] = set()
@@ -5979,6 +6013,9 @@ def run_live(args: argparse.Namespace, gui: GuiBridge | None = None) -> None:
                 continue
             if minute_time + timedelta(minutes=1) > target_end:
                 continue
+            rebuilt.record_canonical_minute(
+                minute_time, canonical_minute_available(rebuild_minutes, minute_time),
+            )
             rebuilt.apply_oi(minute)
             rebuilt_processed.add(minute_time)
             market_row = market_by_time.get(minute_time)
@@ -6234,13 +6271,16 @@ def run_live(args: argparse.Namespace, gui: GuiBridge | None = None) -> None:
         raw_summaries, _ = _raw_intensity_summary(samples, minutes, market_history)
         raw_flow_by_time = {row['_time']: row for row in raw_summaries}
         session.update_total_oi(raw_samples, processing_end)
-        events = individual_events(minutes) if session.canonical_event_available else []
+        events = canonical_events(minutes) if session.canonical_event_available else []
         event_by_time = {minutes[e['confirmed']]['minute']: e for e in events}
         for minute in minutes:
             if minute['minute'] < session.anchor or minute['minute'] in processed:
                 continue
             if minute['minute'] + timedelta(minutes=1) > processing_end:
                 continue
+            session.record_canonical_minute(
+                minute['minute'], canonical_minute_available(minutes, minute['minute']),
+            )
             session.apply_oi(minute)
             processed.add(minute['minute'])
             market_row = next((row for row in market_history if row['ts'] == minute['minute']), None)
@@ -6730,7 +6770,7 @@ def launch_gui(args: argparse.Namespace) -> None:
                     f'<span style="color:#168a2f">{buy_text}</span> vs '
                     f'<span style="color:#c62828">{sell_text}</span>'
                 )
-            if snapshot.get('event_exact_available', True):
+            if snapshot.get('canonical_valid_minutes', 0) > 0:
                 event_html = (
                     f'<span style="color:#168a2f">{event_buy_text}</span> vs '
                     f'<span style="color:#c62828">{event_sell_text}</span>'
@@ -6742,7 +6782,7 @@ def launch_gui(args: argparse.Namespace) -> None:
                 event_plain = f'{event_buy_text} vs {event_sell_text}'
                 rest_plain = f'{rest_buy_text} vs {rest_sell_text}'
             else:
-                reason = snapshot.get('event_exact_reason') or 'RAW_GAP'
+                reason = snapshot.get('canonical_event_reason') or 'CANONICAL_UNAVAILABLE'
                 event_html = f'<span style="color:#000000">INCOMPLETE [{reason}]</span>'
                 rest_html = f'<span style="color:#000000">INCOMPLETE [{reason}]</span>'
                 event_plain = rest_plain = f'INCOMPLETE [{reason}]'
