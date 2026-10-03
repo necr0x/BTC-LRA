@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import argparse
 import asyncio
+import contextlib
 import json
 import math
 import time
@@ -48,8 +49,10 @@ class JsonlSink:
         self.root.mkdir(parents=True, exist_ok=True)
         self.paths = {
             'DEPTH': self.root / 'BTC_LRA_DEPTH_WS.jsonl',
+            'DEPTH_SNAPSHOT': self.root / 'BTC_LRA_DEPTH_WS_SNAPSHOTS.jsonl',
             'AGGTRADE': self.root / 'BTC_LRA_AGGTRADE_WS.jsonl',
             'AGGREGATE': self.root / 'BTC_LRA_AGGTRADE_WS_AGGREGATES.jsonl',
+            'FINALIZED': self.root / 'BTC_LRA_AGGTRADE_WS_FINALIZED.jsonl',
             'HEALTH': self.root / 'BTC_LRA_WS_HEALTH.log',
         }
 
@@ -112,8 +115,13 @@ class DepthBook:
         previous_id = payload.get('pu')
         if self.last_update_id is None:
             return 'UNSYNCED'
+        if final_id <= self.last_update_id:
+            return 'STALE'
         if first_after_snapshot:
             if not (first_id <= self.last_update_id + 1 <= final_id):
+                if first_id > self.last_update_id + 1:
+                    self.state = 'RESYNC'
+                    return 'SEQUENCE_GAP'
                 return 'WAIT'
         elif previous_id is not None and int(previous_id) != self.last_update_id:
             self.state = 'RESYNC'
@@ -141,10 +149,9 @@ class DepthBook:
 
 @dataclass
 class AggTradeAggregator:
-    buckets: dict[int, dict[str, float]] = field(default_factory=dict)
-    last_emitted: dict[int, int] = field(default_factory=dict)
+    buckets: dict[tuple[int, int], dict[str, float]] = field(default_factory=dict)
 
-    def add(self, trade: dict[str, Any], received_ms: int) -> list[dict[str, Any]]:
+    def add(self, trade: dict[str, Any], received_ms: int) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
         trade_ms = int(trade['trade_ts_ms'])
         side = trade['aggressor_side']
         quantity = float(trade['quantity'])
@@ -152,7 +159,8 @@ class AggTradeAggregator:
         result: list[dict[str, Any]] = []
         for seconds in (5, 30, 60):
             bucket_ms = (trade_ms // (seconds * 1000)) * seconds * 1000
-            bucket = self.buckets.setdefault(bucket_ms, {'buy': 0.0, 'sell': 0.0, 'notional': 0.0, 'trades': 0.0})
+            bucket_key = (seconds, bucket_ms)
+            bucket = self.buckets.setdefault(bucket_key, {'buy': 0.0, 'sell': 0.0, 'notional': 0.0, 'trades': 0.0})
             bucket['buy' if side == 'BUY' else 'sell'] += quantity
             bucket['notional'] += price * quantity
             bucket['trades'] += 1
@@ -163,19 +171,34 @@ class AggTradeAggregator:
                 'bucket_start': iso_ms(bucket_ms),
                 'taker_buy_btc': bucket['buy'],
                 'taker_sell_btc': bucket['sell'],
+                'total_volume_btc': bucket['buy'] + bucket['sell'],
                 'net_aggression_btc': bucket['buy'] - bucket['sell'],
                 'notional_usdt': bucket['notional'],
                 'trade_count': int(bucket['trades']),
                 'last_received_ts_ms': received_ms,
             })
-        self._prune(trade_ms)
-        return result
-
-    def _prune(self, newest_ms: int) -> None:
-        cutoff = newest_ms - 120_000
-        for bucket_ms in list(self.buckets):
-            if bucket_ms < cutoff:
-                del self.buckets[bucket_ms]
+        finalized: list[dict[str, Any]] = []
+        for (bucket_seconds, bucket_start_ms), bucket in list(self.buckets.items()):
+            bucket_end_ms = bucket_start_ms + bucket_seconds * 1000
+            if bucket_end_ms <= trade_ms:
+                finalized.append({
+                    'stream': 'AGGREGATE_FINAL',
+                    'bucket_seconds': bucket_seconds,
+                    'bucket_start_ms': bucket_start_ms,
+                    'bucket_end_ms': bucket_end_ms,
+                    'bucket_start': iso_ms(bucket_start_ms),
+                    'bucket_end': iso_ms(bucket_end_ms),
+                    'taker_buy_btc': bucket['buy'],
+                    'taker_sell_btc': bucket['sell'],
+                    'total_volume_btc': bucket['buy'] + bucket['sell'],
+                    'net_aggression_btc': bucket['buy'] - bucket['sell'],
+                    'trade_count': int(bucket['trades']),
+                    'notional_usdt': bucket['notional'],
+                    'final': True,
+                    'finalized_received_ts_ms': received_ms,
+                })
+                del self.buckets[(bucket_seconds, bucket_start_ms)]
+        return result, finalized
 
 
 def parse_agg_trade(payload: dict[str, Any], received_ms: int) -> dict[str, Any]:
@@ -227,6 +250,7 @@ class TransportPrototype:
         self.sink = JsonlSink(root)
         self.depth_limit = depth_limit
         self.depth_queue: asyncio.Queue[dict[str, Any]] = asyncio.Queue(maxsize=QUEUE_MAX)
+        self.depth_snapshot_queue: asyncio.Queue[dict[str, Any]] = asyncio.Queue(maxsize=100)
         self.agg_queue: asyncio.Queue[dict[str, Any]] = asyncio.Queue(maxsize=QUEUE_MAX)
         self.depth = DepthBook()
         self.aggregator = AggTradeAggregator()
@@ -248,23 +272,31 @@ class TransportPrototype:
     async def writer_loop(self) -> None:
         while not self.stop.is_set():
             depth_batch: list[dict[str, Any]] = []
+            snapshot_batch: list[dict[str, Any]] = []
             agg_batch: list[dict[str, Any]] = []
-            for queue, stream in ((self.depth_queue, 'DEPTH'), (self.agg_queue, 'AGGTRADE')):
+            finalized_batch: list[dict[str, Any]] = []
+            for queue, stream in ((self.depth_queue, 'DEPTH'), (self.depth_snapshot_queue, 'DEPTH_SNAPSHOT'), (self.agg_queue, 'AGGTRADE')):
                 target = depth_batch if stream == 'DEPTH' else agg_batch
+                if stream == 'DEPTH_SNAPSHOT':
+                    target = snapshot_batch
                 while len(target) < 500:
                     try:
                         target.append(queue.get_nowait())
                     except asyncio.QueueEmpty:
                         break
-            if not depth_batch and not agg_batch:
+            if not depth_batch and not snapshot_batch and not agg_batch:
                 await asyncio.sleep(0.05)
                 continue
             self.sink.write_batch('DEPTH', depth_batch)
+            self.sink.write_batch('DEPTH_SNAPSHOT', snapshot_batch)
             self.sink.write_batch('AGGTRADE', agg_batch)
             aggregate_rows: list[dict[str, Any]] = []
             for row in agg_batch:
-                aggregate_rows.extend(self.aggregator.add(row, int(row['received_ts_ms'])))
+                snapshots, finalized = self.aggregator.add(row, int(row['received_ts_ms']))
+                aggregate_rows.extend(snapshots)
+                finalized_batch.extend(finalized)
             self.sink.write_batch('AGGREGATE', aggregate_rows)
+            self.sink.write_batch('FINALIZED', finalized_batch)
             await asyncio.sleep(0)
 
     async def depth_loop(self) -> None:
@@ -275,6 +307,7 @@ class TransportPrototype:
             return
         backoff = 1.0
         while not self.stop.is_set():
+            snapshot_task: asyncio.Task[Any] | None = None
             try:
                 self.health['DEPTH'].state = 'SYNCING'
                 self.health['DEPTH'].reconnect_count += 1
@@ -293,15 +326,30 @@ class TransportPrototype:
                         if isinstance(payload, dict) and payload.get('e') == 'depthUpdate':
                             buffered.append(payload)
                     self.depth.load_snapshot(snapshot, epoch)
+                    snapshot_row = {
+                        'stream': 'DEPTH_SNAPSHOT',
+                        'snapshot_ts_ms': epoch_ms(),
+                        'received_ts_ms': epoch_ms(),
+                        'sync_epoch': epoch,
+                        'lastUpdateId': int(snapshot['lastUpdateId']),
+                        'bids_json': json.dumps(snapshot.get('bids', []), separators=(',', ':')),
+                        'asks_json': json.dumps(snapshot.get('asks', []), separators=(',', ':')),
+                    }
+                    try:
+                        self.depth_snapshot_queue.put_nowait(snapshot_row)
+                    except asyncio.QueueFull:
+                        self.sink.health(f'WS_DEPTH_SNAPSHOT_QUEUE_OVERFLOW epoch={epoch}')
+                        raise RuntimeError('depth snapshot queue overflow')
                     first_applied = False
                     for payload in buffered:
                         result = self.depth.apply(payload, first_after_snapshot=not first_applied)
-                        if result == 'WAIT':
+                        if result in ('WAIT', 'STALE'):
                             continue
                         if result == 'SEQUENCE_GAP':
                             raise RuntimeError('depth sequence gap during initial sync')
-                        first_applied = True
-                        await self.enqueue_depth(payload, epoch, True)
+                        if result == 'APPLIED':
+                            first_applied = True
+                            await self.enqueue_depth(payload, epoch, True)
                     self.health['DEPTH'].state = 'LIVE'
                     self.sink.health(f'WS_DEPTH_SYNCED epoch={epoch} last_update_id={self.depth.last_update_id}')
                     backoff = 1.0
@@ -325,6 +373,12 @@ class TransportPrototype:
                 self.sink.health(f'WS_DEPTH_RESYNC reason={type(exc).__name__}:{exc}')
                 await asyncio.sleep(backoff)
                 backoff = min(RECONNECT_MAX_SECONDS, backoff * 2)
+            finally:
+                if snapshot_task is not None:
+                    if not snapshot_task.done():
+                        snapshot_task.cancel()
+                    with contextlib.suppress(asyncio.CancelledError, Exception):
+                        await snapshot_task
 
     async def enqueue_depth(self, payload: dict[str, Any], epoch: int, sequence_ok: bool) -> None:
         row = parse_depth_event(payload, epoch_ms(), epoch)
@@ -392,8 +446,18 @@ def self_test() -> None:
     trade = parse_agg_trade(payload, 1_100)
     assert trade['aggressor_side'] == 'SELL'
     assert trade['aggregate_trade_id'] == 7
-    aggregate = AggTradeAggregator().add(trade, 1_100)
-    assert aggregate and aggregate[0]['taker_sell_btc'] == 2.5
+    snapshots, finalized = AggTradeAggregator().add(trade, 1_100)
+    assert snapshots and snapshots[0]['taker_sell_btc'] == 2.5
+
+    aggregator = AggTradeAggregator()
+    boundary_trade = dict(trade, trade_ts_ms=60_000, event_ts_ms=60_000)
+    snapshots, _ = aggregator.add(boundary_trade, 60_100)
+    by_timeframe = {row['bucket_seconds']: row for row in snapshots}
+    assert set(by_timeframe) == {5, 30, 60}
+    assert all(row['total_volume_btc'] == 2.5 and row['trade_count'] == 1 for row in by_timeframe.values())
+    _, finalized = aggregator.add(dict(trade, trade_ts_ms=120_000, event_ts_ms=120_000), 120_100)
+    assert {row['bucket_seconds'] for row in finalized} == {5, 30, 60}
+    assert all(row['final'] is True for row in finalized)
 
     book = DepthBook()
     book.load_snapshot({'lastUpdateId': 10, 'bids': [['100', '1']], 'asks': [['101', '2']]}, 1)
@@ -405,7 +469,16 @@ def self_test() -> None:
     assert book.state == 'RESYNC'
     assert DEPTH_WS.startswith('wss://fstream.binance.com/public/ws/')
     assert AGGTRADE_WS.startswith('wss://fstream.binance.com/market/ws/')
+    stale = {'E': 0, 'U': 5, 'u': 9, 'pu': 4, 'b': [], 'a': []}
+    assert book.apply(stale, first_after_snapshot=True) == 'STALE'
+    applicable = {'E': 1, 'U': 11, 'u': 12, 'pu': 10, 'b': [], 'a': []}
+    assert book.apply(applicable, first_after_snapshot=True) == 'APPLIED'
+    assert book.apply(applicable) == 'STALE'
+    jumped = {'E': 2, 'U': 15, 'u': 15, 'pu': 14, 'b': [], 'a': []}
+    assert book.apply(jumped) == 'SEQUENCE_GAP'
     print('WS_TRANSPORT_SELF_TEST=PASS')
+    print('AGGREGATOR_TIMEFRAME_ISOLATION=PASS')
+    print('DEPTH_SEQUENCE_TEST=PASS')
 
 
 async def main_async(args: argparse.Namespace) -> None:
